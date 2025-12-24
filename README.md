@@ -142,11 +142,49 @@ python tests/run_tests.py --fixture hello_world.c
 - `data_structures.c`: Structs, memory allocation, loops
 - `simple_asm.asm`: x86 assembly program
 
+### Dangerous Malware Simulations 🛡️
+Our test suite includes **educational malware simulations** that trigger realistic security alerts:
+
+- `dangerous/network_suspicious.c`: Network connections to "blofeld.org", suspicious downloads
+- `dangerous/filesystem_suspicious.c`: Registry manipulation, hidden files, process injection
+- `dangerous/obfuscated_malware.c`: Anti-debugging, string obfuscation, polymorphic behavior
+- `dangerous/packed_executable.c`: UPX packing simulation, runtime unpacking
+
+**These fixtures are designed to test malware detection capabilities and will generate appropriate security warnings!**
+
 ### Test Strategy
 1. **Compile** source code into binaries
 2. **Analyze** binaries with reversing tools
 3. **Validate** that expected information is preserved
 4. **Compare** results against original source
+
+## 🌐 **Web Demonstration App**
+
+Experience the power of reverse engineering with our interactive web demo!
+
+### Features
+- **File Upload Analysis**: Upload suspicious binaries for instant analysis
+- **Malware Simulation Tests**: Try our dangerous fixtures that trigger security alerts
+- **Real-time Results**: See entropy analysis, string extraction, and malware detection
+- **CDC Methodology Demo**: Learn about Compilation-Decompilation-Comparison testing
+
+### Quick Start
+```bash
+# Install web dependencies
+pip install flask
+
+# Launch the demo
+cd webapp
+python app.py
+
+# Visit http://localhost:5000
+```
+
+### Demo Highlights
+- 🔍 **Upload any binary** for professional analysis
+- ⚠️ **Test malware detection** with built-in simulations
+- 📊 **Real-time entropy analysis** and string extraction
+- 🎓 **Educational experience** showing reverse engineering in action
 
 ## 📊 **Directmedia Reverse Engineering Workflow**
 

@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block title %}Reverse Engineering MCP - Malware Analysis Demo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white rounded p-4 mb-4">
+            <h1 class="display-4"><i class="fas fa-shield-alt"></i> Reverse Engineering MCP</h1>
+            <p class="lead">Professional binary analysis with revolutionary Compilation-Decompilation-Comparison testing</p>
+            <p>Upload suspicious files or analyze our built-in malware simulation fixtures!</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- File Upload Section -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-upload"></i> Upload File for Analysis</h5>
+            </div>
+            <div class="card-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="upload-zone mb-3" id="uploadZone">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                        <h5>Drop file here or click to browse</h5>
+                        <p class="text-muted">Supports PE, ELF, and other binary formats</p>
+                        <input type="file" id="fileInput" name="file" class="d-none" accept=".exe,.dll,.bin,.elf">
+                        <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            Choose File
+                        </button>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-lg w-100" id="analyzeBtn" disabled>
+                        <i class="fas fa-search"></i> Analyze File
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Fixtures Section -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-flask"></i> Test Fixtures</h5>
+                <small class="text-muted">Built-in malware simulations for testing</small>
+            </div>
+            <div class="card-body">
+                <div class="row" id="fixturesContainer">
+                    {% for fixture in fixtures %}
+                    <div class="col-12 mb-2">
+                        <div class="card test-fixture-card border-{% if fixture.dangerous %}danger{% else %}primary{% endif %}"
+                             onclick="analyzeFixture('{{ fixture.name }}')">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-title mb-1">
+                                            <code>{{ fixture.name }}</code>
+                                            {% if fixture.dangerous %}
+                                            <span class="badge dangerous-badge ms-2">⚠️ DANGEROUS</span>
+                                            {% endif %}
+                                        </h6>
+                                        <p class="card-text small text-muted mb-2">{{ fixture.description }}</p>
+                                        {% if fixture.suspicious_patterns %}
+                                        <div class="small">
+                                            <strong>Suspicious patterns:</strong>
+                                            {% for pattern in fixture.suspicious_patterns %}
+                                            <span class="badge bg-warning text-dark me-1">{{ pattern.replace('_', ' ') }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <i class="fas fa-{% if fixture.dangerous %}exclamation-triangle text-danger{% else %}cog text-primary{% endif %} fa-lg"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analysis Results Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card" id="resultsCard" style="display: none;">
+            <div class="card-header">
+                <h5 id="resultsTitle"><i class="fas fa-chart-bar"></i> Analysis Results</h5>
+            </div>
+            <div class="card-body">
+                <div id="resultsContent">
+                    <!-- Results will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CDC Methodology Explanation -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="cdc-section">
+            <h3><i class="fas fa-sync-alt"></i> Compilation-Decompilation-Comparison (CDC)</h3>
+            <p class="mb-3">Our revolutionary testing methodology that validates reverse engineering pipelines:</p>
+            <div class="row">
+                <div class="col-md-4 text-center">
+                    <i class="fas fa-code fa-3x mb-3"></i>
+                    <h5>1. Compile</h5>
+                    <p>Source code → Binary executable</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="fas fa-search fa-3x mb-3"></i>
+                    <h5>2. Decompile</h5>
+                    <p>Binary → Analysis with Ghidra/radare2</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="fas fa-balance-scale fa-3x mb-3"></i>
+                    <h5>3. Compare</h5>
+                    <p>Validate preservation of critical information</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedFile = null;
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    selectedFile = e.target.files[0];
+    if (selectedFile) {
+        document.getElementById('analyzeBtn').disabled = false;
+        document.querySelector('#uploadZone h5').textContent = `Selected: ${selectedFile.name}`;
+    }
+});
+
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    if (!selectedFile) {
+        alert('Please select a file first!');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    document.getElementById('analyzeBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+    document.getElementById('analyzeBtn').disabled = true;
+
+    try {
+        const response = await fetch('/analyze', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        displayResults(result);
+    } catch (error) {
+        console.error('Analysis failed:', error);
+        displayError('Analysis failed: ' + error.message);
+    } finally {
+        document.getElementById('analyzeBtn').innerHTML = '<i class="fas fa-search"></i> Analyze File';
+        document.getElementById('analyzeBtn').disabled = false;
+    }
+});
+
+async function analyzeFixture(fixtureName) {
+    try {
+        const response = await fetch(`/test-fixture/${fixtureName}`);
+        const result = await response.json();
+        displayResults(result);
+    } catch (error) {
+        console.error('Fixture analysis failed:', error);
+        displayError('Fixture analysis failed: ' + error.message);
+    }
+}
+
+function displayResults(result) {
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsContent = document.getElementById('resultsContent');
+    const resultsTitle = document.getElementById('resultsTitle');
+
+    resultsTitle.innerHTML = `<i class="fas fa-chart-bar"></i> Analysis: ${result.filename}`;
+
+    let html = '';
+
+    // Status banner
+    if (result.status) {
+        if (result.status.includes('MALWARE') || result.status.includes('SUSPICIOUS')) {
+            html += `<div class="malware-alert"><h4><i class="fas fa-exclamation-triangle"></i> ${result.status}</h4></div>`;
+        } else {
+            html += `<div class="safe-file"><h5><i class="fas fa-check-circle"></i> ${result.status}</h5></div>`;
+        }
+    }
+
+    // File information
+    html += `
+    <div class="row">
+        <div class="col-md-6">
+            <h6><i class="fas fa-file"></i> File Information</h6>
+            <table class="table table-sm">
+                <tr><td><strong>Filename:</strong></td><td>${result.filename}</td></tr>
+                <tr><td><strong>Size:</strong></td><td>${(result.file_size / 1024).toFixed(1)} KB</td></tr>
+                <tr><td><strong>Type:</strong></td><td>${result.file_type}</td></tr>
+                <tr><td><strong>Executable:</strong></td><td>${result.is_executable ? '<i class="fas fa-check text-success"></i>' : '<i class="fas fa-times text-danger"></i>'}</td></tr>
+            </table>
+        </div>
+        <div class="col-md-6">
+            <h6><i class="fas fa-chart-line"></i> Entropy Analysis</h6>`;
+
+    if (result.entropy_analysis) {
+        html += `
+            <p><strong>Overall Entropy:</strong> ${result.entropy_analysis.overall_entropy?.toFixed(2) || 'N/A'}</p>
+            <p><strong>Compressed Regions:</strong> ${result.entropy_analysis.compressed_regions?.length || 0}</p>
+            <p><strong>Random Regions:</strong> ${result.entropy_analysis.random_regions?.length || 0}</p>`;
+    } else {
+        html += `<p class="text-muted">Entropy analysis not available</p>`;
+    }
+
+    html += `
+        </div>
+    </div>`;
+
+    // Malware alerts
+    if (result.alerts && result.alerts.length > 0) {
+        html += `<div class="mt-4"><h6><i class="fas fa-exclamation-triangle"></i> Security Alerts</h6>`;
+        result.alerts.forEach(alert => {
+            html += `<div class="suspicious-indicator">${alert}</div>`;
+        });
+        html += `</div>`;
+    }
+
+    // Strings
+    if (result.sample_strings && result.sample_strings.length > 0) {
+        html += `
+        <div class="mt-4">
+            <h6><i class="fas fa-quote-left"></i> Extracted Strings (${result.strings_found} found)</h6>
+            <div class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto;">
+                <code>`;
+        result.sample_strings.slice(0, 20).forEach(str => {
+            html += `${str.replace(/</g, '&lt;').replace(/>/g, '&gt;')}<br>`;
+        });
+        if (result.strings_found > 20) {
+            html += `<em>... and ${result.strings_found - 20} more</em>`;
+        }
+        html += `</code></div></div>`;
+    }
+
+    resultsContent.innerHTML = html;
+    resultsCard.style.display = 'block';
+    resultsCard.scrollIntoView({ behavior: 'smooth' });
+}
+
+function displayError(message) {
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsContent = document.getElementById('resultsContent');
+    const resultsTitle = document.getElementById('resultsTitle');
+
+    resultsTitle.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Error';
+    resultsContent.innerHTML = `<div class="alert alert-danger">${message}</div>`;
+    resultsCard.style.display = 'block';
+}
+
+// Drag and drop functionality
+const uploadZone = document.getElementById('uploadZone');
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+['dragenter', 'dragover'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, highlight, false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, unhighlight, false);
+});
+
+function highlight(e) {
+    uploadZone.classList.add('bg-light');
+}
+
+function unhighlight(e) {
+    uploadZone.classList.remove('bg-light');
+}
+
+uploadZone.addEventListener('drop', handleDrop, false);
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+
+    if (files.length > 0) {
+        selectedFile = files[0];
+        document.getElementById('analyzeBtn').disabled = false;
+        document.querySelector('#uploadZone h5').textContent = `Selected: ${selectedFile.name}`;
+    }
+}
+</script>
+{% endblock %}

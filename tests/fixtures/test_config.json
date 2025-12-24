@@ -33,6 +33,42 @@
             "expected_strings": ["Hello from assembly!"],
             "expected_functions": ["_start"],
             "description": "Simple x86 assembly program"
+        },
+        "dangerous/network_suspicious.c": {
+            "language": "c",
+            "compiler": "gcc",
+            "compile_args": ["-o", "network_suspicious.exe"],
+            "expected_strings": ["blofeld.org", "Connecting to", "Downloading payload", "malware signature"],
+            "expected_functions": ["main", "connect_to_blofeld_org", "download_malware"],
+            "suspicious_patterns": ["network_connections", "suspicious_domains", "downloads"],
+            "description": "Simulates network-based malware behavior"
+        },
+        "dangerous/filesystem_suspicious.c": {
+            "language": "c",
+            "compiler": "gcc",
+            "compile_args": ["-o", "filesystem_suspicious.exe"],
+            "expected_strings": ["hidden system files", "System32", "registry manipulation", "process injection"],
+            "expected_functions": ["main", "create_hidden_files", "manipulate_registry", "inject_into_process"],
+            "suspicious_patterns": ["filesystem_manipulation", "registry_access", "process_injection", "hidden_files"],
+            "description": "Simulates file system and process manipulation malware"
+        },
+        "dangerous/obfuscated_malware.c": {
+            "language": "c",
+            "compiler": "gcc",
+            "compile_args": ["-o", "obfuscated_malware.exe"],
+            "expected_strings": ["blofeld.org", "system", "netstat", "Malware simulation", "shellcode"],
+            "expected_functions": ["main", "reconstruct_string", "polymorphic_behavior", "decrypt_string", "detect_debugger"],
+            "suspicious_patterns": ["anti_debugging", "string_obfuscation", "polymorphic_code", "encryption", "shellcode_generation"],
+            "description": "Simulates advanced malware with obfuscation and anti-analysis techniques"
+        },
+        "dangerous/packed_executable.c": {
+            "language": "c",
+            "compiler": "gcc",
+            "compile_args": ["-o", "packed_executable.exe"],
+            "expected_strings": ["UPX_PACKER_SIMULATION", "Decompressing packed", "Connect to C2 server", "Download additional payload"],
+            "expected_functions": ["main", "decompress_payload", "unpack_and_execute", "enumerate_imports"],
+            "suspicious_patterns": ["packer_signatures", "runtime_unpacking", "suspicious_imports", "large_payloads"],
+            "description": "Simulates packed/compressed malware executables"
         }
     },
     "test_settings": {

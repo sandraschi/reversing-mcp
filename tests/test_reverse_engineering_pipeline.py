@@ -131,6 +131,8 @@ class ReverseEngineeringTestFixture:
             "functions_found": 0,
             "expected_strings_matched": [],
             "expected_functions_matched": [],
+            "suspicious_patterns_detected": [],
+            "malware_alerts": [],
             "success": True,
             "issues": []
         }
@@ -152,6 +154,48 @@ class ReverseEngineeringTestFixture:
                 # For PE files, check if we can find function-like structures
                 # This is a simplified check
                 validation_results["functions_found"] = len(fixture_config.get("expected_functions", []))
+
+        # Check for suspicious patterns (MALWARE DETECTION)
+        suspicious_patterns = fixture_config.get("suspicious_patterns", [])
+        if suspicious_patterns:
+            validation_results["malware_alerts"].append("🚨 MALWARE ALERT! 🚨")
+            validation_results["malware_alerts"].append(f"This test fixture simulates: {fixture_config.get('description', 'suspicious behavior')}")
+
+            # Check for specific suspicious indicators
+            found_strings = analysis_result.get("strings", [])
+            string_content = " ".join(found_strings).lower()
+
+            for pattern in suspicious_patterns:
+                if pattern == "network_connections" and ("connect" in string_content or "socket" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🔗 Network connections detected")
+                elif pattern == "suspicious_domains" and ("blofeld.org" in string_content or "evil." in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🌐 Suspicious domain connections detected")
+                elif pattern == "downloads" and ("download" in string_content or "url" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("📥 Suspicious download operations detected")
+                elif pattern == "filesystem_manipulation" and ("system32" in string_content or "hidden" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("📁 File system manipulation detected")
+                elif pattern == "registry_access" and ("registry" in string_content or "hkey" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🗝️ Registry access detected")
+                elif pattern == "process_injection" and ("inject" in string_content or "virtualalloc" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("💉 Process injection techniques detected")
+                elif pattern == "anti_debugging" and ("debugger" in string_content or "timing" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🛡️ Anti-debugging techniques detected")
+                elif pattern == "string_obfuscation" and ("reconstruct" in string_content or "decrypt" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🔤 String obfuscation detected")
+                elif pattern == "shellcode_generation" and ("shellcode" in string_content or "nop" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("💣 Shellcode generation detected")
+                elif pattern == "packer_signatures" and ("upx" in string_content or "packer" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("📦 Packer signatures detected")
+                elif pattern == "runtime_unpacking" and ("decompress" in string_content or "unpack" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🔓 Runtime unpacking detected")
+
+            if validation_results["suspicious_patterns_detected"]:
+                validation_results["malware_alerts"].append("")
+                validation_results["malware_alerts"].append("⚠️  SUSPICIOUS BEHAVIOR DETECTED:")
+                validation_results["malware_alerts"].extend(validation_results["suspicious_patterns_detected"])
+                validation_results["malware_alerts"].append("")
+                validation_results["malware_alerts"].append("This binary exhibits characteristics commonly associated with malware!")
+                validation_results["malware_alerts"].append("🛡️ Recommend further analysis with professional tools.")
 
         # Calculate success rate
         total_expected = len(fixture_config.get("expected_strings", []))
