@@ -1,0 +1,571 @@
+{
+  "scan_timestamp": "1766548122.9145386",
+  "directories_scanned": [
+    "C:\\Windows\\System32",
+    "C:\\Program Files",
+    "D:\\"
+  ],
+  "total_files_analyzed": 80,
+  "findings": [
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\avcodec-58.dll",
+      "format": "PE",
+      "preservation_score": 7,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\07409496-a423-4a3e-b620-2cfb01a9318d_HyperV-ComputeNetwork.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\0ae3b998-9a38-4b72-a4c4-06849441518d_Servicing-Stack.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\3bc29097-7317-41d3-93b9-38a48f99d48a_mssrch.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\4545ffe2-0dc4-4df4-9d02-299ef204635e_hvsocket.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\4c3544f3-c2fa-4213-ba42-dbb8cb5015f6_Win3-PackagedUniversalApps.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\69fe178f-26e7-43a9-aa7d-2b616b672dde_eventlogservice.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\6bea57fb-8dfb-4177-9ae8-42e8b3529933_RuntimeDeviceInstall.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\7af4501d-2034-4995-8442-468d5f436807_Kernel-Package.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\8db499a1-20dd-4d65-92c8-910cdc6f9939_Runlevel-Win2.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\aadauthhelper.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\aadcloudap.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\aadjcsp.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\aadtb.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\aadWamExtension.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\AarSvc.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\AboutSettingsHandlers.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\AboveLockAppHost.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\accessibilitycpl.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\accountaccessor.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\AccountHealth.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\AccountsRt.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\AcGenral.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\AcLayers.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\acledit.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\aclui.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\acmigration.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\ACPBackgroundManagerPolicy.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Windows\\System32\\acppage.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\avformat-58.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\avutil-56.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\concrt140.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\crashpad_handler.exe",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\d3dcompiler_47.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\libcrypto-1_1-x64.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\libEGL.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\libGLESv2.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\libssl-1_1-x64.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\msvcp140.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\msvcp140_1.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\msvcp140_2.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\opengl32sw.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\portaudio_x64.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\postproc-55.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Concurrent.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Core.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Gui.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Location.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Multimedia.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Network.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Positioning.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5PositioningQuick.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5PrintSupport.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Qml.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5QmlModels.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5QmlWorkerScript.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Quick.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5QuickControls2.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5QuickTemplates2.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5QuickWidgets.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Svg.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5WebChannel.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5WebEngine.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5WebEngineWidgets.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Widgets.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5WinExtras.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\Qt5Xml.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\QtWebEngineProcess.exe",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\swresample-3.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\swscale-5.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "C:\\Program Files\\4KDownload\\4kvideodownloaderplus\\vcruntime140.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "D:\\$Windows.~BT\\Boot\\bootsect.exe",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "D:\\$Windows.~BT\\Boot\\memtest.exe",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "D:\\$Windows.~BT\\Boot\\en-GB\\bootsect.exe.mui",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "D:\\$Windows.~BT\\Boot\\resources\\bootres.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "D:\\$Windows.~BT\\Boot\\resources\\bootres_hci.dll",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "D:\\$Windows.~BT\\Efi\\boot\\bootx64.efi",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "D:\\$Windows.~BT\\Efi\\microsoft\\boot\\cdboot.efi",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "D:\\$Windows.~BT\\Efi\\microsoft\\boot\\cdboot_noprompt.efi",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    },
+    {
+      "file": "D:\\$Windows.~BT\\Efi\\microsoft\\boot\\memtest.efi",
+      "format": "PE",
+      "preservation_score": 6,
+      "complexity": "MEDIUM",
+      "recommendation": "CONSIDER"
+    }
+  ]
+}
