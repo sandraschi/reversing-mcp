@@ -1,0 +1,49 @@
+{
+    "fixtures": {
+        "hello_world.c": {
+            "language": "c",
+            "compiler": "gcc",
+            "compile_args": ["-o", "hello_world.exe"],
+            "expected_strings": ["Hello, World!"],
+            "expected_functions": ["main"],
+            "description": "Simple Hello World program"
+        },
+        "simple_math.c": {
+            "language": "c",
+            "compiler": "gcc",
+            "compile_args": ["-o", "simple_math.exe"],
+            "expected_strings": ["Sum:", "Product:"],
+            "expected_functions": ["main", "add_numbers", "multiply_numbers"],
+            "description": "Program with multiple functions and arithmetic"
+        },
+        "data_structures.c": {
+            "language": "c",
+            "compiler": "gcc",
+            "compile_args": ["-o", "data_structures.exe"],
+            "expected_strings": ["Name:", "Age:", "Salary:", "Bonus:"],
+            "expected_functions": ["main", "create_employee", "print_employee", "calculate_bonus"],
+            "description": "Program with structs, memory allocation, and loops"
+        },
+        "simple_asm.asm": {
+            "language": "asm",
+            "compiler": "nasm",
+            "compile_args": ["-f", "elf32", "-o", "simple_asm.o"],
+            "linker": "ld",
+            "link_args": ["-m", "elf_i386", "-o", "simple_asm.exe"],
+            "expected_strings": ["Hello from assembly!"],
+            "expected_functions": ["_start"],
+            "description": "Simple x86 assembly program"
+        }
+    },
+    "test_settings": {
+        "build_dir": "build",
+        "timeout": 30,
+        "expected_compilation_success": true,
+        "decompilation_tools": ["ghidra", "r2"],
+        "comparison_metrics": {
+            "function_count_match": true,
+            "string_extraction_accuracy": 0.8,
+            "control_flow_preservation": true
+        }
+    }
+}
