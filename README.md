@@ -1,6 +1,6 @@
 # Reversing MCP 🔍
 
-[![Python](https://img.shields.io/badge/Python-3.11+-green)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.10+-green)](https://python.org)
 [![FastMCP](https://img.shields.io/badge/FastMCP-2.13+-blue)](https://github.com/jlowin/fastmcp)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
@@ -9,6 +9,18 @@
 ## 🎯 Overview
 
 A comprehensive reverse engineering toolkit focused on **free, open-source tools** that provides programmatic access to Ghidra and other analysis tools through MCP. Includes **Directmedia Digitale Bibliothek decompressor** for unlocking 1990s proprietary e-book formats.
+
+### 🎯 **Revolutionary Test Suite**
+
+**✨ Unique Feature**: **Compilation-Decompilation-Comparison** testing methodology!
+
+This project includes a pioneering test framework that:
+- **Compiles** mini C/assembly programs into binaries
+- **Decompiles** them using reversing tools (Ghidra, radare2)
+- **Compares** decompiled output to original source code
+- **Validates** that analysis tools preserve critical information
+
+**Test Fixtures**: `hello_world.c`, `simple_math.c`, `data_structures.c`, `simple_asm.asm`
 
 ### 🔧 Supported Tools & Features
 
