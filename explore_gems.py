@@ -7,8 +7,28 @@ This script helps identify promising targets for future preservation efforts.
 """
 
 import json
+import logging
 import struct
+from collections import Counter
 from pathlib import Path
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Constants for magic values
+HEADER_READ_SIZE = 512
+PE_SIGNATURE_SIZE = 4
+PE_OFFSET_SIZE = 4
+MIN_PE_HEADER_SIZE = 64
+RIFF_TYPE_OFFSET = 8
+RIFF_TYPE_SIZE = 4
+MIN_INTERESTING_SIZE = 100
+MAX_INTERESTING_SIZE = 100 * 1024 * 1024  # 100MB
+MODERATE_ENTROPY_THRESHOLD = 3.0
+HIGH_ENTROPY_THRESHOLD = 7.0
+LARGE_FILE_THRESHOLD_MB = 10
+HIGH_PRESERVATION_SCORE = 7
+MEDIUM_PRESERVATION_SCORE = 5
 
 # Sample file signatures and format detectors
 FORMAT_SIGNATURES = {
@@ -58,39 +78,36 @@ def detect_file_format(file_path: Path) -> tuple[str, str]:
     Returns (format_name, confidence_level)
     """
     try:
-        with open(file_path, "rb") as f:
-            # Read first 512 bytes for signature detection
-            header = f.read(512)
+        with file_path.open("rb") as f:
+            header = f.read(HEADER_READ_SIZE)
 
+            # Check primary signatures
             for format_name, signature in FORMAT_SIGNATURES.items():
                 if header.startswith(signature):
                     return format_name, "HIGH"
 
-            # Check for variations
+            # Check for specific format variations
             if header.startswith(b"GIF89a"):
                 return "GIF", "HIGH"
 
-            # Check for compound formats
-            if header.startswith(b"RIFF"):
-                # Could be WAV, AVI, etc.
-                riff_type = header[8:12]
-                if riff_type == b"WAVE":
-                    return "WAV", "HIGH"
-                if riff_type == b"AVI ":
-                    return "AVI", "HIGH"
+            # Check RIFF formats
+            if (header.startswith(b"RIFF") and
+                len(header) > RIFF_TYPE_OFFSET + RIFF_TYPE_SIZE):
+                riff_type = header[RIFF_TYPE_OFFSET:RIFF_TYPE_OFFSET + RIFF_TYPE_SIZE]
+                if riff_type in (b"WAVE", b"AVI "):
+                    return "WAV" if riff_type == b"WAVE" else "AVI", "HIGH"
 
-            # PE file detection (MZ followed by PE)
-            if header.startswith(b"MZ"):
-                # Look for PE signature at offset in e_lfanew
-                if len(header) >= 64:
-                    pe_offset = struct.unpack("<I", header[60:64])[0]
-                    if pe_offset < len(header) - 4:
-                        if header[pe_offset : pe_offset + 4] == b"PE\x00\x00":
-                            return "PE", "HIGH"
+            # PE file detection
+            if (header.startswith(b"MZ") and len(header) >= MIN_PE_HEADER_SIZE):
+                pe_offset = struct.unpack("<I", header[60:64])[0]
+                if (pe_offset < len(header) - PE_SIGNATURE_SIZE and
+                    header[pe_offset:pe_offset + PE_SIGNATURE_SIZE] == b"PE\x00\x00"):
+                    return "PE", "HIGH"
 
             return "UNKNOWN", "LOW"
 
-    except Exception as e:
+    except OSError as e:
+        logger.exception("Error reading file %s", file_path)
         return f"ERROR: {e!s}", "ERROR"
 
 
@@ -111,11 +128,9 @@ def analyze_file_structure(file_path: Path) -> dict:
 
     # Calculate basic entropy
     try:
-        with open(file_path, "rb") as f:
+        with file_path.open("rb") as f:
             data = f.read()
             if data:
-                from collections import Counter
-
                 byte_counts = Counter(data)
                 total_bytes = len(data)
                 entropy = 0
@@ -124,8 +139,8 @@ def analyze_file_structure(file_path: Path) -> dict:
                     if p > 0:
                         entropy -= p * (p.bit_length() - 1)  # Approximation
                 analysis["entropy"] = entropy
-    except:
-        pass
+    except OSError:
+        logger.exception("Could not calculate entropy")
 
     return analysis
 
@@ -138,8 +153,8 @@ def scan_directory_for_gems(directory: Path, max_files: int = 100) -> list[dict]
     interesting_files = []
     scanned = 0
 
-    print(f"Scanning directory: {directory}")
-    print(f"Max files to analyze: {max_files}")
+    logger.info("Scanning directory: %s", directory)
+    logger.info("Max files to analyze: %s", max_files)
 
     for file_path in directory.rglob("*"):
         if not file_path.is_file():
@@ -163,7 +178,7 @@ def scan_directory_for_gems(directory: Path, max_files: int = 100) -> list[dict]
 
         # Skip very small or very large files
         size = file_path.stat().st_size
-        if size < 100 or size > 100 * 1024 * 1024:  # 100 bytes to 100MB
+        if size < MIN_INTERESTING_SIZE or size > MAX_INTERESTING_SIZE:
             continue
 
         analysis = analyze_file_structure(file_path)
@@ -174,16 +189,17 @@ def scan_directory_for_gems(directory: Path, max_files: int = 100) -> list[dict]
         # - Old format signatures
         # - High entropy suggesting compression
         interesting = (
-            (analysis["confidence"] == "LOW" and analysis["entropy"] > 3.0)
+            (analysis["confidence"] == "LOW" and analysis["entropy"] > MODERATE_ENTROPY_THRESHOLD)
             or analysis["format"] in ["ELF", "PE", "CDF", "FITS", "HDF", "DBF"]
-            or analysis["entropy"] > 7.0  # Very high entropy = likely encrypted/compressed
+            or analysis["entropy"] > HIGH_ENTROPY_THRESHOLD
         )
 
         if interesting:
             interesting_files.append(analysis)
-            print(
-                f"Found interesting file: {file_path.name} ({analysis['format']}, entropy: {analysis['entropy']:.2f})"
-            )
+        logger.info(
+            "Found interesting file: %s (%s, entropy: %.2f)",
+            file_path.name, analysis["format"], analysis["entropy"]
+        )
 
     return interesting_files
 
@@ -203,29 +219,32 @@ def assess_preservation_value(analysis: dict) -> dict:
     score = format_scores.get(analysis["format"], 3)
 
     # Adjust for entropy (high entropy suggests compression/encryption = more complex)
-    if analysis["entropy"] > 6.0:
+    if analysis["entropy"] > HIGH_ENTROPY_THRESHOLD:
         score += 2
 
     # Adjust for file size (larger files often more complex)
     size_mb = analysis["size"] / (1024 * 1024)
-    if size_mb > 10:
+    if size_mb > LARGE_FILE_THRESHOLD_MB:
         score += 1
 
-    assessment = {
+    complexity = ("HIGH" if score > HIGH_PRESERVATION_SCORE else
+                  "MEDIUM" if score > MEDIUM_PRESERVATION_SCORE else "LOW")
+    recommendation = ("HIGH PRIORITY" if score > HIGH_PRESERVATION_SCORE else
+                     "CONSIDER" if score > MEDIUM_PRESERVATION_SCORE else "SKIP")
+
+    return {
         "file": analysis["path"],
         "format": analysis["format"],
         "preservation_score": score,
-        "complexity": "HIGH" if score > 7 else "MEDIUM" if score > 5 else "LOW",
-        "recommendation": "HIGH PRIORITY" if score > 7 else "CONSIDER" if score > 5 else "SKIP",
+        "complexity": complexity,
+        "recommendation": recommendation,
     }
-
-    return assessment
 
 
 def main():
     """Main exploration function."""
-    print("Historical Gems Explorer")
-    print("=" * 50)
+    logger.info("Historical Gems Explorer")
+    logger.info("=" * 50)
 
     # Default directories to scan
     scan_dirs = [
@@ -238,11 +257,10 @@ def main():
     existing_dirs = [d for d in scan_dirs if d.exists() and d.is_dir()]
 
     if not existing_dirs:
-        print("No directories found to scan. Please specify directories to explore.")
+        logger.error("No directories found to scan. Please specify directories to explore.")
         return
 
-    print(f"Will scan {len(existing_dirs)} directories for legacy file formats...")
-    print()
+    logger.info("Will scan %s directories for legacy file formats...", len(existing_dirs))
 
     all_findings = []
     for directory in existing_dirs:
@@ -250,17 +268,17 @@ def main():
             findings = scan_directory_for_gems(directory, max_files=50)
             all_findings.extend(findings)
         except PermissionError:
-            print(f"Permission denied accessing: {directory}")
-        except Exception as e:
-            print(f"Error scanning {directory}: {e}")
+            logger.warning("Permission denied accessing: %s", directory)
+        except Exception:
+            logger.exception("Error scanning %s", directory)
 
     if not all_findings:
-        print("No interesting legacy files found in scanned directories.")
-        print("Try scanning directories with older software or data archives.")
+        logger.info("No interesting legacy files found in scanned directories.")
+        logger.info("Try scanning directories with older software or data archives.")
         return
 
-    print(f"\nFound {len(all_findings)} potentially interesting files")
-    print("=" * 60)
+    logger.info("\nFound %s potentially interesting files", len(all_findings))
+    logger.info("=" * 60)
 
     # Assess preservation value
     assessments = [assess_preservation_value(f) for f in all_findings]
@@ -270,17 +288,15 @@ def main():
 
     # Display top findings
     for i, assessment in enumerate(assessments[:10]):  # Top 10
-        print(
-            "2d"
-            f"Format: {assessment['format']}\n"
-            f"Complexity: {assessment['complexity']}\n"
-            f"Recommendation: {assessment['recommendation']}\n"
-            f"Path: {assessment['file']}\n"
+        logger.info(
+            "%2d. Format: %s, Complexity: %s, Recommendation: %s, Path: %s",
+            i + 1, assessment["format"], assessment["complexity"],
+            assessment["recommendation"], assessment["file"]
         )
 
     # Save detailed results
     output_file = Path("gems_analysis.json")
-    with open(output_file, "w") as f:
+    with output_file.open("w", encoding="utf-8") as f:
         json.dump(
             {
                 "scan_timestamp": str(Path(output_file).stat().st_mtime),
@@ -292,12 +308,12 @@ def main():
             indent=2,
         )
 
-    print(f"\nDetailed results saved to: {output_file}")
-    print("\nNext Steps:")
-    print("1. Examine high-priority files manually")
-    print("2. Research file format specifications")
-    print("3. Consider building preservation tools")
-    print("4. Contribute to digital archaeology efforts")
+    logger.info("\nDetailed results saved to: %s", output_file)
+    logger.info("\nNext Steps:")
+    logger.info("1. Examine high-priority files manually")
+    logger.info("2. Research file format specifications")
+    logger.info("3. Consider building preservation tools")
+    logger.info("4. Contribute to digital archaeology efforts")
 
 
 if __name__ == "__main__":
