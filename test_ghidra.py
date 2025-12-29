@@ -3,11 +3,13 @@
 Test Ghidra-Integration im IDA Pro MCP System
 """
 
-import sys
 import os
-sys.path.insert(0, 'src')
+import sys
+
+sys.path.insert(0, "src")
 
 from reversing_mcp.analyzers import BinaryAnalyzer
+
 
 def test_ghidra_integration():
     """Teste Ghidra-Erkennung und -Integration"""
@@ -66,7 +68,7 @@ def test_ghidra_integration():
         for path in [
             r"D:\Dev\repos\temp\ghidra-install\ghidra_12.0_PUBLIC\ghidraRun.bat",
             r"C:\Program Files\ghidra\ghidraRun.bat",
-            r"C:\ghidra\ghidraRun.bat"
+            r"C:\ghidra\ghidraRun.bat",
         ]:
             exists = os.path.exists(path)
             print(f"     {path}: {'✓' if exists else '✗'}")
@@ -89,12 +91,13 @@ def test_ghidra_integration():
         "Community": ["Aktiv/NSA-geführt", "Professionell"],
         "Updates": ["Regelmäßig", "Regelmäßig"],
         "Lernkurve": ["Steil aber gut dokumentiert", "Sehr steil"],
-        "Für Directmedia": ["Perfekt geeignet", "Perfekt geeignet"]
+        "Für Directmedia": ["Perfekt geeignet", "Perfekt geeignet"],
     }
 
     for feature, values in comparison.items():
         ghidra_val, ida_val = values
         print("15")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test_ghidra_integration()

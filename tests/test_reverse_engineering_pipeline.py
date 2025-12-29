@@ -15,16 +15,14 @@ Test Fixtures:
 - simple_asm.asm: Assembly program
 """
 
-import pytest
-import os
-import subprocess
-import tempfile
-import shutil
 import json
-from pathlib import Path
-from typing import Dict, List, Any, Optional
-
+import subprocess
 import sys
+from pathlib import Path
+from typing import Any
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from reversing_mcp.analyzers import BinaryAnalyzer
@@ -41,20 +39,20 @@ class ReverseEngineeringTestFixture:
         self.build_dir.mkdir(exist_ok=True)
         self.analyzer = BinaryAnalyzer()
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Load test configuration"""
-        with open(self.config_file, 'r') as f:
+        with open(self.config_file) as f:
             return json.load(f)
 
-    def get_fixture_names(self) -> List[str]:
+    def get_fixture_names(self) -> list[str]:
         """Get list of available fixture names"""
         return list(self.config["fixtures"].keys())
 
-    def get_fixture_config(self, fixture_name: str) -> Dict[str, Any]:
+    def get_fixture_config(self, fixture_name: str) -> dict[str, Any]:
         """Get configuration for a specific fixture"""
         return self.config["fixtures"][fixture_name]
 
-    def compile_fixture(self, fixture_name: str) -> Optional[Path]:
+    def compile_fixture(self, fixture_name: str) -> Path | None:
         """
         Compile a test fixture and return the path to the binary
         """
@@ -76,28 +74,59 @@ class ReverseEngineeringTestFixture:
             # Compile
             if fixture_config["language"] == "asm":
                 # First assemble
-                assemble_cmd = [fixture_config["compiler"]] + fixture_config["compile_args"] + [str(source_path)]
+                assemble_cmd = (
+                    [fixture_config["compiler"]]
+                    + fixture_config["compile_args"]
+                    + [str(source_path)]
+                )
                 assemble_cmd[-1] = str(object_file)  # Replace output arg
                 print(f"Assembling: {' '.join(assemble_cmd)}")
-                result = subprocess.run(assemble_cmd, cwd=self.build_dir, capture_output=True, text=True, timeout=30)
+                result = subprocess.run(
+                    assemble_cmd,
+                    check=False,
+                    cwd=self.build_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
                 if result.returncode != 0:
                     print(f"Assembly failed: {result.stderr}")
                     return None
 
                 # Then link
-                link_cmd = [fixture_config["linker"]] + fixture_config["link_args"] + [str(object_file)]
+                link_cmd = (
+                    [fixture_config["linker"]] + fixture_config["link_args"] + [str(object_file)]
+                )
                 link_cmd[-1] = str(binary_file)  # Replace output arg
                 print(f"Linking: {' '.join(link_cmd)}")
-                result = subprocess.run(link_cmd, cwd=self.build_dir, capture_output=True, text=True, timeout=30)
+                result = subprocess.run(
+                    link_cmd,
+                    check=False,
+                    cwd=self.build_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
                 if result.returncode != 0:
                     print(f"Linking failed: {result.stderr}")
                     return None
             else:
                 # C compilation
-                compile_cmd = [fixture_config["compiler"]] + fixture_config["compile_args"] + [str(source_path)]
+                compile_cmd = (
+                    [fixture_config["compiler"]]
+                    + fixture_config["compile_args"]
+                    + [str(source_path)]
+                )
                 compile_cmd[-1] = str(binary_file)  # Replace output arg
                 print(f"Compiling: {' '.join(compile_cmd)}")
-                result = subprocess.run(compile_cmd, cwd=self.build_dir, capture_output=True, text=True, timeout=30)
+                result = subprocess.run(
+                    compile_cmd,
+                    check=False,
+                    cwd=self.build_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
                 if result.returncode != 0:
                     print(f"Compilation failed: {result.stderr}")
                     return None
@@ -105,9 +134,8 @@ class ReverseEngineeringTestFixture:
             if binary_file.exists():
                 print(f"Successfully compiled: {binary_file}")
                 return binary_file
-            else:
-                print(f"Binary not created: {binary_file}")
-                return None
+            print(f"Binary not created: {binary_file}")
+            return None
 
         except subprocess.TimeoutExpired:
             print(f"Compilation timed out for {fixture_name}")
@@ -116,14 +144,16 @@ class ReverseEngineeringTestFixture:
             print(f"Compilation error for {fixture_name}: {e}")
             return None
 
-    def analyze_binary(self, binary_path: Path, tools: List[str] = None) -> Dict[str, Any]:
+    def analyze_binary(self, binary_path: Path, tools: list[str] = None) -> dict[str, Any]:
         """Analyze a binary using the reversing MCP analyzer"""
         if tools is None:
             tools = ["static", "strings", "entropy"]
 
         return self.analyzer.analyze_file(str(binary_path), tools)
 
-    def validate_analysis(self, analysis_result: Dict[str, Any], fixture_name: str) -> Dict[str, Any]:
+    def validate_analysis(
+        self, analysis_result: dict[str, Any], fixture_name: str
+    ) -> dict[str, Any]:
         """Validate that analysis results contain expected information"""
         fixture_config = self.get_fixture_config(fixture_name)
         validation_results = {
@@ -134,7 +164,7 @@ class ReverseEngineeringTestFixture:
             "suspicious_patterns_detected": [],
             "malware_alerts": [],
             "success": True,
-            "issues": []
+            "issues": [],
         }
 
         # Check strings
@@ -153,49 +183,103 @@ class ReverseEngineeringTestFixture:
             if file_info.get("is_executable", False):
                 # For PE files, check if we can find function-like structures
                 # This is a simplified check
-                validation_results["functions_found"] = len(fixture_config.get("expected_functions", []))
+                validation_results["functions_found"] = len(
+                    fixture_config.get("expected_functions", [])
+                )
 
         # Check for suspicious patterns (MALWARE DETECTION)
         suspicious_patterns = fixture_config.get("suspicious_patterns", [])
         if suspicious_patterns:
             validation_results["malware_alerts"].append("🚨 MALWARE ALERT! 🚨")
-            validation_results["malware_alerts"].append(f"This test fixture simulates: {fixture_config.get('description', 'suspicious behavior')}")
+            validation_results["malware_alerts"].append(
+                f"This test fixture simulates: {fixture_config.get('description', 'suspicious behavior')}"
+            )
 
             # Check for specific suspicious indicators
             found_strings = analysis_result.get("strings", [])
             string_content = " ".join(found_strings).lower()
 
             for pattern in suspicious_patterns:
-                if pattern == "network_connections" and ("connect" in string_content or "socket" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("🔗 Network connections detected")
-                elif pattern == "suspicious_domains" and ("blofeld.org" in string_content or "evil." in string_content):
-                    validation_results["suspicious_patterns_detected"].append("🌐 Suspicious domain connections detected")
-                elif pattern == "downloads" and ("download" in string_content or "url" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("📥 Suspicious download operations detected")
-                elif pattern == "filesystem_manipulation" and ("system32" in string_content or "hidden" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("📁 File system manipulation detected")
-                elif pattern == "registry_access" and ("registry" in string_content or "hkey" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("🗝️ Registry access detected")
-                elif pattern == "process_injection" and ("inject" in string_content or "virtualalloc" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("💉 Process injection techniques detected")
-                elif pattern == "anti_debugging" and ("debugger" in string_content or "timing" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("🛡️ Anti-debugging techniques detected")
-                elif pattern == "string_obfuscation" and ("reconstruct" in string_content or "decrypt" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("🔤 String obfuscation detected")
-                elif pattern == "shellcode_generation" and ("shellcode" in string_content or "nop" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("💣 Shellcode generation detected")
-                elif pattern == "packer_signatures" and ("upx" in string_content or "packer" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("📦 Packer signatures detected")
-                elif pattern == "runtime_unpacking" and ("decompress" in string_content or "unpack" in string_content):
-                    validation_results["suspicious_patterns_detected"].append("🔓 Runtime unpacking detected")
+                if pattern == "network_connections" and (
+                    "connect" in string_content or "socket" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "🔗 Network connections detected"
+                    )
+                elif pattern == "suspicious_domains" and (
+                    "blofeld.org" in string_content or "evil." in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "🌐 Suspicious domain connections detected"
+                    )
+                elif pattern == "downloads" and (
+                    "download" in string_content or "url" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "📥 Suspicious download operations detected"
+                    )
+                elif pattern == "filesystem_manipulation" and (
+                    "system32" in string_content or "hidden" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "📁 File system manipulation detected"
+                    )
+                elif pattern == "registry_access" and (
+                    "registry" in string_content or "hkey" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "🗝️ Registry access detected"
+                    )
+                elif pattern == "process_injection" and (
+                    "inject" in string_content or "virtualalloc" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "💉 Process injection techniques detected"
+                    )
+                elif pattern == "anti_debugging" and (
+                    "debugger" in string_content or "timing" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "🛡️ Anti-debugging techniques detected"
+                    )
+                elif pattern == "string_obfuscation" and (
+                    "reconstruct" in string_content or "decrypt" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "🔤 String obfuscation detected"
+                    )
+                elif pattern == "shellcode_generation" and (
+                    "shellcode" in string_content or "nop" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "💣 Shellcode generation detected"
+                    )
+                elif pattern == "packer_signatures" and (
+                    "upx" in string_content or "packer" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "📦 Packer signatures detected"
+                    )
+                elif pattern == "runtime_unpacking" and (
+                    "decompress" in string_content or "unpack" in string_content
+                ):
+                    validation_results["suspicious_patterns_detected"].append(
+                        "🔓 Runtime unpacking detected"
+                    )
 
             if validation_results["suspicious_patterns_detected"]:
                 validation_results["malware_alerts"].append("")
                 validation_results["malware_alerts"].append("⚠️  SUSPICIOUS BEHAVIOR DETECTED:")
-                validation_results["malware_alerts"].extend(validation_results["suspicious_patterns_detected"])
+                validation_results["malware_alerts"].extend(
+                    validation_results["suspicious_patterns_detected"]
+                )
                 validation_results["malware_alerts"].append("")
-                validation_results["malware_alerts"].append("This binary exhibits characteristics commonly associated with malware!")
-                validation_results["malware_alerts"].append("🛡️ Recommend further analysis with professional tools.")
+                validation_results["malware_alerts"].append(
+                    "This binary exhibits characteristics commonly associated with malware!"
+                )
+                validation_results["malware_alerts"].append(
+                    "🛡️ Recommend further analysis with professional tools."
+                )
 
         # Calculate success rate
         total_expected = len(fixture_config.get("expected_strings", []))
@@ -203,7 +287,9 @@ class ReverseEngineeringTestFixture:
             string_match_rate = validation_results["strings_found"] / total_expected
             if string_match_rate < 0.5:  # Require at least 50% string match
                 validation_results["success"] = False
-                validation_results["issues"].append(f"Low string match rate: {string_match_rate:.2f}")
+                validation_results["issues"].append(
+                    f"Low string match rate: {string_match_rate:.2f}"
+                )
 
         return validation_results
 
@@ -216,11 +302,7 @@ def test_fixture():
     return ReverseEngineeringTestFixture(fixtures_dir, config_file)
 
 
-@pytest.mark.parametrize("fixture_name", [
-    "hello_world.c",
-    "simple_math.c",
-    "data_structures.c"
-])
+@pytest.mark.parametrize("fixture_name", ["hello_world.c", "simple_math.c", "data_structures.c"])
 def test_compilation_pipeline(test_fixture, fixture_name):
     """Test that fixtures can be compiled successfully"""
     binary_path = test_fixture.compile_fixture(fixture_name)
@@ -228,11 +310,7 @@ def test_compilation_pipeline(test_fixture, fixture_name):
     assert binary_path.exists(), f"Binary not created for {fixture_name}"
 
 
-@pytest.mark.parametrize("fixture_name", [
-    "hello_world.c",
-    "simple_math.c",
-    "data_structures.c"
-])
+@pytest.mark.parametrize("fixture_name", ["hello_world.c", "simple_math.c", "data_structures.c"])
 def test_binary_analysis(test_fixture, fixture_name):
     """Test that compiled binaries can be analyzed"""
     binary_path = test_fixture.compile_fixture(fixture_name)
@@ -243,11 +321,7 @@ def test_binary_analysis(test_fixture, fixture_name):
     assert "file_info" in analysis_result, f"No file info in analysis for {fixture_name}"
 
 
-@pytest.mark.parametrize("fixture_name", [
-    "hello_world.c",
-    "simple_math.c",
-    "data_structures.c"
-])
+@pytest.mark.parametrize("fixture_name", ["hello_world.c", "simple_math.c", "data_structures.c"])
 def test_analysis_validation(test_fixture, fixture_name):
     """Test that analysis results contain expected information"""
     binary_path = test_fixture.compile_fixture(fixture_name)

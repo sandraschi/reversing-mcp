@@ -9,14 +9,12 @@ providing REST endpoints for file analysis, Ghidra integration, and tool managem
 import os
 import sys
 import tempfile
-import asyncio
-from pathlib import Path
-from typing import List, Optional, Dict, Any
 from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Any
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 # Add src to path for imports
@@ -28,9 +26,13 @@ from reversing_mcp.logging_config import get_logger
 # Try to import Ghidra bridge
 try:
     from reversing_mcp.bridge_mcp_ghidra import (
-        list_functions, decompile_function, check_ghidra_status,
-        disassemble_function, get_function_by_address
+        check_ghidra_status,
+        decompile_function,
+        disassemble_function,
+        get_function_by_address,
+        list_functions,
     )
+
     ghidra_available = True
 except ImportError:
     ghidra_available = False
@@ -40,6 +42,7 @@ logger = get_logger("reversing_api")
 # Global analyzer instance
 analyzer = BinaryAnalyzer()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
@@ -47,12 +50,13 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down Reversing MCP API server")
 
+
 # Create FastAPI app
 app = FastAPI(
     title="Reversing MCP API",
     description="REST API for reverse engineering analysis with Ghidra integration",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -64,22 +68,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Pydantic models
 class AnalysisRequest(BaseModel):
     file_path: str
-    tools: Optional[List[str]] = None
+    tools: list[str] | None = None
+
 
 class GhidraStatus(BaseModel):
     available: bool
-    version: Optional[str] = None
+    version: str | None = None
     http_server_running: bool = False
-    http_port: Optional[int] = None
+    http_port: int | None = None
+
 
 class AnalysisResponse(BaseModel):
     file_path: str
     file_size: int
-    tools_used: List[str]
-    results: Dict[str, Any]
+    tools_used: list[str]
+    results: dict[str, Any]
     analysis_score: float
     language_hint: str
     entropy_score: float
@@ -87,6 +94,7 @@ class AnalysisResponse(BaseModel):
     strings: int
     has_pdb: bool
     is_obfuscated: bool
+
 
 # Routes
 @app.get("/")
@@ -108,24 +116,27 @@ async def root():
             "/llm/load_model",
             "/llm/unload_model",
             "/llm/status",
-            "/llm/health"
-        ]
+            "/llm/health",
+        ],
     }
+
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": "2025-12-02"}
 
+
 @app.get("/tools/status")
 async def get_tools_status():
     """Get status of available analysis tools"""
     try:
         # Check Ghidra status
-        ghidra_status = await check_ghidra_status() if ghidra_available else {
-            "available": False,
-            "error": "Ghidra MCP bridge not available"
-        }
+        ghidra_status = (
+            await check_ghidra_status()
+            if ghidra_available
+            else {"available": False, "error": "Ghidra MCP bridge not available"}
+        )
 
         return {
             "tools": {
@@ -133,18 +144,17 @@ async def get_tools_status():
                 "strings": {"available": True, "version": "2.6"},
                 "entropy": {"available": True, "version": "1.0"},
                 "pefile": {"available": True, "version": "2023.2.7"},
-                "ghidra_mcp": ghidra_status
+                "ghidra_mcp": ghidra_status,
             }
         }
     except Exception as e:
         logger.error(f"Error checking tools status: {e}")
-        raise HTTPException(status_code=500, detail=f"Tools status check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Tools status check failed: {e!s}")
+
 
 @app.post("/analyze/upload")
 async def analyze_uploaded_file(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    tools: Optional[str] = None
+    background_tasks: BackgroundTasks, file: UploadFile = File(...), tools: str | None = None
 ):
     """Analyze an uploaded file"""
     if not file.filename:
@@ -183,7 +193,7 @@ async def analyze_uploaded_file(
             functions=functions,
             strings=strings,
             has_pdb=has_pdb,
-            is_obfuscated=is_obfuscated
+            is_obfuscated=is_obfuscated,
         )
 
         # Clean up temp file in background
@@ -199,7 +209,8 @@ async def analyze_uploaded_file(
             pass
 
         logger.error(f"Error analyzing uploaded file {file.filename}: {e}")
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}")
+
 
 @app.post("/analyze/file")
 async def analyze_file_path(request: AnalysisRequest):
@@ -209,7 +220,9 @@ async def analyze_file_path(request: AnalysisRequest):
 
     try:
         # Analyze the file
-        results = analyzer.analyze_file(request.file_path, request.tools or ["file", "strings", "entropy"])
+        results = analyzer.analyze_file(
+            request.file_path, request.tools or ["file", "strings", "entropy"]
+        )
 
         # Calculate analysis metrics
         analysis_score = calculate_analysis_score(results)
@@ -231,14 +244,15 @@ async def analyze_file_path(request: AnalysisRequest):
             functions=functions,
             strings=strings,
             has_pdb=has_pdb,
-            is_obfuscated=is_obfuscated
+            is_obfuscated=is_obfuscated,
         )
 
         return response.dict()
 
     except Exception as e:
         logger.error(f"Error analyzing file {request.file_path}: {e}")
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}")
+
 
 @app.get("/ghidra/status")
 async def get_ghidra_status():
@@ -253,6 +267,7 @@ async def get_ghidra_status():
         logger.error(f"Error checking Ghidra status: {e}")
         return GhidraStatus(available=False, error=str(e)).dict()
 
+
 @app.get("/ghidra/functions")
 async def get_ghidra_functions():
     """Get list of functions from Ghidra"""
@@ -264,7 +279,8 @@ async def get_ghidra_functions():
         return {"functions": functions, "count": len(functions) if functions else 0}
     except Exception as e:
         logger.error(f"Error getting Ghidra functions: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get functions: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get functions: {e!s}")
+
 
 @app.post("/ghidra/decompile")
 async def decompile_ghidra_function(function_name: str):
@@ -277,7 +293,8 @@ async def decompile_ghidra_function(function_name: str):
         return {"function_name": function_name, "decompiled_code": code}
     except Exception as e:
         logger.error(f"Error decompiling function {function_name}: {e}")
-        raise HTTPException(status_code=500, detail=f"Decompilation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Decompilation failed: {e!s}")
+
 
 @app.post("/ghidra/disassemble")
 async def disassemble_ghidra_function(address: str):
@@ -290,7 +307,8 @@ async def disassemble_ghidra_function(address: str):
         return {"address": address, "assembly": asm}
     except Exception as e:
         logger.error(f"Error disassembling at {address}: {e}")
-        raise HTTPException(status_code=500, detail=f"Disassembly failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Disassembly failed: {e!s}")
+
 
 # LLM Management Endpoints
 @app.post("/llm/list_providers")
@@ -304,7 +322,8 @@ async def list_llm_providers():
         return result
     except Exception as e:
         logger.error(f"Error listing LLM providers: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list providers: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list providers: {e!s}")
+
 
 @app.post("/llm/list_models")
 async def list_llm_models(provider: str):
@@ -316,7 +335,8 @@ async def list_llm_models(provider: str):
         return result
     except Exception as e:
         logger.error(f"Error listing models for {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list models: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list models: {e!s}")
+
 
 @app.post("/llm/select_model")
 async def select_llm_model(provider: str, model: str):
@@ -328,7 +348,8 @@ async def select_llm_model(provider: str, model: str):
         return result
     except Exception as e:
         logger.error(f"Error selecting model {model} from {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to select model: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to select model: {e!s}")
+
 
 @app.post("/llm/load_model")
 async def load_llm_model(provider: str, model: str):
@@ -340,10 +361,11 @@ async def load_llm_model(provider: str, model: str):
         return result
     except Exception as e:
         logger.error(f"Error loading model {model} from {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load model: {e!s}")
+
 
 @app.post("/llm/unload_model")
-async def unload_llm_model(provider: str, model: Optional[str] = None):
+async def unload_llm_model(provider: str, model: str | None = None):
     """Unload a model from memory"""
     try:
         from user_advanced_memory_mcp_adn_llm import adn_llm
@@ -351,8 +373,9 @@ async def unload_llm_model(provider: str, model: Optional[str] = None):
         result = adn_llm(operation="unload_model", provider=provider, model=model)
         return result
     except Exception as e:
-        logger.error(f"Error unloading model{model and f' {model}' or 's'} from {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to unload model: {str(e)}")
+        logger.error(f"Error unloading model{(model and f' {model}') or 's'} from {provider}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to unload model: {e!s}")
+
 
 @app.post("/llm/status")
 async def get_llm_status():
@@ -364,7 +387,8 @@ async def get_llm_status():
         return result
     except Exception as e:
         logger.error(f"Error getting LLM status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get status: {e!s}")
+
 
 @app.post("/llm/health")
 async def check_llm_health(provider: str):
@@ -376,10 +400,11 @@ async def check_llm_health(provider: str):
         return result
     except Exception as e:
         logger.error(f"Error checking health for {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to check health: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to check health: {e!s}")
+
 
 # Helper functions
-def calculate_analysis_score(results: Dict[str, Any]) -> float:
+def calculate_analysis_score(results: dict[str, Any]) -> float:
     """Calculate a completeness score for the analysis"""
     score = 0.0
     max_score = 100.0
@@ -406,7 +431,8 @@ def calculate_analysis_score(results: Dict[str, Any]) -> float:
 
     return min(score, max_score)
 
-def detect_language_hint(results: Dict[str, Any]) -> str:
+
+def detect_language_hint(results: dict[str, Any]) -> str:
     """Detect programming language hints from analysis"""
     strings = results.get("strings", [])
     strings_text = " ".join(str(s) for s in strings).lower()
@@ -418,7 +444,7 @@ def detect_language_hint(results: Dict[str, Any]) -> str:
         "csharp": ["using system", "console.writeline", "namespace", ".net"],
         "go": ["package main", "import (", "fmt.printf", "golang"],
         "rust": ["fn main", "println!", "cargo", "rust"],
-        "javascript": ["function ", "console.log", "node.js", "npm"]
+        "javascript": ["function ", "console.log", "node.js", "npm"],
     }
 
     for lang, indicators in hints.items():
@@ -427,13 +453,15 @@ def detect_language_hint(results: Dict[str, Any]) -> str:
 
     return "Unknown"
 
-def check_for_pdb(results: Dict[str, Any]) -> bool:
+
+def check_for_pdb(results: dict[str, Any]) -> bool:
     """Check if PDB debug symbols are present"""
     strings = results.get("strings", [])
     strings_text = " ".join(str(s) for s in strings).lower()
     return "pdb" in strings_text or ".pdb" in strings_text
 
-def check_for_obfuscation(results: Dict[str, Any]) -> bool:
+
+def check_for_obfuscation(results: dict[str, Any]) -> bool:
     """Check for signs of obfuscation"""
     entropy = results.get("entropy_analysis", {}).get("overall_entropy", 0.0)
     strings = results.get("strings", [])
@@ -454,12 +482,14 @@ def check_for_obfuscation(results: Dict[str, Any]) -> bool:
 
     return False
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=11112,
         reload=True,  # Enable auto-reload for development
-        reload_dirs=["."]  # Watch current directory and subdirectories
+        reload_dirs=["."],  # Watch current directory and subdirectories
     )

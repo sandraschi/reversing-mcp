@@ -11,15 +11,14 @@ This script provides extensive testing capabilities:
 - Detailed error reporting and debugging
 """
 
-import sys
-import subprocess
 import argparse
-import time
-import asyncio
-from pathlib import Path
-from typing import Dict, List, Any
 import json
-import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
 
 class ComprehensiveTestRunner:
     """Comprehensive test runner for reversing MCP"""
@@ -29,37 +28,30 @@ class ComprehensiveTestRunner:
         self.test_results = {}
         self.start_time = None
 
-    def run_command(self, cmd: List[str], cwd: Path = None, timeout: int = 300) -> Dict[str, Any]:
+    def run_command(self, cmd: list[str], cwd: Path = None, timeout: int = 300) -> dict[str, Any]:
         """Run a command and return results"""
         try:
             result = subprocess.run(
                 cmd,
+                check=False,
                 cwd=cwd or self.project_root,
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
             )
             return {
                 "success": result.returncode == 0,
                 "return_code": result.returncode,
                 "stdout": result.stdout,
                 "stderr": result.stderr,
-                "command": " ".join(cmd)
+                "command": " ".join(cmd),
             }
         except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "error": "Command timed out",
-                "command": " ".join(cmd)
-            }
+            return {"success": False, "error": "Command timed out", "command": " ".join(cmd)}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "command": " ".join(cmd)
-            }
+            return {"success": False, "error": str(e), "command": " ".join(cmd)}
 
-    def check_prerequisites(self) -> Dict[str, Any]:
+    def check_prerequisites(self) -> dict[str, Any]:
         """Check test prerequisites"""
         print("[INFO] Checking prerequisites...")
 
@@ -67,7 +59,7 @@ class ComprehensiveTestRunner:
             "python_version": sys.version,
             "project_structure": {},
             "dependencies": {},
-            "test_fixtures": {}
+            "test_fixtures": {},
         }
 
         # Check project structure
@@ -76,7 +68,7 @@ class ComprehensiveTestRunner:
             dir_path = self.project_root / dir_name
             results["project_structure"][dir_name] = {
                 "exists": dir_path.exists(),
-                "path": str(dir_path)
+                "path": str(dir_path),
             }
 
         # Check Python dependencies
@@ -98,19 +90,19 @@ class ComprehensiveTestRunner:
                 "binaries/minimal.com",
                 "binaries/hello.com",
                 "binaries/loop.com",
-                "binaries/packed_test.bin"
+                "binaries/packed_test.bin",
             ]
 
             for fixture in fixture_files:
                 fixture_path = fixtures_dir / fixture
                 results["test_fixtures"][fixture] = {
                     "exists": fixture_path.exists(),
-                    "size": fixture_path.stat().st_size if fixture_path.exists() else 0
+                    "size": fixture_path.stat().st_size if fixture_path.exists() else 0,
                 }
 
         return results
 
-    def run_unit_tests(self, coverage: bool = False, verbose: bool = False) -> Dict[str, Any]:
+    def run_unit_tests(self, coverage: bool = False, verbose: bool = False) -> dict[str, Any]:
         """Run unit tests"""
         print("[INFO] Running unit tests...")
 
@@ -125,7 +117,7 @@ class ComprehensiveTestRunner:
 
         return result
 
-    def run_integration_tests(self, verbose: bool = False) -> Dict[str, Any]:
+    def run_integration_tests(self, verbose: bool = False) -> dict[str, Any]:
         """Run integration tests"""
         print("🔗 Running integration tests...")
 
@@ -138,7 +130,7 @@ class ComprehensiveTestRunner:
 
         return result
 
-    def run_binary_fixture_tests(self) -> Dict[str, Any]:
+    def run_binary_fixture_tests(self) -> dict[str, Any]:
         """Test binary fixtures existence and basic properties"""
         print("[INFO] Testing binary fixtures...")
 
@@ -149,7 +141,7 @@ class ComprehensiveTestRunner:
             ("tests/fixtures/binaries/minimal.com", "minimal COM file", 2),
             ("tests/fixtures/binaries/hello.com", "hello COM file", 16),
             ("tests/fixtures/binaries/loop.com", "loop COM file", 2),
-            ("tests/fixtures/binaries/packed_test.bin", "packed binary", 1024)
+            ("tests/fixtures/binaries/packed_test.bin", "packed binary", 1024),
         ]
 
         for fixture_path, description, expected_size in fixture_tests:
@@ -163,29 +155,33 @@ class ComprehensiveTestRunner:
                 readable = bool(full_path.stat().st_mode & 0o400)  # Check read permission
                 file_valid = size_correct and readable
 
-                results["fixtures_tested"].append({
-                    "fixture": fixture_path,
-                    "description": description,
-                    "size": actual_size,
-                    "expected_size": expected_size,
-                    "size_correct": size_correct,
-                    "readable": readable,
-                    "overall_success": file_valid
-                })
+                results["fixtures_tested"].append(
+                    {
+                        "fixture": fixture_path,
+                        "description": description,
+                        "size": actual_size,
+                        "expected_size": expected_size,
+                        "size_correct": size_correct,
+                        "readable": readable,
+                        "overall_success": file_valid,
+                    }
+                )
 
                 if file_valid:
                     results["success_count"] += 1
             else:
-                results["fixtures_tested"].append({
-                    "fixture": fixture_path,
-                    "description": description,
-                    "error": "Fixture file not found",
-                    "overall_success": False
-                })
+                results["fixtures_tested"].append(
+                    {
+                        "fixture": fixture_path,
+                        "description": description,
+                        "error": "Fixture file not found",
+                        "overall_success": False,
+                    }
+                )
 
         return results
 
-    def run_performance_tests(self) -> Dict[str, Any]:
+    def run_performance_tests(self) -> dict[str, Any]:
         """Run performance benchmarks"""
         print("[INFO] Running performance tests...")
 
@@ -193,53 +189,54 @@ class ComprehensiveTestRunner:
 
         try:
             import time
+
             sys.path.insert(0, str(self.project_root / "src"))
 
             # Test MCP server import time
             start_time = time.time()
-            from reversing_mcp.server import mcp
             import_time = time.time() - start_time
 
-            results["benchmarks"].append({
-                "test": "MCP server import",
-                "time_seconds": import_time,
-                "status": "success"
-            })
+            results["benchmarks"].append(
+                {"test": "MCP server import", "time_seconds": import_time, "status": "success"}
+            )
 
             # Test analyzer initialization
             start_time = time.time()
             from reversing_mcp.analyzers import BinaryAnalyzer
+
             analyzer = BinaryAnalyzer()
             init_time = time.time() - start_time
 
-            results["benchmarks"].append({
-                "test": "BinaryAnalyzer initialization",
-                "time_seconds": init_time,
-                "status": "success"
-            })
+            results["benchmarks"].append(
+                {
+                    "test": "BinaryAnalyzer initialization",
+                    "time_seconds": init_time,
+                    "status": "success",
+                }
+            )
 
             # Test tool detection
             start_time = time.time()
             tools = analyzer.check_available_tools()
             detection_time = time.time() - start_time
 
-            results["benchmarks"].append({
-                "test": "Tool detection",
-                "time_seconds": detection_time,
-                "tools_found": len(tools),
-                "status": "success"
-            })
+            results["benchmarks"].append(
+                {
+                    "test": "Tool detection",
+                    "time_seconds": detection_time,
+                    "tools_found": len(tools),
+                    "status": "success",
+                }
+            )
 
         except Exception as e:
-            results["benchmarks"].append({
-                "test": "Performance testing",
-                "error": str(e),
-                "status": "failed"
-            })
+            results["benchmarks"].append(
+                {"test": "Performance testing", "error": str(e), "status": "failed"}
+            )
 
         return results
 
-    def generate_report(self, all_results: Dict[str, Any]) -> str:
+    def generate_report(self, all_results: dict[str, Any]) -> str:
         """Generate comprehensive test report"""
         report_lines = []
 
@@ -285,21 +282,34 @@ class ComprehensiveTestRunner:
         report_lines.append("[RECOMMENDATIONS]")
         report_lines.append("-" * 20)
 
-        if all_results.get("prerequisites", {}).get("dependencies", {}).get("fastmcp", {}).get("available") == False:
+        if (
+            all_results.get("prerequisites", {})
+            .get("dependencies", {})
+            .get("fastmcp", {})
+            .get("available")
+            == False
+        ):
             report_lines.append("[WARNING] Install FastMCP: pip install fastmcp")
 
         if len(all_results.get("binary_fixtures", {}).get("fixtures_tested", [])) < 5:
-            report_lines.append("[WARNING] Create binary test fixtures: cd tests/fixtures/binaries && python create_test_binaries.py")
+            report_lines.append(
+                "[WARNING] Create binary test fixtures: cd tests/fixtures/binaries && python create_test_binaries.py"
+            )
 
-        if not any(tool.get("available", False) for tool in all_results.get("prerequisites", {}).get("test_fixtures", {}).values()):
-            report_lines.append("[WARNING] Ghidra not detected - install GhidraMCP plugin for full functionality")
+        if not any(
+            tool.get("available", False)
+            for tool in all_results.get("prerequisites", {}).get("test_fixtures", {}).values()
+        ):
+            report_lines.append(
+                "[WARNING] Ghidra not detected - install GhidraMCP plugin for full functionality"
+            )
 
         report_lines.append("")
         report_lines.append("[SUCCESS] Report generated successfully")
 
         return "\n".join(report_lines)
 
-    def _report_prerequisites(self, lines: List[str], results: Dict[str, Any]):
+    def _report_prerequisites(self, lines: list[str], results: dict[str, Any]):
         """Report prerequisites check results"""
         for category, items in results.items():
             if category == "python_version":
@@ -312,10 +322,12 @@ class ComprehensiveTestRunner:
                             lines.append(f"{status_icon} {item}: {status}")
                         elif "exists" in status:
                             status_icon = "[OK]" if status["exists"] else "[MISSING]"
-                            size_info = f" ({status.get('size', 0)} bytes)" if "size" in status else ""
+                            size_info = (
+                                f" ({status.get('size', 0)} bytes)" if "size" in status else ""
+                            )
                             lines.append(f"{status_icon} {item}: {status['exists']}{size_info}")
 
-    def _report_test_results(self, lines: List[str], results: Dict[str, Any], title: str):
+    def _report_test_results(self, lines: list[str], results: dict[str, Any], title: str):
         """Report test execution results"""
         if results.get("success"):
             lines.append(f"[PASS] {title}: PASSED")
@@ -330,7 +342,7 @@ class ComprehensiveTestRunner:
             if results.get("stderr"):
                 lines.append(f"   Error: {results['stderr'][:200]}...")
 
-    def _report_binary_fixtures(self, lines: List[str], results: Dict[str, Any]):
+    def _report_binary_fixtures(self, lines: list[str], results: dict[str, Any]):
         """Report binary fixture test results"""
         tested = results.get("fixtures_tested", [])
         success_count = results.get("success_count", 0)
@@ -356,7 +368,7 @@ class ComprehensiveTestRunner:
                     if failed_tests:
                         lines.append(f"   Failed: {', '.join(failed_tests)}")
 
-    def _report_performance(self, lines: List[str], results: Dict[str, Any]):
+    def _report_performance(self, lines: list[str], results: dict[str, Any]):
         """Report performance test results"""
         for benchmark in results.get("benchmarks", []):
             status_icon = "[OK]" if benchmark.get("status") == "success" else "[ERROR]"
@@ -369,7 +381,7 @@ class ComprehensiveTestRunner:
 
             lines.append(f"{status_icon} {benchmark['test']}: {time_str}{extra_info}")
 
-    def run_all_tests(self, coverage: bool = False, verbose: bool = False) -> Dict[str, Any]:
+    def run_all_tests(self, coverage: bool = False, verbose: bool = False) -> dict[str, Any]:
         """Run all comprehensive tests"""
         print("[START] Starting Comprehensive Reversing MCP Test Suite")
         print("=" * 60)
@@ -405,12 +417,12 @@ class ComprehensiveTestRunner:
         print(".2f")
         # Save detailed results
         results_file = self.project_root / "test_results.json"
-        with open(results_file, 'w') as f:
-            json.dump({
-                "timestamp": time.time(),
-                "duration_seconds": total_time,
-                "results": all_results
-            }, f, indent=2)
+        with open(results_file, "w") as f:
+            json.dump(
+                {"timestamp": time.time(), "duration_seconds": total_time, "results": all_results},
+                f,
+                indent=2,
+            )
 
         print(f"[SAVE] Detailed results saved to: {results_file}")
 
@@ -423,9 +435,15 @@ def main():
     parser.add_argument("--coverage", action="store_true", help="Run with coverage reporting")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--unit-only", action="store_true", help="Run only unit tests")
-    parser.add_argument("--integration-only", action="store_true", help="Run only integration tests")
-    parser.add_argument("--fixtures-only", action="store_true", help="Run only binary fixture tests")
-    parser.add_argument("--performance-only", action="store_true", help="Run only performance tests")
+    parser.add_argument(
+        "--integration-only", action="store_true", help="Run only integration tests"
+    )
+    parser.add_argument(
+        "--fixtures-only", action="store_true", help="Run only binary fixture tests"
+    )
+    parser.add_argument(
+        "--performance-only", action="store_true", help="Run only performance tests"
+    )
 
     args = parser.parse_args()
 

@@ -6,10 +6,10 @@ This test validates the classic_game.c fixture which simulates
 early Windows games like Nibbles/Ants with text-based graphics.
 """
 
-import pytest
-import os
 import subprocess
 from pathlib import Path
+
+import pytest
 
 
 def test_classic_game_compilation():
@@ -23,9 +23,10 @@ def test_classic_game_compilation():
         # Try to compile
         result = subprocess.run(
             ["gcc", "-o", str(output_file), str(source_file)],
+            check=False,
             capture_output=True,
             text=True,
-            cwd=fixture_dir
+            cwd=fixture_dir,
         )
 
         # Check compilation success
@@ -46,7 +47,7 @@ def test_classic_game_strings():
     """Test that expected strings are present in the source"""
     source_file = Path(__file__).parent / "fixtures" / "classic_game.c"
 
-    with open(source_file, 'r', encoding='utf-8') as f:
+    with open(source_file, encoding="utf-8") as f:
         content = f.read()
 
     # Test for expected strings from config
@@ -55,7 +56,7 @@ def test_classic_game_strings():
         "Score:",
         "Snake Length:",
         "Game Over!",
-        "Final Score:"
+        "Final Score:",
     ]
 
     for string in expected_strings:
@@ -66,7 +67,7 @@ def test_classic_game_functions():
     """Test that expected functions are present in the source"""
     source_file = Path(__file__).parent / "fixtures" / "classic_game.c"
 
-    with open(source_file, 'r', encoding='utf-8') as f:
+    with open(source_file, encoding="utf-8") as f:
         content = f.read()
 
     # Test for expected functions from config
@@ -81,7 +82,7 @@ def test_classic_game_functions():
         "handle_input",
         "calculate_score_multiplier",
         "save_high_score",
-        "load_high_score"
+        "load_high_score",
     ]
 
     for func in expected_functions:
@@ -91,9 +92,10 @@ def test_classic_game_functions():
 def test_classic_game_config():
     """Test that the fixture is properly configured"""
     import json
+
     config_file = Path(__file__).parent / "fixtures" / "test_config.json"
 
-    with open(config_file, 'r', encoding='utf-8') as f:
+    with open(config_file, encoding="utf-8") as f:
         config = json.load(f)
 
     # Verify classic_game.c is in config

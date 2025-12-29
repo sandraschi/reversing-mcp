@@ -10,4 +10,3 @@ This MCP server provides programmatic access to reverse engineering tools:
 """
 
 __version__ = "0.1.0"
-

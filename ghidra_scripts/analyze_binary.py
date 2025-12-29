@@ -4,18 +4,12 @@ Ghidra script for headless binary analysis
 Extracts functions, strings, and basic analysis results
 """
 
-import sys
 import json
-import os
 from pathlib import Path
 
 # Ghidra imports
 from ghidra.app.decompiler import DecompInterface
 from ghidra.app.util.headless import HeadlessScript
-from ghidra.program.model.listing import Function, FunctionIterator
-from ghidra.program.model.symbol import Symbol, SymbolType
-from ghidra.program.model.data import DataType
-from ghidra.program.model.mem import Memory
 from ghidra.util.task import ConsoleTaskMonitor
 
 
@@ -24,12 +18,7 @@ class BinaryAnalyzer(HeadlessScript):
 
     def __init__(self):
         super().__init__()
-        self.results = {
-            "functions": [],
-            "strings": [],
-            "symbols": [],
-            "analysis_info": {}
-        }
+        self.results = {"functions": [], "strings": [], "symbols": [], "analysis_info": {}}
 
     def run(self):
         """Main analysis function"""
@@ -45,7 +34,7 @@ class BinaryAnalyzer(HeadlessScript):
                 "compiler": str(currentProgram.getCompilerSpec()),
                 "image_base": hex(currentProgram.getImageBase().getOffset()),
                 "min_address": hex(currentProgram.getMinAddress().getOffset()),
-                "max_address": hex(currentProgram.getMaxAddress().getOffset())
+                "max_address": hex(currentProgram.getMaxAddress().getOffset()),
             }
 
             # Extract functions
@@ -65,6 +54,7 @@ class BinaryAnalyzer(HeadlessScript):
         except Exception as e:
             print(f"[Ghidra] Error during analysis: {e}")
             import traceback
+
             traceback.print_exc()
 
     def _extract_functions(self):
@@ -79,22 +69,26 @@ class BinaryAnalyzer(HeadlessScript):
                 "address": hex(func.getEntryPoint().getOffset()),
                 "size": func.getBody().getNumAddresses(),
                 "signature": str(func.getSignature()),
-                "calling_convention": str(func.getCallingConventionName()) if func.getCallingConventionName() else None,
+                "calling_convention": str(func.getCallingConventionName())
+                if func.getCallingConventionName()
+                else None,
                 "has_custom_storage": func.hasCustomVariableStorage(),
                 "is_external": func.isExternal(),
-                "is_thunk": func.isThunk()
+                "is_thunk": func.isThunk(),
             }
 
             # Try to get decompiled code (if possible)
             try:
                 decomp = DecompInterface()
                 decomp.openProgram(currentProgram)
-                results = decomp.decompileFunction(func, 30, ConsoleTaskMonitor())  # 30 second timeout
+                results = decomp.decompileFunction(
+                    func, 30, ConsoleTaskMonitor()
+                )  # 30 second timeout
                 if results and results.getDecompiledFunction():
                     # Get first few lines of decompiled code
                     decompiled = str(results.getDecompiledFunction())
-                    lines = decompiled.split('\n')[:10]  # First 10 lines
-                    func_info["decompiled_preview"] = '\n'.join(lines)
+                    lines = decompiled.split("\n")[:10]  # First 10 lines
+                    func_info["decompiled_preview"] = "\n".join(lines)
             except:
                 pass
 
@@ -121,7 +115,7 @@ class BinaryAnalyzer(HeadlessScript):
                             "address": hex(data.getAddress().getOffset()),
                             "value": str(value),
                             "length": len(str(value)),
-                            "encoding": "auto"
+                            "encoding": "auto",
                         }
                         strings_found.append(string_info)
             except:
@@ -140,11 +134,13 @@ class BinaryAnalyzer(HeadlessScript):
             try:
                 symbol_info = {
                     "name": symbol.getName(),
-                    "address": hex(symbol.getAddress().getOffset()) if symbol.getAddress() else None,
+                    "address": hex(symbol.getAddress().getOffset())
+                    if symbol.getAddress()
+                    else None,
                     "type": str(symbol.getSymbolType()),
                     "source": str(symbol.getSource()),
                     "is_external": symbol.isExternal(),
-                    "is_global": symbol.isGlobal()
+                    "is_global": symbol.isGlobal(),
                 }
                 self.results["symbols"].append(symbol_info)
             except:
@@ -160,7 +156,7 @@ class BinaryAnalyzer(HeadlessScript):
             output_file = f"{input_name}_ghidra_analysis.json"
 
             # Save in current directory (Ghidra working directory)
-            with open(output_file, 'w', encoding='utf-8') as f:
+            with open(output_file, "w", encoding="utf-8") as f:
                 json.dump(self.results, f, indent=2, ensure_ascii=False)
 
             print(f"[Ghidra] Results saved to: {output_file}")

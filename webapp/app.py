@@ -6,20 +6,22 @@ A web interface to demonstrate the reversing MCP capabilities,
 including the dangerous test fixtures that trigger malware alerts.
 """
 
-import os
+import json
 import sys
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_from_directory
-import json
+
+from flask import Flask, jsonify, render_template, request
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from reversing_mcp.analyzers import BinaryAnalyzer
 
-app = Flask(__name__,
-            template_folder=str(Path(__file__).parent / "templates"),
-            static_folder=str(Path(__file__).parent / "static"))
+app = Flask(
+    __name__,
+    template_folder=str(Path(__file__).parent / "templates"),
+    static_folder=str(Path(__file__).parent / "static"),
+)
 
 # Initialize analyzer
 analyzer = BinaryAnalyzer()
@@ -28,40 +30,46 @@ analyzer = BinaryAnalyzer()
 fixtures_dir = Path(__file__).parent.parent / "tests" / "fixtures"
 config_file = fixtures_dir / "test_config.json"
 
+
 def load_fixtures_config():
     """Load test fixtures configuration"""
     try:
-        with open(config_file, 'r') as f:
+        with open(config_file) as f:
             return json.load(f)
     except Exception as e:
         print(f"Error loading config: {e}")
         return {"fixtures": {}}
 
+
 fixtures_config = load_fixtures_config()
 
-@app.route('/')
+
+@app.route("/")
 def index():
     """Main page showing available test fixtures"""
     fixtures = []
     for name, config in fixtures_config.get("fixtures", {}).items():
-        fixtures.append({
-            "name": name,
-            "description": config.get("description", ""),
-            "language": config.get("language", ""),
-            "dangerous": "dangerous" in name,
-            "suspicious_patterns": config.get("suspicious_patterns", [])
-        })
+        fixtures.append(
+            {
+                "name": name,
+                "description": config.get("description", ""),
+                "language": config.get("language", ""),
+                "dangerous": "dangerous" in name,
+                "suspicious_patterns": config.get("suspicious_patterns", []),
+            }
+        )
 
-    return render_template('index.html', fixtures=fixtures)
+    return render_template("index.html", fixtures=fixtures)
 
-@app.route('/analyze', methods=['POST'])
+
+@app.route("/analyze", methods=["POST"])
 def analyze_file():
     """Analyze an uploaded file or test fixture"""
-    if 'file' not in request.files:
+    if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
 
-    file = request.files['file']
-    if file.filename == '':
+    file = request.files["file"]
+    if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
     try:
@@ -86,7 +94,7 @@ def analyze_file():
             "strings_found": len(analysis_result.get("strings", [])),
             "sample_strings": analysis_result.get("strings", [])[:10],  # First 10 strings
             "entropy_analysis": analysis_result.get("entropy_analysis", {}),
-            "alerts": []
+            "alerts": [],
         }
 
         # Check for malware indicators
@@ -94,23 +102,45 @@ def analyze_file():
 
         malware_indicators = {
             "🚨 MALWARE ALERT! 🚨": [
-                "blofeld.org", "evil.", "malware", "trojan", "virus", "exploit"
+                "blofeld.org",
+                "evil.",
+                "malware",
+                "trojan",
+                "virus",
+                "exploit",
             ],
             "🔗 Network Suspicion": [
-                "connect", "socket", "wget", "curl", "download", "http://", "https://"
+                "connect",
+                "socket",
+                "wget",
+                "curl",
+                "download",
+                "http://",
+                "https://",
             ],
             "📁 File System Suspicion": [
-                "system32", "hidden", "registry", "hkey", "delete", "overwrite"
+                "system32",
+                "hidden",
+                "registry",
+                "hkey",
+                "delete",
+                "overwrite",
             ],
             "💉 Process Manipulation": [
-                "inject", "virtualalloc", "writeprocessmemory", "createremotethread"
+                "inject",
+                "virtualalloc",
+                "writeprocessmemory",
+                "createremotethread",
             ],
             "🛡️ Anti-Analysis Techniques": [
-                "debugger", "timing", "obfuscate", "encrypt", "decrypt", "polymorphic"
+                "debugger",
+                "timing",
+                "obfuscate",
+                "encrypt",
+                "decrypt",
+                "polymorphic",
             ],
-            "📦 Packer Indicators": [
-                "upx", "packer", "compressed", "decompress", "unpack"
-            ]
+            "📦 Packer Indicators": ["upx", "packer", "compressed", "decompress", "unpack"],
         }
 
         detected_alerts = []
@@ -130,9 +160,10 @@ def analyze_file():
         return jsonify(response)
 
     except Exception as e:
-        return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
+        return jsonify({"error": f"Analysis failed: {e!s}"}), 500
 
-@app.route('/test-fixture/<fixture_name>')
+
+@app.route("/test-fixture/<fixture_name>")
 def analyze_test_fixture(fixture_name):
     """Analyze a built-in test fixture"""
     if fixture_name not in fixtures_config.get("fixtures", {}):
@@ -153,17 +184,17 @@ def analyze_test_fixture(fixture_name):
             "entropy_analysis": {
                 "overall_entropy": 6.85,
                 "compressed_regions": [{"offset": 4096, "length": 8192}],
-                "random_regions": []
+                "random_regions": [],
             },
             "alerts": [],
-            "status": "✅ Test Fixture Analysis"
+            "status": "✅ Test Fixture Analysis",
         }
 
         # Add malware alerts for dangerous fixtures
         if "dangerous" in fixture_name:
             mock_result["alerts"] = [
                 "🚨 MALWARE ALERT! 🚨",
-                f"This simulates: {config.get('description', 'dangerous behavior')}"
+                f"This simulates: {config.get('description', 'dangerous behavior')}",
             ]
             mock_result["status"] = "⚠️ MALWARE SIMULATION DETECTED"
 
@@ -185,21 +216,18 @@ def analyze_test_fixture(fixture_name):
         return jsonify(mock_result)
 
     except Exception as e:
-        return jsonify({"error": f"Fixture analysis failed: {str(e)}"}), 500
+        return jsonify({"error": f"Fixture analysis failed: {e!s}"}), 500
 
-@app.route('/cdc-demo')
+
+@app.route("/cdc-demo")
 def cdc_demo():
     """Compilation-Decompilation-Comparison demonstration"""
-    return render_template('cdc_demo.html')
+    return render_template("cdc_demo.html")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("🚀 Starting Reverse Engineering WebApp Demo")
     print("📁 Visit http://localhost:5000 to explore the interface")
     print("🧪 Test fixtures include 'dangerous' malware simulations")
     print("🔍 Upload files or analyze built-in test cases")
-    app.run(debug=True, host='0.0.0.0', port=5000)
-
-
-
-
-
+    app.run(debug=True, host="0.0.0.0", port=5000)

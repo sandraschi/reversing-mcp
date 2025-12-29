@@ -6,9 +6,9 @@ This script provides an easy way to run the reverse engineering tests
 with proper setup and reporting.
 """
 
-import sys
-import subprocess
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -16,12 +16,15 @@ def install_test_deps():
     """Install test dependencies if not already installed"""
     try:
         import pytest
+
         print("✓ pytest already installed")
     except ImportError:
         print("Installing test dependencies...")
         requirements_file = Path(__file__).parent.parent / "requirements-dev.txt"
         if requirements_file.exists():
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", str(requirements_file)])
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "-r", str(requirements_file)]
+            )
         else:
             subprocess.check_call([sys.executable, "-m", "pip", "install", "pytest", "pytest-cov"])
 
@@ -50,17 +53,16 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Reverse Engineering Test Runner")
-    parser.add_argument("--install-deps", action="store_true",
-                       help="Install test dependencies first")
-    parser.add_argument("--fixtures", action="store_true",
-                       help="List available test fixtures")
-    parser.add_argument("--compile-only", action="store_true",
-                       help="Only test compilation, skip analysis")
+    parser.add_argument(
+        "--install-deps", action="store_true", help="Install test dependencies first"
+    )
+    parser.add_argument("--fixtures", action="store_true", help="List available test fixtures")
+    parser.add_argument(
+        "--compile-only", action="store_true", help="Only test compilation, skip analysis"
+    )
     parser.add_argument("--fixture", help="Run tests for specific fixture")
-    parser.add_argument("--verbose", "-v", action="store_true",
-                       help="Verbose output")
-    parser.add_argument("--coverage", action="store_true",
-                       help="Run with coverage reporting")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    parser.add_argument("--coverage", action="store_true", help="Run with coverage reporting")
 
     args, unknown = parser.parse_known_args()
 
@@ -87,8 +89,9 @@ def main():
 
     if args.fixtures:
         # List fixtures instead of running tests
-        from test_reverse_engineering_pipeline import ReverseEngineeringTestFixture
         from pathlib import Path
+
+        from test_reverse_engineering_pipeline import ReverseEngineeringTestFixture
 
         fixtures_dir = Path(__file__).parent / "fixtures"
         config_file = fixtures_dir / "test_config.json"

@@ -2,24 +2,23 @@
 Binary Analysis Tools for Reverse Engineering
 """
 
-import os
-import subprocess
-import struct
 import math
-import json
-import tempfile
+import os
+import struct
+import subprocess
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass
+from typing import Any
+
+from pydantic import BaseModel
 
 from .logging_config import get_logger
-from pydantic import BaseModel
 
 logger = get_logger("ida_pro_mcp.analyzers")
 
 
 class StringResult(BaseModel):
     """String extraction result"""
+
     offset: int
     string: str
     encoding: str
@@ -28,6 +27,7 @@ class StringResult(BaseModel):
 
 class FunctionInfo(BaseModel):
     """Function information"""
+
     address: int
     name: str
     size: int
@@ -40,7 +40,7 @@ class BinaryAnalyzer:
     def __init__(self):
         self.tools_cache = None
 
-    def check_available_tools(self) -> Dict[str, Dict[str, Any]]:
+    def check_available_tools(self) -> dict[str, dict[str, Any]]:
         """Check which reverse engineering tools are available"""
 
         tools = {
@@ -57,14 +57,16 @@ class BinaryAnalyzer:
             r"C:\Program Files\IDA Pro 8.3\ida.exe",
             r"C:\Program Files\IDA Pro 8.2\ida.exe",
             r"C:\Program Files\IDA Pro 8.1\ida.exe",
-            r"C:\Program Files (x86)\IDA Pro\ida.exe"
+            r"C:\Program Files (x86)\IDA Pro\ida.exe",
         ]
         for path in ida_paths:
             if os.path.exists(path):
                 tools["ida"]["available"] = True
                 tools["ida"]["path"] = path
                 try:
-                    result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=5)
+                    result = subprocess.run(
+                        [path, "--version"], check=False, capture_output=True, text=True, timeout=5
+                    )
                     if result.returncode == 0:
                         tools["ida"]["version"] = result.stdout.strip()
                 except:
@@ -75,7 +77,7 @@ class BinaryAnalyzer:
         ghidra_paths = []
 
         # Windows-specific paths
-        if os.name == 'nt':
+        if os.name == "nt":
             # Common installation directories
             common_dirs = [
                 r"C:\Program Files",
@@ -84,7 +86,7 @@ class BinaryAnalyzer:
                 r"D:\Program Files",
                 r"D:\Dev",
                 r"C:\ghidra",
-                r"D:\ghidra"
+                r"D:\ghidra",
             ]
 
             # Look for Ghidra installations in common directories
@@ -93,7 +95,7 @@ class BinaryAnalyzer:
                     try:
                         for item in os.listdir(base_dir):
                             item_path = os.path.join(base_dir, item)
-                            if os.path.isdir(item_path) and 'ghidra' in item.lower():
+                            if os.path.isdir(item_path) and "ghidra" in item.lower():
                                 # Check for ghidraRun.bat
                                 run_bat = os.path.join(item_path, "ghidraRun.bat")
                                 if os.path.exists(run_bat):
@@ -109,7 +111,7 @@ class BinaryAnalyzer:
             specific_paths = [
                 r"C:\Program Files\ghidra\ghidraRun.bat",
                 r"D:\Dev\repos\temp\ghidra-install\ghidra_12.0_PUBLIC\ghidraRun.bat",
-                r"C:\ghidra\ghidraRun.bat"
+                r"C:\ghidra\ghidraRun.bat",
             ]
             ghidra_paths.extend(specific_paths)
 
@@ -119,7 +121,7 @@ class BinaryAnalyzer:
                 "/usr/local/ghidra/ghidraRun",
                 "/opt/ghidra/ghidraRun",
                 "/usr/local/bin/ghidraRun",
-                "/usr/bin/ghidraRun"
+                "/usr/bin/ghidraRun",
             ]
             ghidra_paths.extend(unix_paths)
 
@@ -134,13 +136,13 @@ class BinaryAnalyzer:
                 # Try to determine version from directory name
                 try:
                     dir_path = os.path.dirname(path)
-                    if 'ghidra' in os.path.basename(dir_path).lower():
+                    if "ghidra" in os.path.basename(dir_path).lower():
                         dir_name = os.path.basename(dir_path)
                         # Extract version from directory name (e.g., ghidra_12.0_PUBLIC)
-                        if '_' in dir_name:
-                            version_part = dir_name.split('_')[1]
+                        if "_" in dir_name:
+                            version_part = dir_name.split("_")[1]
                             if version_part and version_part[0].isdigit():
-                                tools["ghidra"]["version"] = version_part.split('_')[0]
+                                tools["ghidra"]["version"] = version_part.split("_")[0]
                             else:
                                 tools["ghidra"]["version"] = "detected"
                         else:
@@ -154,16 +156,22 @@ class BinaryAnalyzer:
 
         # Check radare2
         try:
-            result = subprocess.run(["r2", "-v"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["r2", "-v"], check=False, capture_output=True, text=True, timeout=5
+            )
             if result.returncode == 0:
                 tools["r2"]["available"] = True
-                tools["r2"]["version"] = result.stdout.split('\n')[0] if result.stdout else "unknown"
+                tools["r2"]["version"] = (
+                    result.stdout.split("\n")[0] if result.stdout else "unknown"
+                )
         except:
             pass
 
         # Check binwalk
         try:
-            result = subprocess.run(["binwalk", "--version"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["binwalk", "--version"], check=False, capture_output=True, text=True, timeout=5
+            )
             if result.returncode == 0:
                 tools["binwalk"]["available"] = True
                 tools["binwalk"]["version"] = result.stdout.strip()
@@ -172,26 +180,34 @@ class BinaryAnalyzer:
 
         # Check GNU strings
         try:
-            result = subprocess.run(["strings", "--version"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["strings", "--version"], check=False, capture_output=True, text=True, timeout=5
+            )
             if result.returncode == 0:
                 tools["strings"]["available"] = True
-                tools["strings"]["version"] = result.stdout.split('\n')[0] if result.stdout else "unknown"
+                tools["strings"]["version"] = (
+                    result.stdout.split("\n")[0] if result.stdout else "unknown"
+                )
         except:
             pass
 
         # Check file command
         try:
-            result = subprocess.run(["file", "--version"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["file", "--version"], check=False, capture_output=True, text=True, timeout=5
+            )
             if result.returncode == 0:
                 tools["file"]["available"] = True
-                tools["file"]["version"] = result.stdout.split('\n')[0] if result.stdout else "unknown"
+                tools["file"]["version"] = (
+                    result.stdout.split("\n")[0] if result.stdout else "unknown"
+                )
         except:
             pass
 
         self.tools_cache = tools
         return tools
 
-    def analyze_file(self, file_path: str, tools: Optional[List[str]] = None) -> Dict[str, Any]:
+    def analyze_file(self, file_path: str, tools: list[str] | None = None) -> dict[str, Any]:
         """Analyze a file with multiple tools"""
 
         if tools is None:
@@ -225,25 +241,37 @@ class BinaryAnalyzer:
 
         return results
 
-    def _analyze_with_file(self, file_path: str) -> Dict[str, Any]:
+    def _analyze_with_file(self, file_path: str) -> dict[str, Any]:
         """Analyze with file command"""
         try:
-            result = subprocess.run(["file", file_path], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                ["file", file_path], check=False, capture_output=True, text=True, timeout=10
+            )
             if result.returncode == 0:
-                file_type = result.stdout.strip().split(': ', 1)[1] if ': ' in result.stdout else result.stdout.strip()
+                file_type = (
+                    result.stdout.strip().split(": ", 1)[1]
+                    if ": " in result.stdout
+                    else result.stdout.strip()
+                )
                 return {"file_type": file_type, "success": True}
-            else:
-                return {"error": "file command failed", "success": False}
+            return {"error": "file command failed", "success": False}
         except Exception as e:
             return {"error": str(e), "success": False}
 
-    def _analyze_with_binwalk(self, file_path: str) -> Dict[str, Any]:
+    def _analyze_with_binwalk(self, file_path: str) -> dict[str, Any]:
         """Analyze with binwalk"""
         try:
-            result = subprocess.run(["binwalk", "-J", file_path], capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                ["binwalk", "-J", file_path],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
             if result.returncode == 0:
                 # Parse JSON output
                 import json
+
                 try:
                     data = json.loads(result.stdout)
                     return {"signatures": data, "success": True}
@@ -254,20 +282,23 @@ class BinaryAnalyzer:
         except Exception as e:
             return {"error": str(e), "success": False}
 
-    def _analyze_with_ida(self, file_path: str) -> Dict[str, Any]:
+    def _analyze_with_ida(self, file_path: str) -> dict[str, Any]:
         """Analyze with IDA Pro (placeholder - would need IDA scripting)"""
         # This would require IDA Pro Python scripting
         # For now, just return that IDA is available
         return {
             "available": True,
             "note": "IDA Pro analysis requires custom scripting",
-            "recommendation": "Use IDA Pro GUI or create IDC/Python script"
+            "recommendation": "Use IDA Pro GUI or create IDC/Python script",
         }
 
-    def _analyze_with_ghidra(self, file_path: str) -> Dict[str, Any]:
+    def _analyze_with_ghidra(self, file_path: str) -> dict[str, Any]:
         """Analyze with Ghidra using HTTP-based GhidraMCP server"""
         if not self.tools_cache or not self.tools_cache["ghidra"]["available"]:
-            return {"error": "Ghidra not available - please install GhidraMCP plugin and ensure Ghidra is running", "available": False}
+            return {
+                "error": "Ghidra not available - please install GhidraMCP plugin and ensure Ghidra is running",
+                "available": False,
+            }
 
         # Note: This is a placeholder for HTTP-based Ghidra analysis
         # The actual Ghidra analysis is now handled through the integrated GhidraMCP tools
@@ -282,25 +313,30 @@ class BinaryAnalyzer:
                 "ghidra_disassemble_function",
                 "ghidra_list_strings",
                 "ghidra_get_xrefs_to",
-                "ghidra_get_xrefs_from"
-            ]
+                "ghidra_get_xrefs_from",
+            ],
         }
 
-    def _analyze_with_r2(self, file_path: str) -> Dict[str, Any]:
+    def _analyze_with_r2(self, file_path: str) -> dict[str, Any]:
         """Analyze with radare2"""
         try:
             # Basic info
-            result = subprocess.run(["r2", "-A", "-q", "-c", "i", file_path],
-                                  capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                ["r2", "-A", "-q", "-c", "i", file_path],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
             if result.returncode == 0:
                 return {"info": result.stdout, "success": True}
-            else:
-                return {"error": "r2 analysis failed", "success": False}
+            return {"error": "r2 analysis failed", "success": False}
         except Exception as e:
             return {"error": str(e), "success": False}
 
-    def extract_strings(self, file_path: str, min_length: int = 4,
-                       encodings: Optional[List[str]] = None) -> List[StringResult]:
+    def extract_strings(
+        self, file_path: str, min_length: int = 4, encodings: list[str] | None = None
+    ) -> list[StringResult]:
         """Extract strings from binary file"""
 
         if encodings is None:
@@ -311,30 +347,37 @@ class BinaryAnalyzer:
         try:
             # Use GNU strings if available
             if self.tools_cache and self.tools_cache["strings"]["available"]:
-                result = subprocess.run(["strings", "-n", str(min_length), file_path],
-                                      capture_output=True, text=True, timeout=30)
+                result = subprocess.run(
+                    ["strings", "-n", str(min_length), file_path],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
                 if result.returncode == 0:
-                    lines = result.stdout.split('\n')
+                    lines = result.stdout.split("\n")
                     for line in lines:
                         line = line.strip()
                         if line:
-                            results.append(StringResult(
-                                offset=0,  # strings command doesn't give offsets
-                                string=line,
-                                encoding="auto",
-                                length=len(line)
-                            ))
+                            results.append(
+                                StringResult(
+                                    offset=0,  # strings command doesn't give offsets
+                                    string=line,
+                                    encoding="auto",
+                                    length=len(line),
+                                )
+                            )
                     return results
 
             # Fallback: manual string extraction
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 data = f.read()
                 offset = 0
 
                 for encoding in encodings:
                     try:
                         # Decode the entire file and find printable strings
-                        decoded = data.decode(encoding, errors='ignore')
+                        decoded = data.decode(encoding, errors="ignore")
 
                         # Find sequences of printable characters
                         current_string = ""
@@ -347,12 +390,14 @@ class BinaryAnalyzer:
                                 current_string += char
                             else:
                                 if len(current_string) >= min_length:
-                                    results.append(StringResult(
-                                        offset=start_offset,
-                                        string=current_string,
-                                        encoding=encoding,
-                                        length=len(current_string)
-                                    ))
+                                    results.append(
+                                        StringResult(
+                                            offset=start_offset,
+                                            string=current_string,
+                                            encoding=encoding,
+                                            length=len(current_string),
+                                        )
+                                    )
                                 current_string = ""
 
                         # Don't add duplicates from different encodings
@@ -370,28 +415,28 @@ class BinaryAnalyzer:
         """Get hex dump of file"""
 
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 f.seek(offset)
                 data = f.read(length)
 
             # Create hex dump - simple format for testing
             lines = []
             for i in range(0, len(data), 16):
-                chunk = data[i:i+16]
+                chunk = data[i : i + 16]
                 # Just return hex bytes space-separated
-                hex_part = ' '.join(f'{b:02x}' for b in chunk)
+                hex_part = " ".join(f"{b:02x}" for b in chunk)
                 lines.append(hex_part)
 
-            return '\n'.join(lines)
+            return "\n".join(lines)
 
         except Exception as e:
             return f"Error creating hexdump: {e}"
 
-    def analyze_entropy(self, file_path: str, block_size: int = 256) -> Dict[str, Any]:
+    def analyze_entropy(self, file_path: str, block_size: int = 256) -> dict[str, Any]:
         """Analyze entropy of file"""
 
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 data = f.read()
 
             # Calculate entropy for the whole file
@@ -403,17 +448,13 @@ class BinaryAnalyzer:
             random_regions = []
 
             for i in range(0, len(data), block_size):
-                block = data[i:i+block_size]
+                block = data[i : i + block_size]
                 if len(block) < block_size // 2:  # Skip small blocks
                     continue
 
                 entropy = self._calculate_entropy(block)
 
-                entropy_map.append({
-                    "offset": i,
-                    "entropy": entropy,
-                    "size": len(block)
-                })
+                entropy_map.append({"offset": i, "entropy": entropy, "size": len(block)})
 
                 # Classify regions
                 if entropy < 3.0:  # Low entropy = compressed/predictable
@@ -425,7 +466,7 @@ class BinaryAnalyzer:
                 "overall": overall_entropy,
                 "map": entropy_map,
                 "compressed_regions": compressed_regions,
-                "random_regions": random_regions
+                "random_regions": random_regions,
             }
 
         except Exception as e:
@@ -452,52 +493,52 @@ class BinaryAnalyzer:
 
         return entropy
 
-    def find_functions(self, file_path: str, tool: str = "auto") -> List[Dict[str, Any]]:
+    def find_functions(self, file_path: str, tool: str = "auto") -> list[dict[str, Any]]:
         """Find functions in binary"""
 
         if tool == "r2" or tool == "auto":
             return self._find_functions_r2(file_path)
-        elif tool == "ida":
+        if tool == "ida":
             return self._find_functions_ida(file_path)
-        elif tool == "ghidra":
+        if tool == "ghidra":
             return self._find_functions_ghidra(file_path)
-        else:
-            return [{"error": f"Unsupported tool: {tool}"}]
+        return [{"error": f"Unsupported tool: {tool}"}]
 
-    def _find_functions_r2(self, file_path: str) -> List[Dict[str, Any]]:
+    def _find_functions_r2(self, file_path: str) -> list[dict[str, Any]]:
         """Find functions using radare2"""
         try:
-            result = subprocess.run(["r2", "-A", "-q", "-c", "afl", file_path],
-                                  capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                ["r2", "-A", "-q", "-c", "afl", file_path],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
             if result.returncode == 0:
                 functions = []
-                for line in result.stdout.split('\n'):
+                for line in result.stdout.split("\n"):
                     if line.strip():
                         parts = line.split()
                         if len(parts) >= 3:
                             try:
                                 addr = int(parts[0], 16)
                                 size = int(parts[1], 16)
-                                name = ' '.join(parts[2:])
-                                functions.append({
-                                    "address": addr,
-                                    "size": size,
-                                    "name": name,
-                                    "tool": "r2"
-                                })
+                                name = " ".join(parts[2:])
+                                functions.append(
+                                    {"address": addr, "size": size, "name": name, "tool": "r2"}
+                                )
                             except ValueError:
                                 continue
                 return functions
-            else:
-                return [{"error": "r2 function analysis failed"}]
+            return [{"error": "r2 function analysis failed"}]
         except Exception as e:
             return [{"error": str(e)}]
 
-    def _find_functions_ida(self, file_path: str) -> List[Dict[str, Any]]:
+    def _find_functions_ida(self, file_path: str) -> list[dict[str, Any]]:
         """Find functions using IDA Pro (placeholder)"""
         return [{"note": "IDA Pro function analysis requires IDA scripting setup"}]
 
-    def _find_functions_ghidra(self, file_path: str) -> List[Dict[str, Any]]:
+    def _find_functions_ghidra(self, file_path: str) -> list[dict[str, Any]]:
         """Find functions using Ghidra headless analysis"""
         try:
             # Run full Ghidra analysis and extract functions from results
@@ -508,56 +549,60 @@ class BinaryAnalyzer:
                 # Convert to expected format
                 functions = []
                 for func in functions_data:
-                    functions.append({
-                        "address": func.get("address"),
-                        "size": func.get("size", 0),
-                        "name": func.get("name", "unknown"),
-                        "tool": "ghidra"
-                    })
+                    functions.append(
+                        {
+                            "address": func.get("address"),
+                            "size": func.get("size", 0),
+                            "name": func.get("name", "unknown"),
+                            "tool": "ghidra",
+                        }
+                    )
                 return functions
-            else:
-                return [{"error": analysis_result.get("error", "Ghidra analysis failed")}]
+            return [{"error": analysis_result.get("error", "Ghidra analysis failed")}]
 
         except Exception as e:
-            return [{"error": f"Ghidra function analysis error: {str(e)}"}]
+            return [{"error": f"Ghidra function analysis error: {e!s}"}]
 
     def detect_file_type(self, file_path: str) -> str:
         """Detect file type"""
         try:
-            result = subprocess.run(["file", file_path], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                ["file", file_path], check=False, capture_output=True, text=True, timeout=10
+            )
             if result.returncode == 0:
-                return result.stdout.split(': ', 1)[1].strip() if ': ' in result.stdout else result.stdout.strip()
-            else:
-                # Fallback: check extension
-                ext = Path(file_path).suffix.lower()
-                if ext == '.exe':
-                    return "PE executable"
-                elif ext == '.dll':
-                    return "PE dynamic link library"
-                elif ext in ['.dki', '.dka']:
-                    return "Directmedia database file"
-                else:
-                    return f"Unknown ({ext})"
+                return (
+                    result.stdout.split(": ", 1)[1].strip()
+                    if ": " in result.stdout
+                    else result.stdout.strip()
+                )
+            # Fallback: check extension
+            ext = Path(file_path).suffix.lower()
+            if ext == ".exe":
+                return "PE executable"
+            if ext == ".dll":
+                return "PE dynamic link library"
+            if ext in [".dki", ".dka"]:
+                return "Directmedia database file"
+            return f"Unknown ({ext})"
         except FileNotFoundError:
             # file command not available, use extension fallback
             ext = Path(file_path).suffix.lower()
-            if ext == '.exe':
+            if ext == ".exe":
                 return "PE executable"
-            elif ext == '.dll':
+            if ext == ".dll":
                 return "PE dynamic link library"
-            elif ext in ['.dki', '.dka']:
+            if ext in [".dki", ".dka"]:
                 return "Directmedia database file"
-            else:
-                return f"Unknown ({ext})"
-        except Exception as e:
+            return f"Unknown ({ext})"
+        except Exception:
             # Other unexpected errors
             return "Unknown"
 
-    def analyze_pe_file(self, file_path: str) -> Dict[str, Any]:
+    def analyze_pe_file(self, file_path: str) -> dict[str, Any]:
         """Analyze Windows PE file (basic info)"""
 
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 # Read DOS header
                 dos_header = f.read(64)
 
@@ -565,34 +610,30 @@ class BinaryAnalyzer:
                     return {"error": "File too small for PE"}
 
                 # Check MZ signature
-                if dos_header[0:2] != b'MZ':
+                if dos_header[0:2] != b"MZ":
                     return {"error": "Not a valid PE file (missing MZ signature)"}
 
                 # Get PE header offset
-                pe_offset = struct.unpack('<I', dos_header[60:64])[0]
+                pe_offset = struct.unpack("<I", dos_header[60:64])[0]
 
                 # Read PE header
                 f.seek(pe_offset)
                 pe_header = f.read(24)
 
-                if len(pe_header) < 24 or pe_header[0:4] != b'PE\x00\x00':
+                if len(pe_header) < 24 or pe_header[0:4] != b"PE\x00\x00":
                     return {"error": "Invalid PE header"}
 
                 # Basic PE info
-                machine = struct.unpack('<H', pe_header[4:6])[0]
-                num_sections = struct.unpack('<H', pe_header[6:8])[0]
+                machine = struct.unpack("<H", pe_header[4:6])[0]
+                num_sections = struct.unpack("<H", pe_header[6:8])[0]
 
-                machine_names = {
-                    0x014c: "Intel 386",
-                    0x0200: "Intel Itanium",
-                    0x8664: "AMD64"
-                }
+                machine_names = {0x014C: "Intel 386", 0x0200: "Intel Itanium", 0x8664: "AMD64"}
 
                 return {
                     "valid_pe": True,
                     "machine": machine_names.get(machine, f"Unknown (0x{machine:04X})"),
                     "num_sections": num_sections,
-                    "dos_stub_size": pe_offset - 64
+                    "dos_stub_size": pe_offset - 64,
                 }
 
         except Exception as e:

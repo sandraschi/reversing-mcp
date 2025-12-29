@@ -4,11 +4,9 @@ Reversing MCP Server - Ghidra and Free Reverse Engineering Tools
 """
 
 import os
-import sys
 import subprocess
-import tempfile
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any
 
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
@@ -19,6 +17,7 @@ from .logging_config import get_logger
 # Try to import Directmedia decompressor (optional)
 try:
     from directmedia_mcp.directmedia_decompressor import DirectmediaDecompressor
+
     directmedia_available = True
 except ImportError:
     directmedia_available = False
@@ -27,24 +26,41 @@ except ImportError:
 logger = get_logger("reversing_mcp")
 
 # Initialize MCP server
-mcp = FastMCP(
-    "ReversingMCP",
-    version="0.1.0"
-)
+mcp = FastMCP("ReversingMCP", version="0.1.0")
 
 # Import OUR CUSTOM Ghidra bridge (connects to LaurieWired's plugin)
 try:
     from .bridge_mcp_ghidra import (
+        decompile_function,
+        decompile_function_by_address,
+        disassemble_function,
+        get_current_address,
+        get_current_function,
+        get_function_by_address,
+        get_function_xrefs,
+        get_xrefs_from,
+        get_xrefs_to,
+        list_classes,
+        list_data_items,
+        list_exports,
+        list_functions,
+        list_imports,
         # These are OUR MCP tools that call THEIR Ghidra plugin via HTTP
-        list_methods, list_classes, decompile_function, rename_function,
-        rename_data, list_segments, list_imports, list_exports,
-        list_namespaces, list_data_items, search_functions_by_name,
-        rename_variable, get_function_by_address, get_current_address,
-        get_current_function, list_functions, decompile_function_by_address,
-        disassemble_function, set_decompiler_comment, set_disassembly_comment,
-        rename_function_by_address, set_function_prototype, set_local_variable_type,
-        get_xrefs_to, get_xrefs_from, get_function_xrefs, list_strings
+        list_methods,
+        list_namespaces,
+        list_segments,
+        list_strings,
+        rename_data,
+        rename_function,
+        rename_function_by_address,
+        rename_variable,
+        search_functions_by_name,
+        set_decompiler_comment,
+        set_disassembly_comment,
+        set_function_prototype,
+        set_local_variable_type,
     )
+
     ghidra_available = True
     logger.info("OUR Ghidra bridge loaded successfully (connects to LaurieWired's plugin)")
 except ImportError as e:
@@ -54,17 +70,19 @@ except ImportError as e:
 
 class AnalysisResult(BaseModel):
     """Result of binary analysis"""
+
     tool: str = Field(description="Tool used for analysis")
     file_path: str = Field(description="Path to analyzed file")
     file_size: int = Field(description="File size in bytes")
     file_type: str = Field(description="Detected file type")
-    architecture: Optional[str] = Field(description="CPU architecture if detected")
-    endianness: Optional[str] = Field(description="Endianness (little/big)")
-    analysis: Dict[str, Any] = Field(description="Tool-specific analysis results")
+    architecture: str | None = Field(description="CPU architecture if detected")
+    endianness: str | None = Field(description="Endianness (little/big)")
+    analysis: dict[str, Any] = Field(description="Tool-specific analysis results")
 
 
 class StringResult(BaseModel):
     """String extraction result"""
+
     offset: int = Field(description="Offset in file")
     string: str = Field(description="Extracted string")
     encoding: str = Field(description="String encoding")
@@ -77,7 +95,7 @@ directmedia_decompressor = DirectmediaDecompressor() if directmedia_available el
 
 
 @mcp.tool()
-async def analyze_binary(file_path: str, tools: Optional[List[str]] = None) -> Dict[str, Any]:
+async def analyze_binary(file_path: str, tools: list[str] | None = None) -> dict[str, Any]:
     """
     Analyze a binary file with multiple reverse engineering tools
 
@@ -95,16 +113,17 @@ async def analyze_binary(file_path: str, tools: Optional[List[str]] = None) -> D
             "file_path": file_path,
             "file_size": os.path.getsize(file_path),
             "tools_used": list(results.keys()),
-            "results": results
+            "results": results,
         }
     except Exception as e:
         logger.error(f"Error analyzing {file_path}: {e}")
-        return {"error": f"Analysis failed: {str(e)}"}
+        return {"error": f"Analysis failed: {e!s}"}
 
 
 @mcp.tool()
-async def extract_strings(file_path: str, min_length: int = 4,
-                         encodings: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+async def extract_strings(
+    file_path: str, min_length: int = 4, encodings: list[str] | None = None
+) -> list[dict[str, Any]]:
     """
     Extract strings from a binary file
 
@@ -124,11 +143,11 @@ async def extract_strings(file_path: str, min_length: int = 4,
         return [s.model_dump() for s in strings]
     except Exception as e:
         logger.error(f"Error extracting strings from {file_path}: {e}")
-        return [{"error": f"String extraction failed: {str(e)}"}]
+        return [{"error": f"String extraction failed: {e!s}"}]
 
 
 @mcp.tool()
-async def get_hexdump(file_path: str, offset: int = 0, length: int = 256) -> Dict[str, Any]:
+async def get_hexdump(file_path: str, offset: int = 0, length: int = 256) -> dict[str, Any]:
     """
     Get hexadecimal dump of a binary file
 
@@ -142,19 +161,14 @@ async def get_hexdump(file_path: str, offset: int = 0, length: int = 256) -> Dic
 
     try:
         hexdump = analyzer.get_hexdump(file_path, offset, length)
-        return {
-            "file_path": file_path,
-            "offset": offset,
-            "length": length,
-            "hexdump": hexdump
-        }
+        return {"file_path": file_path, "offset": offset, "length": length, "hexdump": hexdump}
     except Exception as e:
         logger.error(f"Error getting hexdump for {file_path}: {e}")
-        return {"error": f"Hexdump failed: {str(e)}"}
+        return {"error": f"Hexdump failed: {e!s}"}
 
 
 @mcp.tool()
-async def analyze_entropy(file_path: str, block_size: int = 256) -> Dict[str, Any]:
+async def analyze_entropy(file_path: str, block_size: int = 256) -> dict[str, Any]:
     """
     Analyze entropy of a binary file (detects compressed/encrypted sections)
 
@@ -173,15 +187,15 @@ async def analyze_entropy(file_path: str, block_size: int = 256) -> Dict[str, An
             "overall_entropy": entropy_data["overall"],
             "entropy_map": entropy_data["map"],
             "compressed_regions": entropy_data["compressed"],
-            "random_regions": entropy_data["random"]
+            "random_regions": entropy_data["random"],
         }
     except Exception as e:
         logger.error(f"Error analyzing entropy for {file_path}: {e}")
-        return {"error": f"Entropy analysis failed: {str(e)}"}
+        return {"error": f"Entropy analysis failed: {e!s}"}
 
 
 @mcp.tool()
-async def find_functions(file_path: str, tool: str = "auto") -> Dict[str, Any]:
+async def find_functions(file_path: str, tool: str = "auto") -> dict[str, Any]:
     """
     Find functions in a binary file
 
@@ -194,18 +208,14 @@ async def find_functions(file_path: str, tool: str = "auto") -> Dict[str, Any]:
 
     try:
         functions = analyzer.find_functions(file_path, tool)
-        return {
-            "file_path": file_path,
-            "tool_used": tool,
-            "functions": functions
-        }
+        return {"file_path": file_path, "tool_used": tool, "functions": functions}
     except Exception as e:
         logger.error(f"Error finding functions in {file_path}: {e}")
-        return {"error": f"Function analysis failed: {str(e)}"}
+        return {"error": f"Function analysis failed: {e!s}"}
 
 
 @mcp.tool()
-async def get_file_info(file_path: str) -> Dict[str, Any]:
+async def get_file_info(file_path: str) -> dict[str, Any]:
     """
     Get basic information about a file
 
@@ -225,15 +235,15 @@ async def get_file_info(file_path: str) -> Dict[str, Any]:
             "permissions": oct(stat.st_mode)[-3:],
             "readable": os.access(file_path, os.R_OK),
             "writable": os.access(file_path, os.W_OK),
-            "executable": os.access(file_path, os.X_OK)
+            "executable": os.access(file_path, os.X_OK),
         }
     except Exception as e:
         logger.error(f"Error getting file info for {file_path}: {e}")
-        return {"error": f"File info failed: {str(e)}"}
+        return {"error": f"File info failed: {e!s}"}
 
 
 @mcp.tool()
-async def check_tools() -> Dict[str, Any]:
+async def check_tools() -> dict[str, Any]:
     """
     Check which reverse engineering tools are available on the system
     """
@@ -246,7 +256,7 @@ async def check_tools() -> Dict[str, Any]:
             "available": ghidra_available,
             "version": "1.2" if ghidra_available else None,
             "description": "Ghidra plugin with HTTP server for MCP integration",
-            "endpoint": "http://127.0.0.1:8080/" if ghidra_available else None
+            "endpoint": "http://127.0.0.1:8080/" if ghidra_available else None,
         }
 
         # Add Directmedia status
@@ -254,7 +264,7 @@ async def check_tools() -> Dict[str, Any]:
             "name": "Directmedia Decompressor",
             "available": directmedia_available,
             "version": "1.0" if directmedia_available else None,
-            "description": "Extract text from Directmedia Digitale Bibliothek files"
+            "description": "Extract text from Directmedia Digitale Bibliothek files",
         }
 
         return {
@@ -263,20 +273,20 @@ async def check_tools() -> Dict[str, Any]:
                 "total": len(available_tools),
                 "available": len([t for t in available_tools.values() if t["available"]]),
                 "recommended": ["ghidra", "ghidra_mcp", "r2", "binwalk"],  # Free/open source tools
-                "premium": ["ida"]  # Commercial tools
+                "premium": ["ida"],  # Commercial tools
             },
             "notes": {
                 "ghidra_setup": "Install GhidraMCP plugin (GhidraMCP.zip) and start Ghidra for HTTP server access",
-                "directmedia_setup": "Install directmedia-mcp for .DKI file analysis"
-            }
+                "directmedia_setup": "Install directmedia-mcp for .DKI file analysis",
+            },
         }
     except Exception as e:
         logger.error(f"Error checking tools: {e}")
-        return {"error": f"Tool check failed: {str(e)}"}
+        return {"error": f"Tool check failed: {e!s}"}
 
 
 @mcp.tool()
-async def analyze_pe_file(file_path: str) -> Dict[str, Any]:
+async def analyze_pe_file(file_path: str) -> dict[str, Any]:
     """
     Analyze a Windows PE (Portable Executable) file
 
@@ -288,17 +298,14 @@ async def analyze_pe_file(file_path: str) -> Dict[str, Any]:
 
     try:
         pe_info = analyzer.analyze_pe_file(file_path)
-        return {
-            "file_path": file_path,
-            "pe_info": pe_info
-        }
+        return {"file_path": file_path, "pe_info": pe_info}
     except Exception as e:
         logger.error(f"Error analyzing PE file {file_path}: {e}")
-        return {"error": f"PE analysis failed: {str(e)}"}
+        return {"error": f"PE analysis failed: {e!s}"}
 
 
 @mcp.tool()
-async def analyze_directmedia_file(file_path: str) -> Dict[str, Any]:
+async def analyze_directmedia_file(file_path: str) -> dict[str, Any]:
     """
     Analyze a Directmedia .DKI file and extract text content
 
@@ -321,19 +328,19 @@ async def analyze_directmedia_file(file_path: str) -> Dict[str, Any]:
                 "file_size": result["analysis"]["file_size"],
                 "magic_number": f"0x{result['analysis']['magic_number']:08x}",
                 "compression_type": result["analysis"]["compression_type"].name,
-                "offsets_found": len(result["analysis"]["offsets"])
+                "offsets_found": len(result["analysis"]["offsets"]),
             },
             "extraction_summary": {
                 "sections_processed": len(result["extracted_sections"]),
-                "total_text_bytes": result["total_extracted_size"]
-            }
+                "total_text_bytes": result["total_extracted_size"],
+            },
         }
 
         # Add sample extracted content
         if result["extracted_sections"]:
             samples = []
             for section in result["extracted_sections"][:3]:
-                if "records" in section and section["records"]:
+                if section.get("records"):
                     for record in section["records"][:2]:
                         text = record.get("text_content", "")
                         if text and len(text) > 10:
@@ -344,10 +351,10 @@ async def analyze_directmedia_file(file_path: str) -> Dict[str, Any]:
 
         # Save extracted content to file
         output_file = Path(file_path).parent / f"{Path(file_path).stem}_extracted.txt"
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(f"Directmedia Decompression Results for {file_path}\n")
             f.write("=" * 60 + "\n\n")
-            f.write(f"Analysis Summary:\n")
+            f.write("Analysis Summary:\n")
             f.write(f"- File size: {result['analysis']['file_size']:,} bytes\n")
             f.write(f"- Magic number: 0x{result['analysis']['magic_number']:08x}\n")
             f.write(f"- Compression type: {result['analysis']['compression_type'].name}\n")
@@ -358,7 +365,7 @@ async def analyze_directmedia_file(file_path: str) -> Dict[str, Any]:
             # Write all extracted text
             all_text_parts = []
             for section in result["extracted_sections"]:
-                if "records" in section and section["records"]:
+                if section.get("records"):
                     for record in section["records"]:
                         text = record.get("text_content", "")
                         if text and len(text) > 5:
@@ -377,11 +384,13 @@ async def analyze_directmedia_file(file_path: str) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Error analyzing Directmedia file {file_path}: {e}")
-        return {"error": f"Directmedia analysis failed: {str(e)}"}
+        return {"error": f"Directmedia analysis failed: {e!s}"}
 
 
 @mcp.tool()
-async def decompress_directmedia_library(library_path: str, volume_filter: Optional[str] = None) -> Dict[str, Any]:
+async def decompress_directmedia_library(
+    library_path: str, volume_filter: str | None = None
+) -> dict[str, Any]:
     """
     Batch decompress all Directmedia volumes in a library
 
@@ -403,6 +412,7 @@ async def decompress_directmedia_library(library_path: str, volume_filter: Optio
             if "*" in volume_filter:
                 # Simple glob matching
                 import fnmatch
+
                 volume_dirs = [d for d in volume_dirs if fnmatch.fnmatch(d.name, volume_filter)]
             else:
                 volume_dirs = [d for d in volume_dirs if volume_filter in d.name]
@@ -424,7 +434,7 @@ async def decompress_directmedia_library(library_path: str, volume_filter: Optio
                         "volume": volume_dir.name,
                         "file_path": str(text_dki),
                         "sections_extracted": len(result["extracted_sections"]),
-                        "text_bytes": result["total_extracted_size"]
+                        "text_bytes": result["total_extracted_size"],
                     }
 
                     total_text_extracted += result["total_extracted_size"]
@@ -432,10 +442,7 @@ async def decompress_directmedia_library(library_path: str, volume_filter: Optio
                     results.append(volume_result)
 
                 except Exception as e:
-                    results.append({
-                        "volume": volume_dir.name,
-                        "error": str(e)
-                    })
+                    results.append({"volume": volume_dir.name, "error": str(e)})
 
         return {
             "library_path": library_path,
@@ -443,12 +450,12 @@ async def decompress_directmedia_library(library_path: str, volume_filter: Optio
             "total_volumes_found": len(volume_dirs),
             "total_text_extracted": total_text_extracted,
             "results": results,
-            "batch_status": "completed"
+            "batch_status": "completed",
         }
 
     except Exception as e:
         logger.error(f"Error in batch Directmedia decompression: {e}")
-        return {"error": f"Batch decompression failed: {str(e)}"}
+        return {"error": f"Batch decompression failed: {e!s}"}
 
 
 # GhidraMCP Tools Integration (if available)
@@ -566,7 +573,9 @@ if ghidra_available:
         return set_function_prototype(function_address, prototype)
 
     @mcp.tool()
-    async def ghidra_set_variable_type(function_address: str, variable_name: str, new_type: str) -> str:
+    async def ghidra_set_variable_type(
+        function_address: str, variable_name: str, new_type: str
+    ) -> str:
         """Set a local variable's type."""
         return set_local_variable_type(function_address, variable_name, new_type)
 
@@ -586,13 +595,17 @@ if ghidra_available:
         return get_function_xrefs(name, offset, limit)
 
     @mcp.tool()
-    async def ghidra_list_strings(offset: int = 0, limit: int = 2000, filter_str: str = None) -> list:
+    async def ghidra_list_strings(
+        offset: int = 0, limit: int = 2000, filter_str: str = None
+    ) -> list:
         """List all defined strings in the Ghidra program with their addresses."""
         return list_strings(offset, limit, filter_str)
 
 
 @mcp.tool()
-async def start_ghidra(file_path: str = None, project_name: str = None, wait: bool = False) -> Dict[str, Any]:
+async def start_ghidra(
+    file_path: str = None, project_name: str = None, wait: bool = False
+) -> dict[str, Any]:
     """
     Start Ghidra GUI with optional binary file loading.
 
@@ -614,7 +627,7 @@ async def start_ghidra(file_path: str = None, project_name: str = None, wait: bo
             return {
                 "error": "Ghidra not found on system",
                 "available": False,
-                "suggestion": "Install Ghidra and ensure GhidraMCP plugin is installed"
+                "suggestion": "Install Ghidra and ensure GhidraMCP plugin is installed",
             }
 
         ghidra_path = analyzer.tools_cache["ghidra"]["path"]
@@ -627,6 +640,7 @@ async def start_ghidra(file_path: str = None, project_name: str = None, wait: bo
         if project_name:
             # Create a temporary project directory if needed
             import tempfile
+
             temp_dir = tempfile.gettempdir()
             project_dir = os.path.join(temp_dir, f"ghidra_mcp_{project_name}")
             os.makedirs(project_dir, exist_ok=True)
@@ -638,7 +652,7 @@ async def start_ghidra(file_path: str = None, project_name: str = None, wait: bo
                 return {
                     "error": f"File not found: {file_path}",
                     "ghidra_path": ghidra_path,
-                    "version": version
+                    "version": version,
                 }
             cmd.extend(["-import", file_path])
 
@@ -647,64 +661,61 @@ async def start_ghidra(file_path: str = None, project_name: str = None, wait: bo
         # Launch Ghidra
         if wait:
             # Synchronous launch - wait for Ghidra to exit
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=300)
             return {
                 "success": True,
                 "ghidra_path": ghidra_path,
                 "version": version,
-                "command": ' '.join(cmd),
+                "command": " ".join(cmd),
                 "file_loaded": file_path,
                 "project_name": project_name,
                 "waited": True,
                 "return_code": result.returncode,
                 "stdout": result.stdout[-500:] if result.stdout else None,
-                "stderr": result.stderr[-500:] if result.stderr else None
+                "stderr": result.stderr[-500:] if result.stderr else None,
             }
-        else:
-            # Asynchronous launch - don't wait
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL
-            )
+        # Asynchronous launch - don't wait
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
+        )
 
-            # Give Ghidra a moment to start
-            import time
-            time.sleep(2)
+        # Give Ghidra a moment to start
+        import time
 
-            # Check if process is still running
-            process.poll()
+        time.sleep(2)
 
-            return {
-                "success": True,
-                "ghidra_path": ghidra_path,
-                "version": version,
-                "command": ' '.join(cmd),
-                "file_loaded": file_path,
-                "project_name": project_name,
-                "waited": False,
-                "process_id": process.pid if process.poll() is None else None,
-                "process_running": process.poll() is None,
-                "note": "Ghidra launched in background. Use MCP Ghidra tools once a binary is loaded."
-            }
+        # Check if process is still running
+        process.poll()
+
+        return {
+            "success": True,
+            "ghidra_path": ghidra_path,
+            "version": version,
+            "command": " ".join(cmd),
+            "file_loaded": file_path,
+            "project_name": project_name,
+            "waited": False,
+            "process_id": process.pid if process.poll() is None else None,
+            "process_running": process.poll() is None,
+            "note": "Ghidra launched in background. Use MCP Ghidra tools once a binary is loaded.",
+        }
 
     except subprocess.TimeoutExpired:
         return {
             "error": "Ghidra launch timed out",
-            "ghidra_path": ghidra_path if 'ghidra_path' in locals() else None,
-            "suggestion": "Try launching Ghidra manually or check system resources"
+            "ghidra_path": ghidra_path if "ghidra_path" in locals() else None,
+            "suggestion": "Try launching Ghidra manually or check system resources",
         }
     except Exception as e:
         return {
-            "error": f"Failed to start Ghidra: {str(e)}",
-            "ghidra_path": ghidra_path if 'ghidra_path' in locals() else None,
-            "suggestion": "Check Ghidra installation and try launching manually"
+            "error": f"Failed to start Ghidra: {e!s}",
+            "ghidra_path": ghidra_path if "ghidra_path" in locals() else None,
+            "suggestion": "Check Ghidra installation and try launching manually",
         }
 
 
 @mcp.tool()
-async def help(level: str = "basic", topic: str = None) -> Dict[str, Any]:
+async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
     """
     Get comprehensive help information about Reversing MCP tools and capabilities.
 
@@ -728,16 +739,16 @@ async def help(level: str = "basic", topic: str = None) -> Dict[str, Any]:
                 "1. Check available tools: check_tools()",
                 "2. Analyze a binary: analyze_binary('file.exe', ['static', 'strings'])",
                 "3. Extract strings: extract_strings('file.exe', min_length=8)",
-                "4. Get hex dump: get_hexdump('file.exe', offset=0, length=256)"
+                "4. Get hex dump: get_hexdump('file.exe', offset=0, length=256)",
             ],
             "essential_tools": [
                 "analyze_binary - Full binary analysis",
                 "extract_strings - Find text in binaries",
                 "get_hexdump - View raw bytes",
                 "analyze_entropy - Detect compression/encryption",
-                "check_tools - See what's available"
+                "check_tools - See what's available",
             ],
-            "next_steps": "Use level='intermediate' for detailed tool descriptions"
+            "next_steps": "Use level='intermediate' for detailed tool descriptions",
         }
 
     # Intermediate help - detailed tool descriptions
@@ -751,36 +762,38 @@ async def help(level: str = "basic", topic: str = None) -> Dict[str, Any]:
                     "extract_strings(file_path, min_length, encodings) - Find printable strings",
                     "get_hexdump(file_path, offset, length) - Raw byte viewer",
                     "analyze_entropy(file_path, block_size) - Detect packed/encrypted sections",
-                    "find_functions(file_path, tool) - Locate functions in binaries"
+                    "find_functions(file_path, tool) - Locate functions in binaries",
                 ],
                 "file_info": [
                     "get_file_info(file_path) - Basic file metadata",
                     "analyze_pe_file(file_path) - Windows PE analysis",
-                    "file_type detection, permissions, timestamps"
+                    "file_type detection, permissions, timestamps",
                 ],
                 "ghidra_tools": [
                     "ghidra_decompile_function(name) - Decompile to C code",
                     "ghidra_list_functions() - All functions in loaded binary",
                     "ghidra_disassemble_function(addr) - Assembly code",
                     "ghidra_list_strings() - Extract strings with addresses",
-                    "ghidra_get_xrefs_to/from(addr) - Cross-references"
-                ] if ghidra_available else ["Ghidra tools not available - install GhidraMCP plugin"]
+                    "ghidra_get_xrefs_to/from(addr) - Cross-references",
+                ]
+                if ghidra_available
+                else ["Ghidra tools not available - install GhidraMCP plugin"],
             },
             "workflows": {
                 "malware_analysis": [
                     "1. check_tools() - Verify Ghidra availability",
                     "2. analyze_binary(file.exe, ['ghidra']) - Full analysis",
                     "3. ghidra_list_functions() - See all functions",
-                    "4. ghidra_decompile_function('main') - Analyze main function"
+                    "4. ghidra_decompile_function('main') - Analyze main function",
                 ],
                 "firmware_research": [
                     "1. get_hexdump(file.bin, 0, 1024) - Check headers",
                     "2. analyze_entropy(file.bin) - Find packed sections",
                     "3. extract_strings(file.bin) - Find embedded strings",
-                    "4. binwalk analysis for embedded filesystems"
-                ]
+                    "4. binwalk analysis for embedded filesystems",
+                ],
             },
-            "next_steps": "Use level='advanced' for technical details and Ghidra deep-dive"
+            "next_steps": "Use level='advanced' for technical details and Ghidra deep-dive",
         }
 
     # Advanced help - technical details and Ghidra expertise
@@ -788,113 +801,100 @@ async def help(level: str = "basic", topic: str = None) -> Dict[str, Any]:
         help_content = {
             "level": "advanced",
             "description": "Technical architecture, Ghidra deep-dive, and expert references",
-
             "architecture": {
                 "core_components": {
                     "BinaryAnalyzer": "Multi-tool analysis orchestrator supporting IDA, Ghidra, radare2",
                     "GhidraMCP Integration": "HTTP-based Ghidra plugin bridge for headless analysis",
-                    "Directmedia Decompressor": "Legacy .DKI format reverse engineering"
+                    "Directmedia Decompressor": "Legacy .DKI format reverse engineering",
                 },
                 "tool_detection": {
                     "automatic_discovery": "Scans common installation paths",
                     "fallback_handling": "Graceful degradation when tools unavailable",
-                    "version_detection": "Extracts version info for compatibility"
-                }
+                    "version_detection": "Extracts version info for compatibility",
+                },
             },
-
             "ghidra_expertise": {
                 "background": {
                     "developer": "National Security Agency (NSA) - United States Government",
                     "purpose": "Professional reverse engineering and malware analysis framework",
                     "license": "Apache License 2.0 (free and open source)",
                     "first_release": "2019, evolved from IDA Pro acquisition",
-                    "current_version": "Ghidra 11.x series (as of 2024)"
+                    "current_version": "Ghidra 11.x series (as of 2024)",
                 },
-
                 "technical_capabilities": {
                     "decompiler": "Industry-leading retargetable decompiler with multi-architecture support",
                     "disassembler": "Supports 90+ processor architectures and instruction sets",
                     "analysis_engine": "Auto-analysis with function detection, data flow analysis, type inference",
                     "scripting": "Java-based scripting with full API access to analysis results",
-                    "collaboration": "Multi-user analysis with version control integration"
+                    "collaboration": "Multi-user analysis with version control integration",
                 },
-
                 "integration_architecture": {
                     "mcp_bridge": "HTTP server plugin exposes Ghidra API to MCP clients",
                     "headless_mode": "Non-GUI analysis for automation and CI/CD pipelines",
                     "api_endpoints": "RESTful API for decompilation, disassembly, cross-references",
-                    "real_time_sync": "Live synchronization between GUI and headless sessions"
+                    "real_time_sync": "Live synchronization between GUI and headless sessions",
                 },
-
                 "competitive_advantages": {
                     "vs_ida_pro": "Free alternative with comparable analysis quality, though steeper learning curve",
                     "vs_binary_ninja": "More comprehensive enterprise features, better collaboration tools",
                     "vs_ghidra_online": "Local deployment maintains security, no cloud dependencies",
-                    "vs_radare2": "GUI-first approach with professional-grade decompiler"
+                    "vs_radare2": "GUI-first approach with professional-grade decompiler",
                 },
-
                 "use_cases": {
                     "malware_analysis": "Signature development, behavior analysis, IOC extraction",
                     "firmware_re": "Embedded system analysis, IoT device security research",
                     "vulnerability_research": "Patch analysis, exploit development, security assessments",
-                    "digital_forensics": "Evidence analysis, timeline reconstruction, artifact extraction"
-                }
+                    "digital_forensics": "Evidence analysis, timeline reconstruction, artifact extraction",
+                },
             },
-
             "references": {
                 "official_resources": {
                     "homepage": "https://ghidra-sre.org/",
                     "documentation": "https://ghidra-sre.org/Help/start.html",
                     "github": "https://github.com/NationalSecurityAgency/ghidra",
                     "wiki": "https://github.com/NationalSecurityAgency/ghidra/wiki",
-                    "api_docs": "https://ghidra-sre.org/Help/api/"
+                    "api_docs": "https://ghidra-sre.org/Help/api/",
                 },
-
                 "community_resources": {
                     "reddit": "r/ReverseEngineering, r/Ghidra",
                     "discord": "Ghidra Discord community server",
                     "tutorials": "John Hammond, LiveOverflow, Azeria Labs Ghidra guides",
                     "books": "'The Ghidra Book' by Chris Eagle and Kara Nance",
-                    "blogs": "NSA Ghidra blog, OpenSecurityResearch Ghidra posts"
+                    "blogs": "NSA Ghidra blog, OpenSecurityResearch Ghidra posts",
                 },
-
                 "academic_citations": {
                     "papers": "IEEE Security & Privacy, Black Hat, DEF CON presentations",
                     "research": "NSA Research Directorate publications on binary analysis",
-                    "comparisons": "Independent studies comparing Ghidra vs commercial tools"
-                }
+                    "comparisons": "Independent studies comparing Ghidra vs commercial tools",
+                },
             },
-
             "expert_workflows": {
                 "automated_analysis": [
                     "1. Batch processing with custom Ghidra scripts",
                     "2. CI/CD integration for continuous security scanning",
                     "3. API-driven analysis for large-scale malware processing",
-                    "4. Custom plugin development for specialized analysis"
+                    "4. Custom plugin development for specialized analysis",
                 ],
-
                 "collaboration_setup": [
                     "1. Shared repository configuration for team analysis",
                     "2. Version control integration with Git",
                     "3. Review workflows for analysis validation",
-                    "4. Automated diffing for patch analysis"
-                ]
+                    "4. Automated diffing for patch analysis",
+                ],
             },
-
             "troubleshooting": {
                 "common_issues": {
                     "memory_usage": "Large binaries may require increased heap size (-Xmx8G)",
                     "analysis_time": "Complex binaries can take hours; use headless mode for batch processing",
                     "false_positives": "Decompiler may produce incorrect code; always verify manually",
-                    "plugin_conflicts": "Third-party plugins can cause stability issues"
+                    "plugin_conflicts": "Third-party plugins can cause stability issues",
                 },
-
                 "performance_tuning": {
                     "headless_flags": "-analysisTimeoutPerFile, -max-cpu, -commit",
                     "memory_settings": "-Xmx, -Xms for JVM heap configuration",
-                    "parallel_processing": "Multiple Ghidra instances for batch analysis"
-                }
-            }
+                    "parallel_processing": "Multiple Ghidra instances for batch analysis",
+                },
+            },
         }
 
     # Add topic-specific filtering if requested
@@ -906,16 +906,15 @@ async def help(level: str = "basic", topic: str = None) -> Dict[str, Any]:
                     "topic": "ghidra",
                     "level": "advanced",
                     **help_content["ghidra_expertise"],
-                    **help_content["references"]
+                    **help_content["references"],
                 }
-            else:
-                return {"error": f"Topic '{topic}' only available in advanced level"}
-        elif topic.lower() in ["binary", "analysis"]:
+            return {"error": f"Topic '{topic}' only available in advanced level"}
+        if topic.lower() in ["binary", "analysis"]:
             return {
                 "topic": topic,
                 "level": level,
                 "tools": help_content.get("tool_categories", {}).get("binary_analysis", []),
-                "workflows": help_content.get("workflows", {})
+                "workflows": help_content.get("workflows", {}),
             }
 
     return help_content
@@ -925,13 +924,16 @@ def main():
     """Main entry point"""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Reversing MCP Server - Free RE Tools + Directmedia Decompression")
+    parser = argparse.ArgumentParser(
+        description="Reversing MCP Server - Free RE Tools + Directmedia Decompression"
+    )
     parser.add_argument("--log-level", default="INFO", help="Logging level")
 
     args = parser.parse_args()
 
     # Set log level
     import logging
+
     logging.getLogger().setLevel(getattr(logging, args.log_level.upper()))
 
     logger.info("Starting Reversing MCP Server")
@@ -942,4 +944,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -10,16 +10,17 @@ This test suite validates the MCP server tools and functionality:
 - Error handling
 """
 
-import pytest
 import os
+import sys
 import tempfile
 from pathlib import Path
 
-import sys
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from reversing_mcp.server import mcp
 from reversing_mcp.analyzers import BinaryAnalyzer
+from reversing_mcp.server import mcp
 
 
 class TestBinaryAnalysis:
@@ -32,8 +33,8 @@ class TestBinaryAnalysis:
     def test_analyzer_initialization(self):
         """Test BinaryAnalyzer initializes correctly"""
         assert self.analyzer is not None
-        assert hasattr(self.analyzer, 'check_available_tools')
-        assert hasattr(self.analyzer, 'analyze_file')
+        assert hasattr(self.analyzer, "check_available_tools")
+        assert hasattr(self.analyzer, "analyze_file")
 
     def test_detect_file_type_pe(self):
         """Test PE file detection"""
@@ -41,7 +42,7 @@ class TestBinaryAnalysis:
         dos_header = b"MZ" + b"\x00" * 58 + b"\x80\x00\x00\x00"  # MZ + padding + PE offset
         pe_header = b"PE\x00\x00" + b"\x00" * 20  # PE signature + basic header
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.exe', mode='wb') as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".exe", mode="wb") as f:
             f.write(dos_header + pe_header)
             temp_path = f.name
 
@@ -108,7 +109,7 @@ class TestMCPServerBasic:
     def test_mcp_server_initialization(self):
         """Test that MCP server initializes correctly"""
         assert mcp is not None
-        assert hasattr(mcp, 'settings')
+        assert hasattr(mcp, "settings")
 
 
 if __name__ == "__main__":

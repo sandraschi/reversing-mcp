@@ -4,7 +4,6 @@ Logging configuration for IDA Pro MCP
 
 import logging
 import sys
-from pathlib import Path
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -21,12 +20,9 @@ def get_logger(name: str) -> logging.Logger:
         console_handler.setLevel(logging.INFO)
 
         # Format
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         console_handler.setFormatter(formatter)
 
         logger.addHandler(console_handler)
 
     return logger
-

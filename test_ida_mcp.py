@@ -3,11 +3,13 @@
 Test script for IDA Pro MCP functionality
 """
 
-import sys
 import os
-sys.path.insert(0, 'src')
+import sys
+
+sys.path.insert(0, "src")
 
 from ida_pro_mcp.analyzers import BinaryAnalyzer
+
 
 def test_directmedia_setup():
     """Teste Analyse der Directmedia Setup.exe"""
@@ -90,5 +92,6 @@ def test_directmedia_setup():
     print("- Suche nach Directmedia-spezifischen Strings")
     print("- Analysiere Entropie-Spitzen (können komprimierten Code anzeigen)")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test_directmedia_setup()
