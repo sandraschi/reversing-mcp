@@ -101,7 +101,14 @@ async def root():
             "/analyze/upload",
             "/ghidra/status",
             "/ghidra/functions",
-            "/tools/status"
+            "/tools/status",
+            "/llm/list_providers",
+            "/llm/list_models",
+            "/llm/select_model",
+            "/llm/load_model",
+            "/llm/unload_model",
+            "/llm/status",
+            "/llm/health"
         ]
     }
 
@@ -284,6 +291,92 @@ async def disassemble_ghidra_function(address: str):
     except Exception as e:
         logger.error(f"Error disassembling at {address}: {e}")
         raise HTTPException(status_code=500, detail=f"Disassembly failed: {str(e)}")
+
+# LLM Management Endpoints
+@app.post("/llm/list_providers")
+async def list_llm_providers():
+    """List available LLM providers"""
+    try:
+        # Import the LLM tool dynamically
+        from user_advanced_memory_mcp_adn_llm import adn_llm
+
+        result = adn_llm(operation="list_providers")
+        return result
+    except Exception as e:
+        logger.error(f"Error listing LLM providers: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list providers: {str(e)}")
+
+@app.post("/llm/list_models")
+async def list_llm_models(provider: str):
+    """List models for a specific provider"""
+    try:
+        from user_advanced_memory_mcp_adn_llm import adn_llm
+
+        result = adn_llm(operation="list_models", provider=provider)
+        return result
+    except Exception as e:
+        logger.error(f"Error listing models for {provider}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list models: {str(e)}")
+
+@app.post("/llm/select_model")
+async def select_llm_model(provider: str, model: str):
+    """Select a model for use"""
+    try:
+        from user_advanced_memory_mcp_adn_llm import adn_llm
+
+        result = adn_llm(operation="select_model", provider=provider, model=model)
+        return result
+    except Exception as e:
+        logger.error(f"Error selecting model {model} from {provider}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to select model: {str(e)}")
+
+@app.post("/llm/load_model")
+async def load_llm_model(provider: str, model: str):
+    """Load a model into memory"""
+    try:
+        from user_advanced_memory_mcp_adn_llm import adn_llm
+
+        result = adn_llm(operation="load_model", provider=provider, model=model)
+        return result
+    except Exception as e:
+        logger.error(f"Error loading model {model} from {provider}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
+
+@app.post("/llm/unload_model")
+async def unload_llm_model(provider: str, model: Optional[str] = None):
+    """Unload a model from memory"""
+    try:
+        from user_advanced_memory_mcp_adn_llm import adn_llm
+
+        result = adn_llm(operation="unload_model", provider=provider, model=model)
+        return result
+    except Exception as e:
+        logger.error(f"Error unloading model{model and f' {model}' or 's'} from {provider}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to unload model: {str(e)}")
+
+@app.post("/llm/status")
+async def get_llm_status():
+    """Get current LLM status"""
+    try:
+        from user_advanced_memory_mcp_adn_llm import adn_llm
+
+        result = adn_llm(operation="status")
+        return result
+    except Exception as e:
+        logger.error(f"Error getting LLM status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
+
+@app.post("/llm/health")
+async def check_llm_health(provider: str):
+    """Check health of an LLM provider"""
+    try:
+        from user_advanced_memory_mcp_adn_llm import adn_llm
+
+        result = adn_llm(operation="health", provider=provider)
+        return result
+    except Exception as e:
+        logger.error(f"Error checking health for {provider}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to check health: {str(e)}")
 
 # Helper functions
 def calculate_analysis_score(results: Dict[str, Any]) -> float:
