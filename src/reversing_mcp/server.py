@@ -32,9 +32,10 @@ mcp = FastMCP(
     version="0.1.0"
 )
 
-# Import GhidraMCP bridge (after logger is available)
+# Import OUR CUSTOM Ghidra bridge (connects to LaurieWired's plugin)
 try:
     from .bridge_mcp_ghidra import (
+        # These are OUR MCP tools that call THEIR Ghidra plugin via HTTP
         list_methods, list_classes, decompile_function, rename_function,
         rename_data, list_segments, list_imports, list_exports,
         list_namespaces, list_data_items, search_functions_by_name,
@@ -45,10 +46,10 @@ try:
         get_xrefs_to, get_xrefs_from, get_function_xrefs, list_strings
     )
     ghidra_available = True
-    logger.info("GhidraMCP bridge loaded successfully")
+    logger.info("OUR Ghidra bridge loaded successfully (connects to LaurieWired's plugin)")
 except ImportError as e:
     ghidra_available = False
-    logger.warning(f"GhidraMCP bridge not available: {e}")
+    logger.warning(f"OUR Ghidra bridge not available: {e}")
 
 
 class AnalysisResult(BaseModel):

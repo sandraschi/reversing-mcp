@@ -34,6 +34,14 @@
             "expected_functions": ["_start"],
             "description": "Simple x86 assembly program"
         },
+        "classic_game.c": {
+            "language": "c",
+            "compiler": "gcc",
+            "compile_args": ["-o", "classic_game.exe"],
+            "expected_strings": ["Classic Snake Game", "Score:", "Snake Length:", "Game Over!", "Final Score:"],
+            "expected_functions": ["main", "initialize_game", "update_game", "render_board", "check_collision", "place_food", "move_snake", "handle_input", "calculate_score_multiplier", "save_high_score", "load_high_score"],
+            "description": "Classic early Windows-style game with text sprites, game loops, and typical game algorithms"
+        },
         "dangerous/network_suspicious.c": {
             "language": "c",
             "compiler": "gcc",

@@ -1,10 +1,17 @@
-# Ghidra Plugin Setup for Reversing MCP
+# 🐉 Ghidra Plugin Setup for Reversing MCP
 
-## Problem
-The reversing-mcp was unable to find and execute Ghidra for exe file analysis.
+## 🔍 **Architecture: Clear Separation**
 
-## Solution
-We've integrated the proven GhidraMCP plugin architecture from the directmedia-mcp project.
+**IMPORTANT DISTINCTION**:
+- **GhidraMCP.zip**: LaurieWired's proven Ghidra plugin (we use this directly)
+- **bridge_mcp_ghidra.py**: Our custom MCP server that connects to their plugin
+- **server.py**: Our FastMCP 2.13+ integration with all our tools
+
+## Problem Solved
+The reversing-mcp needed reliable Ghidra integration. We use LaurieWired's excellent plugin but built our own MCP layer on top.
+
+## Solution Architecture
+**Hybrid Approach**: Their proven Java plugin + Our modern MCP integration
 
 ## Setup Steps
 
@@ -34,19 +41,22 @@ python -m reversing_mcp.server
 # The server will show ghidra_mcp as available
 ```
 
-## Available Ghidra Tools
+## 🛠️ **Available Ghidra Tools (Our MCP Wrappers)**
 
-Once set up, you have access to these Ghidra analysis tools:
+Once set up, you have access to **our MCP tools** that connect to **their Ghidra plugin**:
 
+### Our MCP Tool Names (wrapping their HTTP API):
 - `ghidra_decompile_function(name)` - Decompile function by name
-- `ghidra_list_functions()` - List all functions
-- `ghidra_get_function_by_address(address)` - Get function at address
-- `ghidra_disassemble_function(address)` - Get assembly code
-- `ghidra_list_strings()` - Extract strings with addresses
-- `ghidra_get_xrefs_to(address)` - Find references to address
-- `ghidra_get_xrefs_from(address)` - Find references from address
-- `ghidra_rename_function(old, new)` - Rename functions
-- `ghidra_set_decompiler_comment(addr, comment)` - Add comments
+- `ghidra_list_functions()` - List all functions in loaded binary
+- `ghidra_get_function_by_address(address)` - Get function at specific address
+- `ghidra_disassemble_function(address)` - Get assembly code for function
+- `ghidra_list_strings()` - Extract strings with memory addresses
+- `ghidra_get_xrefs_to(address)` - Find all references to an address
+- `ghidra_get_xrefs_from(address)` - Find all references from an address
+- `ghidra_rename_function(old, new)` - Rename a function in Ghidra
+- `ghidra_set_decompiler_comment(addr, comment)` - Add comments to decompiled code
+
+**Note**: These are **our FastMCP 2.13+ tools** that call **their Ghidra plugin's HTTP API**.
 
 ### Manual Ghidra Launch
 If you prefer to use Ghidra's GUI directly (rare, since it's complex):
@@ -94,11 +104,32 @@ This provides detailed information about Ghidra's development by the NSA, techni
 - Check that HTTP server is accessible: `curl http://127.0.0.1:8080/`
 - Ensure firewall allows local connections
 
-## Architecture
+## 🏗️ **Architecture: Hybrid Integration**
 
-The integration uses:
-1. **Ghidra Plugin**: Java plugin that exposes Ghidra's analysis engine via HTTP
-2. **Python Bridge**: MCP server that connects to the Ghidra HTTP server
-3. **MCP Tools**: FastMCP-compatible tools for reverse engineering operations
+### Three Distinct Layers:
 
-This approach is much more reliable than Ghidra's headless mode and provides full access to Ghidra's analysis capabilities.
+1. **🐉 Ghidra Plugin** (Theirs - LaurieWired):
+   - Java plugin that runs inside Ghidra
+   - Exposes Ghidra's analysis engine via HTTP on port 8080
+   - **Source**: `GhidraMCP.zip` (directly from their GitHub)
+
+2. **🌉 Python Bridge** (Ours - Custom):
+   - MCP server written in Python using FastMCP 2.13+
+   - Connects to their HTTP server using `requests` library
+   - **Source**: `src/reversing_mcp/bridge_mcp_ghidra.py` (our code)
+
+3. **⚡ MCP Integration** (Ours - Custom):
+   - Imports our bridge and exposes tools via FastMCP
+   - Adds our other reverse engineering tools (strings, entropy, etc.)
+   - **Source**: `src/reversing_mcp/server.py` (our integration)
+
+### Why This Hybrid Approach?
+- **Their plugin is excellent** - no need to reinvent the HTTP server
+- **MCP standards evolved** - we needed FastMCP 2.13+ compatibility
+- **Reliability** - HTTP bridge is more stable than Ghidra's headless mode
+- **Extensibility** - We can add our own tools alongside Ghidra
+
+### Data Flow:
+```
+User → Our MCP Server → Our Bridge → HTTP → Their Ghidra Plugin → Ghidra Analysis
+```

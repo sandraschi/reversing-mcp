@@ -6,6 +6,19 @@
 # ]
 # ///
 
+"""
+OUR CUSTOM MCP BRIDGE - NOT FROM LAURIEWIRED
+
+This is our own MCP server implementation that connects to LaurieWired's
+GhidraMCP plugin via HTTP. We use their excellent Java plugin (GhidraMCP.zip)
+but built our own MCP integration layer for FastMCP 2.13+ compatibility.
+
+Architecture:
+- Their plugin: Runs in Ghidra, provides HTTP API on port 8080
+- Our bridge: MCP server that makes HTTP requests to their plugin
+- Our server.py: Imports this bridge and adds our other RE tools
+"""
+
 import sys
 import requests
 import argparse
