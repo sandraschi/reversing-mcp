@@ -1,0 +1,73 @@
+{
+  "timestamp": 1767026860.3965912,
+  "duration_seconds": 7.643447399139404,
+  "results": {
+    "prerequisites": {
+      "python_version": "3.10.11 (tags/v3.10.11:7d4cc5a, Apr  5 2023, 00:38:17) [MSC v.1929 64 bit (AMD64)]",
+      "project_structure": {
+        "src": {
+          "exists": true,
+          "path": "D:\\Dev\\repos\\reversing-mcp\\src"
+        },
+        "tests": {
+          "exists": true,
+          "path": "D:\\Dev\\repos\\reversing-mcp\\tests"
+        },
+        "tests/fixtures": {
+          "exists": true,
+          "path": "D:\\Dev\\repos\\reversing-mcp\\tests\\fixtures"
+        }
+      },
+      "dependencies": {
+        "fastmcp": {
+          "available": true
+        },
+        "pydantic": {
+          "available": true
+        },
+        "pytest": {
+          "available": true
+        }
+      },
+      "test_fixtures": {
+        "hello_world.c": {
+          "exists": true,
+          "size": 96
+        },
+        "simple_math.c": {
+          "exists": true,
+          "size": 366
+        },
+        "data_structures.c": {
+          "exists": true,
+          "size": 1171
+        },
+        "binaries/minimal.com": {
+          "exists": true,
+          "size": 2
+        },
+        "binaries/hello.com": {
+          "exists": true,
+          "size": 16
+        },
+        "binaries/loop.com": {
+          "exists": true,
+          "size": 2
+        },
+        "binaries/packed_test.bin": {
+          "exists": true,
+          "size": 1024
+        }
+      }
+    },
+    "unit_tests": {
+      "success": true,
+      "return_code": 0,
+      "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.10.11, pytest-8.4.2, pluggy-1.6.0\nrootdir: D:\\Dev\\repos\\reversing-mcp\nconfigfile: pytest.ini\nplugins: anyio-4.11.0, respx-0.22.0, dash-3.2.0, hypothesis-6.148.8, aio-2.0.0, asyncio-1.2.0, cov-7.0.0, html-4.1.1, metadata-3.1.1, mock-3.15.1, timeout-2.4.0, xdist-3.8.0\nasyncio: mode=strict, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 6 items\n\ntests\\test_mcp_server.py ......                                          [100%]\n\n============================== warnings summary ===============================\ntests/test_mcp_server.py::TestMCPServerBasic::test_mcp_server_initialization\n  D:\\Dev\\repos\\reversing-mcp\\tests\\test_mcp_server.py:111: DeprecationWarning: Accessing `.settings` on a FastMCP instance is deprecated. Use the global `fastmcp.settings` instead.\n    assert hasattr(mcp, 'settings')\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================== 6 passed, 1 warning in 2.16s =========================\n",
+      "stderr": "",
+      "command": "C:\\Users\\sandr\\AppData\\Local\\Programs\\Python\\Python310\\python.exe -m pytest tests/test_mcp_server.py",
+      "test_type": "unit"
+    },
+    "error": "'charmap' codec can't encode character '\\U0001f517' in position 0: character maps to <undefined>"
+  }
+}

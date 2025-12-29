@@ -1,0 +1,37 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "maintainers": ["sandraschi"],
+  "name": "reversing-mcp",
+  "description": "Reverse engineering toolkit with Ghidra, radare2, and Directmedia decompressor. Free open-source tools for binary analysis, string extraction, and proprietary format cracking.",
+  "type": "mcp_server",
+  "status": "beta",
+  "framework": "FastMCP 2.13+",
+  "tools": 10,
+  "transport": ["stdio"],
+  "keywords": [
+    "reverse-engineering",
+    "ghidra",
+    "radare2",
+    "binary-analysis",
+    "decompiler",
+    "forensics",
+    "malware-analysis",
+    "directmedia",
+    "fastmcp",
+    "free-tools"
+  ],
+  "features": {
+    "binary_analysis": {
+      "enabled": true,
+      "tools": ["ghidra", "radare2", "binwalk", "file", "strings"]
+    },
+    "decompression": {
+      "enabled": true,
+      "formats": ["directmedia-dki"]
+    },
+    "testing_framework": {
+      "enabled": true,
+      "methodology": "compilation-decompilation-comparison"
+    }
+  }
+}

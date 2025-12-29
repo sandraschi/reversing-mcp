@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.insert(0, 'src')
 
-from ida_pro_mcp.analyzers import BinaryAnalyzer
+from reversing_mcp.analyzers import BinaryAnalyzer
 
 def test_ghidra_integration():
     """Teste Ghidra-Erkennung und -Integration"""

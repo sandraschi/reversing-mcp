@@ -69,6 +69,58 @@
             "expected_functions": ["main", "decompress_payload", "unpack_and_execute", "enumerate_imports"],
             "suspicious_patterns": ["packer_signatures", "runtime_unpacking", "suspicious_imports", "large_payloads"],
             "description": "Simulates packed/compressed malware executables"
+        },
+        "binaries/minimal.com": {
+            "language": "binary",
+            "type": "com",
+            "ready_binary": true,
+            "expected_strings": [],
+            "expected_functions": [],
+            "file_info": {
+                "size": 2,
+                "type": "DOS COM executable",
+                "architecture": "x86"
+            },
+            "description": "Minimal DOS COM file for basic analysis testing"
+        },
+        "binaries/hello.com": {
+            "language": "binary",
+            "type": "com",
+            "ready_binary": true,
+            "expected_strings": ["Hello!"],
+            "expected_functions": [],
+            "file_info": {
+                "size": 16,
+                "type": "DOS COM executable",
+                "architecture": "x86"
+            },
+            "description": "COM file that prints a message"
+        },
+        "binaries/loop.com": {
+            "language": "binary",
+            "type": "com",
+            "ready_binary": true,
+            "expected_strings": [],
+            "expected_functions": [],
+            "file_info": {
+                "size": 2,
+                "type": "DOS COM executable",
+                "architecture": "x86"
+            },
+            "description": "COM file with infinite loop for disassembly testing"
+        },
+        "binaries/packed_test.bin": {
+            "language": "binary",
+            "type": "raw",
+            "ready_binary": true,
+            "expected_strings": [],
+            "expected_functions": [],
+            "file_info": {
+                "size": 1024,
+                "type": "Raw binary data",
+                "entropy_expected": "high"
+            },
+            "description": "High-entropy binary data for entropy analysis testing"
         }
     },
     "test_settings": {

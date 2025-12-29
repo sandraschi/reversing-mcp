@@ -12,12 +12,35 @@ The tests follow this methodology:
 
 ## 🧪 Test Fixtures
 
+### Source Code Fixtures (Compiled to Binaries)
+
 | Fixture | Language | Description | Expected Functions | Expected Strings |
 |---------|----------|-------------|-------------------|------------------|
 | `hello_world.c` | C | Simple Hello World | `main` | "Hello, World!" |
 | `simple_math.c` | C | Functions + arithmetic | `main`, `add_numbers`, `multiply_numbers` | "Sum:", "Product:" |
 | `data_structures.c` | C | Structs, memory, loops | `main`, `create_employee`, `print_employee`, `calculate_bonus` | "Name:", "Age:", "Salary:", "Bonus:" |
 | `simple_asm.asm` | Assembly | x86 assembly program | `_start` | "Hello from assembly!" |
+
+### Binary Test Fixtures (Ready-to-Use)
+
+| Fixture | Type | Size | Description | Expected Analysis |
+|---------|------|------|-------------|------------------|
+| `minimal.com` | COM | 23 bytes | Minimal DOS COM file | Simple DOS program |
+| `hello.com` | COM | 35 bytes | Hello World COM | Prints message |
+| `loop.com` | COM | 28 bytes | Infinite loop | Demonstrates disassembly |
+| `test_pe.exe` | PE | ~2KB | Minimal Windows PE | Standard PE structure |
+| `packed_test.bin` | Raw | 1KB | Packed/compressed data | Entropy analysis |
+
+### Dangerous Test Fixtures (Educational Only)
+
+Located in `tests/fixtures/dangerous/` - these demonstrate malware analysis techniques:
+
+| Fixture | Description | Analysis Focus |
+|---------|-------------|----------------|
+| `filesystem_suspicious.c` | Registry manipulation, hidden files | API hooking, persistence |
+| `network_suspicious.c` | Suspicious network connections | C2 communications, data exfil |
+| `obfuscated_malware.c` | String obfuscation, anti-debugging | Deobfuscation techniques |
+| `packed_executable.c` | Runtime unpacking simulation | Packers, protectors |
 
 ## 🚀 Running Tests
 
@@ -38,26 +61,29 @@ pip install -e ".[dev]"
 
 ### Run All Tests
 ```bash
-# From project root
-python -m pytest tests/
+# Comprehensive test suite (NEW - recommended)
+python tests/comprehensive_test_runner.py --coverage --verbose
 
-# Or use the test runner
+# Original test runner
 python tests/run_tests.py
+
+# Pytest directly
+python -m pytest tests/
 ```
 
 ### Run Specific Tests
 ```bash
-# Test compilation only
-python tests/run_tests.py --compile-only
+# Comprehensive test runner options
+python tests/comprehensive_test_runner.py --unit-only          # Unit tests only
+python tests/comprehensive_test_runner.py --integration-only   # Integration tests only
+python tests/comprehensive_test_runner.py --fixtures-only      # Binary fixtures only
+python tests/comprehensive_test_runner.py --performance-only   # Performance tests only
 
-# Test specific fixture
-python tests/run_tests.py --fixture hello_world.c
-
-# Verbose output
-python tests/run_tests.py --verbose
-
-# With coverage
-python tests/run_tests.py --coverage
+# Original test runner options
+python tests/run_tests.py --compile-only    # Compilation tests only
+python tests/run_tests.py --fixture hello_world.c  # Specific fixture
+python tests/run_tests.py --verbose         # Verbose output
+python tests/run_tests.py --coverage        # With coverage
 ```
 
 ### List Available Fixtures

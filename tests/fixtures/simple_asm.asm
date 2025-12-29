@@ -27,3 +27,8 @@ _start:
     mov eax, 1          ; sys_exit
     mov ebx, 0          ; exit code
     int 0x80            ; syscall
+
+
+
+
+

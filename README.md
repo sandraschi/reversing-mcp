@@ -51,8 +51,61 @@ This project includes a pioneering test framework that:
 
 ### Prerequisites
 - Python 3.10+
+- **Ghidra with GhidraMCP Plugin** (see Ghidra Setup below)
 - Directmedia MCP (install with: `pip install -e ../directmedia-mcp`)
-- Optional: IDA Pro, Ghidra, radare2, binwalk installed
+- Optional: IDA Pro, radare2, binwalk installed
+
+### Ghidra Setup (Required for Ghidra Analysis)
+
+1. **Install Ghidra**: Download and install [Ghidra](https://ghidra-sre.org) if you haven't already
+
+2. **Install GhidraMCP Plugin**:
+   - The plugin is included in this repository: `GhidraMCP.zip`
+   - In Ghidra: `File` → `Install Extensions` → click `+` → select `GhidraMCP.zip`
+   - Restart Ghidra
+   - Enable the plugin: `File` → `Configure` → `Developer` → ensure `GhidraMCP HTTP Server` is checked
+
+3. **Start Ghidra with Plugin**:
+   - Launch Ghidra normally
+   - The GhidraMCP plugin will start an HTTP server on `http://127.0.0.1:8080/`
+   - Load a binary file in Ghidra for analysis
+
+4. **Verify Setup**:
+   ```bash
+   # Start reversing MCP server
+   python -m reversing_mcp.server
+
+   # Check available tools (should show ghidra_mcp as available)
+   ```
+
+5. **Launch Ghidra Manually (Optional)**:
+   ```bash
+   # Launch Ghidra GUI without any file
+   start_ghidra()
+
+   # Launch Ghidra and open a specific binary
+   start_ghidra(file_path="Setup.exe")
+
+   # Launch with custom project name
+   start_ghidra(file_path="Setup.exe", project_name="my_analysis")
+   ```
+
+   See `GHIDRA_PLUGIN_SETUP.md` for detailed setup instructions and troubleshooting.
+
+### Advanced Help & Documentation
+```bash
+# Basic overview
+help()
+
+# Detailed tool descriptions
+help("intermediate")
+
+# Advanced Ghidra expertise, NSA background, references
+help("advanced")
+
+# Ghidra-specific deep-dive only
+help("advanced", "ghidra")
+```
 
 ### Installation
 ```bash
@@ -107,6 +160,20 @@ reversing-mcp
 ### Tool Management
 - `check_tools()` - Check which reverse engineering tools are available
 - `find_functions(file_path, tool)` - Find functions in binaries
+- `start_ghidra(file_path, project_name, wait)` - Launch Ghidra GUI manually
+- `help(level, topic)` - Get comprehensive help (basic/intermediate/advanced)
+
+### GhidraMCP Tools ⭐ **NEW**
+- `ghidra_decompile_function(name)` - Decompile a function by name
+- `ghidra_list_functions()` - List all functions in the loaded binary
+- `ghidra_get_function_by_address(address)` - Get function at specific address
+- `ghidra_disassemble_function(address)` - Get assembly code for a function
+- `ghidra_list_strings()` - List all strings in the binary
+- `ghidra_get_xrefs_to(address)` - Find references to an address
+- `ghidra_get_xrefs_from(address)` - Find references from an address
+- `ghidra_rename_function(old_name, new_name)` - Rename a function
+- `ghidra_set_decompiler_comment(address, comment)` - Add comments to decompiled code
+- `start_ghidra(file_path, project_name, wait)` - Launch Ghidra GUI manually
 
 ## 🧪 **Testing**
 
@@ -124,17 +191,19 @@ pip install pytest pytest-cov
 
 ### Run Tests
 ```bash
-# Run all tests
-pytest
+# Comprehensive test suite (recommended)
+python tests/comprehensive_test_runner.py --coverage
 
-# Use test runner (recommended)
+# Original test runner
 python tests/run_tests.py --verbose
 
-# List available fixtures
-python tests/run_tests.py --fixtures
+# Pytest directly
+pytest
 
-# Test specific fixture
-python tests/run_tests.py --fixture hello_world.c
+# Specific test categories
+python tests/comprehensive_test_runner.py --unit-only
+python tests/comprehensive_test_runner.py --integration-only
+python tests/comprehensive_test_runner.py --fixtures-only
 ```
 
 ### Test Fixtures
