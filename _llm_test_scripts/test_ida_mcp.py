@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, "src")
 
-from ida_pro_mcp.analyzers import BinaryAnalyzer
+from reversing_mcp.analyzers import BinaryAnalyzer
 
 
 def test_directmedia_setup():
@@ -16,7 +16,7 @@ def test_directmedia_setup():
 
     analyzer = BinaryAnalyzer()
 
-    print("IDA Pro MCP - Directmedia Setup.exe Analyse")
+    print("Reversing MCP - Directmedia Setup.exe Analysis")
     print("=" * 60)
 
     # Überprüfe verfügbare Tools

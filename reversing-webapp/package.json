@@ -4,9 +4,9 @@
   "description": "React TypeScript webapp for reverse engineering analysis with Ghidra MCP integration",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 11111",
+    "dev": "next dev -p 10751",
     "build": "next build",
-    "start": "next start -p 11111",
+    "start": "next start -p 10751",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "jest",

@@ -16,7 +16,7 @@ def test_ghidra_integration():
 
     analyzer = BinaryAnalyzer()
 
-    print("IDA Pro MCP - Ghidra Integration Test")
+    print("Reversing MCP - Ghidra Integration Test")
     print("=" * 60)
 
     # Tool-Erkennung

@@ -4,7 +4,11 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-sandraschi/reversing--mcp-blue)](https://github.com/sandraschi/reversing-mcp)
 
-**FastMCP 2.13+ server for reverse engineering with Ghidra + SOTA AI/LLM stack + Modern Web Interface + Directmedia decompression**
+**FastMCP 3.1 server for reverse engineering with Ghidra + local LLM (Ollama) + web UI + Directmedia decompression**
+
+## Primary mission
+
+The main intent of this MCP server and webapp is to **decompile Digitale Bibliothek 5** (`C:\Program Files (x86)\Digitale Bibliothek 5\Digibib5.exe`) to understand **how Directmedia files are read and expanded** (DKI format). The toolkit supports that goal with Ghidra integration (decompilation, xrefs, renaming), binary analysis, and existing Directmedia decompressor logic. See [docs/DIRECTMEDIA_MISSION.md](docs/DIRECTMEDIA_MISSION.md) for the target binary and workflow.
 
 ## 🎯 **Overview**
 
@@ -35,8 +39,10 @@ Reverse engineering exists in the **"grey zone"** of technology - simultaneously
 # One-command setup and launch
 .\start-webapp.ps1
 
-# Access at: http://localhost:11111
-# Backend API: http://localhost:11112
+# Or from fleet (mcp-central-docs): starts\reversing-start.bat
+
+# Access: frontend http://localhost:10751, backend http://localhost:10750 (SOTA ports)
+# Webapp also startable from reversing-webapp: start.bat or .\start.ps1
 ```
 
 ## ✨ **New Features Added**
@@ -72,6 +78,13 @@ reversing-mcp/
 ├── Ghidra Bridge (bridge_mcp_ghidra.py) # Connects to LaurieWired's plugin
 └── Test Suite (tests/)               # CDC validation framework
 ```
+
+### **Ghidra integration**
+
+Reversing-MCP does **not** run Ghidra. It talks to **LaurieWired's GhidraMCP plugin** over HTTP (default `http://127.0.0.1:8080/`). You run Ghidra (GUI), install the plugin, start the plugin's HTTP server, then use `ghidra_*` tools. The plugin runs inside Ghidra and exposes decompilation, listings, and refs.
+
+- **Headless:** The plugin is GUI-oriented. For true headless (CI, batch, no display), use Ghidra's `analyzeHeadless` and scripts, or a PyGhidra-based MCP (e.g. pyghidra-mcp). See [docs/GHIDRA.md](docs/GHIDRA.md) for setup, architecture, and headless options.
+- **Setup check:** Use the MCP tool `ghidra_setup_help(check_connection=True)` to verify the plugin is reachable.
 
 ### **AI/LLM Integration**
 - **Provider Support**: Ollama, LM Studio, OpenAI, Anthropic, Google AI
@@ -184,7 +197,7 @@ cp -r awesome-dos/games/wolf3d tests/fixtures/wolf3d_source/
 
 | Tool | Status | Purpose |
 |------|--------|---------|
-| **Ghidra** | ✅ **REQUIRED** | Primary decompiler and analysis engine |
+| **Ghidra** | ✅ **Via plugin** | Primary decompiler; used via LaurieWired GhidraMCP plugin (HTTP). See [docs/GHIDRA.md](docs/GHIDRA.md). |
 | **radare2** | **NOT USED** | Command-line reverse engineering |
 | **Binwalk** | **NOT USED** | Firmware and binary extraction |
 | **GNU strings** | ✅ **USED** | String extraction |
@@ -218,8 +231,28 @@ Our planned Directmedia-MCP project demonstrates complex legal issues in data fo
 
 **📜 This is not legal advice.** Laws vary dramatically by jurisdiction. Always consult qualified legal counsel.
 
-## 📦 **Installation & Setup**
+## 🚀 Installation
 
+### Prerequisites
+- [uv](https://docs.astral.sh/uv/) installed (RECOMMENDED)
+- Python 3.12+
+
+### 📦 Quick Start
+Run immediately via `uvx`:
+```bash
+uvx reversing-mcp
+```
+
+### 🎯 Claude Desktop Integration
+Add to your `claude_desktop_config.json`:
+```json
+"mcpServers": {
+  "reversing-mcp": {
+    "command": "uv",
+    "args": ["--directory", "D:/Dev/repos/reversing-mcp", "run", "reversing-mcp"]
+  }
+}
+```
 ### **Prerequisites**
 - Python 3.10+ (backend)
 - Node.js 18+ (webapp)
@@ -243,7 +276,7 @@ cd .. && .\start-webapp.ps1
 ## 🔧 **Usage Examples**
 
 ### **Web Interface (Recommended)**
-Access `http://localhost:11111` for the full graphical interface with:
+Access `http://localhost:10751` for the full graphical interface (backend `http://localhost:10750`) with:
 - Drag-and-drop binary analysis
 - Real-time progress monitoring
 - AI/LLM model management

@@ -54,28 +54,33 @@ A modern React TypeScript web application for reverse engineering analysis with 
    - Create Python virtual environment
    - Install backend dependencies
    - Install Node.js dependencies
-   - Start FastAPI backend on port 11112
-   - Start Next.js frontend on port 11111
+   - Start FastAPI backend on port 10750 (SOTA)
+   - Start Next.js frontend on port 10751 (SOTA)
+
+   **From fleet:** run `mcp-central-docs\starts\reversing-start.bat` (same ports). Or from this folder: `start.bat` or `.\start.ps1`.
 
 ### Manual Setup (Alternative)
 
 If you prefer manual control:
 
 1. **Backend Setup:**
-   ```bash
-   cd reversing-webapp/api
+   ```powershell
+   cd reversing-webapp\api
    python -m venv venv
-   .\venv\Scripts\activate  # Windows
+   .\venv\Scripts\Activate.ps1
    pip install -r requirements.txt
-   python main.py  # Starts on port 11112 with hot reload enabled
+   $env:REVERSING_API_PORT = "10750"
+   python main.py
    ```
+   Backend listens on 10750 (default).
 
 2. **Frontend Setup:**
-   ```bash
+   ```powershell
    cd reversing-webapp
    npm install
-   npm run dev  # Starts on port 11111
+   npm run dev
    ```
+   Frontend runs on 10751.
 
 ## Usage
 
@@ -128,8 +133,8 @@ If you prefer manual control:
 Create `.env.local` in the frontend directory:
 
 ```bash
-# API Configuration
-NEXT_PUBLIC_API_URL=http://localhost:11112
+# API Configuration (SOTA backend port 10750)
+NEXT_PUBLIC_API_URL=http://localhost:10750
 
 # Development
 NODE_ENV=development
@@ -199,7 +204,7 @@ pytest
 2. **Frontend won't start:**
    - Ensure Node.js 18+ is installed
    - Check `node_modules` installation
-   - Clear `.next` cache: `rm -rf .next`
+   - Clear `.next` cache: `Remove-Item -Recurse -Force .next`
 
 3. **Analysis fails:**
    - Check if MCP server is running

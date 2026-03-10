@@ -16,6 +16,7 @@ Test Fixtures:
 """
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -52,6 +53,10 @@ class ReverseEngineeringTestFixture:
         """Get configuration for a specific fixture"""
         return self.config["fixtures"][fixture_name]
 
+    def _is_tool_available(self, tool_name: str) -> bool:
+        """Check if a tool is available in the system PATH"""
+        return shutil.which(tool_name) is not None
+
     def compile_fixture(self, fixture_name: str) -> Path | None:
         """
         Compile a test fixture and return the path to the binary
@@ -59,9 +64,24 @@ class ReverseEngineeringTestFixture:
         fixture_config = self.get_fixture_config(fixture_name)
         source_path = self.fixtures_dir / fixture_name
 
+        # Handle ready-made binaries
+        if fixture_config.get("ready_binary", False):
+            if source_path.exists():
+                return source_path
+            print(f"Ready binary not found: {source_path}")
+            return None
+
         if not source_path.exists():
             print(f"Source file not found: {source_path}")
             return None
+
+        # Check compiler availability
+        compiler = fixture_config.get("compiler")
+        if not self._is_tool_available(compiler):
+            # Try with .exe extension for Windows if not found
+            if not self._is_tool_available(f"{compiler}.exe"):
+                print(f"Compiler not available: {compiler}")
+                return None
 
         # Determine output name
         if fixture_config["language"] == "asm":
@@ -169,7 +189,9 @@ class ReverseEngineeringTestFixture:
 
         # Check strings
         if "strings" in analysis_result:
-            found_strings = analysis_result["strings"]
+            raw_strings = analysis_result["strings"]
+            # Handle both simple strings and structured StringResult dicts
+            found_strings = [s if isinstance(s, str) else s.get("string", "") for s in raw_strings]
             expected_strings = fixture_config.get("expected_strings", [])
 
             for expected in expected_strings:
@@ -196,7 +218,8 @@ class ReverseEngineeringTestFixture:
             )
 
             # Check for specific suspicious indicators
-            found_strings = analysis_result.get("strings", [])
+            raw_strings = analysis_result.get("strings", [])
+            found_strings = [s if isinstance(s, str) else s.get("string", "") for s in raw_strings]
             string_content = " ".join(found_strings).lower()
 
             for pattern in suspicious_patterns:
@@ -302,30 +325,78 @@ def test_fixture():
     return ReverseEngineeringTestFixture(fixtures_dir, config_file)
 
 
-@pytest.mark.parametrize("fixture_name", ["hello_world.c", "simple_math.c", "data_structures.c"])
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "hello_world.c",
+        "simple_math.c",
+        "data_structures.c",
+        "binaries/minimal.com",
+        "binaries/hello.com",
+        "binaries/loop.com",
+    ],
+)
 def test_compilation_pipeline(test_fixture, fixture_name):
     """Test that fixtures can be compiled successfully"""
+    config = test_fixture.get_fixture_config(fixture_name)
+    if not config.get("ready_binary", False):
+        compiler = config.get("compiler")
+        if not test_fixture._is_tool_available(compiler):
+            pytest.skip(f"Compiler {compiler} not available")
+
     binary_path = test_fixture.compile_fixture(fixture_name)
     assert binary_path is not None, f"Failed to compile {fixture_name}"
     assert binary_path.exists(), f"Binary not created for {fixture_name}"
 
 
-@pytest.mark.parametrize("fixture_name", ["hello_world.c", "simple_math.c", "data_structures.c"])
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "hello_world.c",
+        "simple_math.c",
+        "data_structures.c",
+        "binaries/minimal.com",
+        "binaries/hello.com",
+        "binaries/loop.com",
+    ],
+)
 def test_binary_analysis(test_fixture, fixture_name):
     """Test that compiled binaries can be analyzed"""
     binary_path = test_fixture.compile_fixture(fixture_name)
-    assert binary_path is not None, f"Prerequisite: compilation failed for {fixture_name}"
+    if binary_path is None:
+        config = test_fixture.get_fixture_config(fixture_name)
+        if not config.get("ready_binary", False):
+            compiler = config.get("compiler")
+            if not test_fixture._is_tool_available(compiler):
+                pytest.skip(f"Prerequisite failed: Compiler {compiler} not available")
+        assert binary_path is not None, f"Prerequisite: compilation failed for {fixture_name}"
 
     analysis_result = test_fixture.analyze_binary(binary_path)
     assert analysis_result is not None, f"Analysis failed for {fixture_name}"
     assert "file_info" in analysis_result, f"No file info in analysis for {fixture_name}"
 
 
-@pytest.mark.parametrize("fixture_name", ["hello_world.c", "simple_math.c", "data_structures.c"])
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "hello_world.c",
+        "simple_math.c",
+        "data_structures.c",
+        "binaries/minimal.com",
+        "binaries/hello.com",
+        "binaries/loop.com",
+    ],
+)
 def test_analysis_validation(test_fixture, fixture_name):
     """Test that analysis results contain expected information"""
     binary_path = test_fixture.compile_fixture(fixture_name)
-    assert binary_path is not None, f"Prerequisite: compilation failed for {fixture_name}"
+    if binary_path is None:
+        config = test_fixture.get_fixture_config(fixture_name)
+        if not config.get("ready_binary", False):
+            compiler = config.get("compiler")
+            if not test_fixture._is_tool_available(compiler):
+                pytest.skip(f"Prerequisite failed: Compiler {compiler} not available")
+        assert binary_path is not None, f"Prerequisite: compilation failed for {fixture_name}"
 
     analysis_result = test_fixture.analyze_binary(binary_path)
     validation_result = test_fixture.validate_analysis(analysis_result, fixture_name)
@@ -346,7 +417,8 @@ def test_fixture_discovery(test_fixture):
     for fixture_name in fixture_names:
         config = test_fixture.get_fixture_config(fixture_name)
         assert "language" in config, f"No language specified for {fixture_name}"
-        assert "compiler" in config, f"No compiler specified for {fixture_name}"
+        if not config.get("ready_binary", False):
+            assert "compiler" in config, f"No compiler specified for {fixture_name}"
         assert "description" in config, f"No description for {fixture_name}"
 
 
@@ -381,13 +453,13 @@ if __name__ == "__main__":
         for name in fixture_manager.get_fixture_names():
             config = fixture_manager.get_fixture_config(name)
             print(f"  - {name}: {config['description']}")
-        exit(0)
+        sys.exit(0)
 
     if args.fixture:
         if args.fixture not in fixture_manager.get_fixture_names():
             print(f"Fixture not found: {args.fixture}")
             print("Available fixtures:", fixture_manager.get_fixture_names())
-            exit(1)
+            sys.exit(1)
 
         print(f"Testing fixture: {args.fixture}")
         binary_path = fixture_manager.compile_fixture(args.fixture)

@@ -35,9 +35,10 @@ function Start-Backend {
         pip install -r requirements.txt
 
         # Start the backend
-        Write-Host "🔧 Starting API server on http://localhost:11112" -ForegroundColor Green
+        Write-Host "Starting API server on http://localhost:10750" -ForegroundColor Green
         Start-Job -ScriptBlock {
             param($path)
+            $env:REVERSING_API_PORT = "10750"
             Push-Location $path
             & ".\venv\Scripts\Activate.ps1"
             python main.py
@@ -64,7 +65,7 @@ function Start-Frontend {
         }
 
         # Start the frontend
-        Write-Host "⚛️  Starting Next.js dev server on http://localhost:11111" -ForegroundColor Green
+        Write-Host "Starting Next.js dev server on http://localhost:10751" -ForegroundColor Green
         Start-Job -ScriptBlock {
             param($path)
             Push-Location $path
@@ -102,10 +103,10 @@ if ($frontendJob -and $frontendJob.State -eq "Running") {
     Write-Host "❌ Frontend: Failed to start" -ForegroundColor Red
 }
 
-Write-Host "`n🎯 Access the webapp at:" -ForegroundColor Green
-Write-Host "   Frontend: http://localhost:11111" -ForegroundColor White
-Write-Host "   Backend API: http://localhost:11112" -ForegroundColor White
-Write-Host "   API Docs: http://localhost:11112/docs" -ForegroundColor White
+Write-Host "`nAccess the webapp at (SOTA ports 10750/10751):" -ForegroundColor Green
+Write-Host "   Frontend: http://localhost:10751" -ForegroundColor White
+Write-Host "   Backend API: http://localhost:10750" -ForegroundColor White
+Write-Host "   API Docs: http://localhost:10750/docs" -ForegroundColor White
 
 Write-Host "`n💡 To stop services, run: Get-Job | Stop-Job" -ForegroundColor Yellow
 Write-Host "💡 To check status: Get-Job" -ForegroundColor Yellow

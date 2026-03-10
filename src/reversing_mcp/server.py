@@ -13,6 +13,9 @@ from pydantic import BaseModel, Field
 
 from .analyzers import BinaryAnalyzer
 from .logging_config import get_logger
+from .transport import run_server, run_server_async
+
+logger = get_logger("reversing_mcp")
 
 # Try to import Directmedia decompressor (optional)
 try:
@@ -22,8 +25,6 @@ try:
 except ImportError:
     directmedia_available = False
     logger.warning("Directmedia decompressor not available - Directmedia tools will be disabled")
-
-logger = get_logger("reversing_mcp")
 
 # Initialize MCP server
 mcp = FastMCP("ReversingMCP", version="0.1.0")
@@ -661,7 +662,7 @@ async def start_ghidra(
         # Launch Ghidra
         if wait:
             # Synchronous launch - wait for Ghidra to exit
-            result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=300)
+            result = run_server(subprocess, server_name="ReversingMCP")
             return {
                 "success": True,
                 "ghidra_path": ghidra_path,
@@ -715,6 +716,59 @@ async def start_ghidra(
 
 
 @mcp.tool()
+async def ghidra_setup_help(check_connection: bool = True) -> dict[str, Any]:
+    """
+    Ghidra setup and status: how this server uses Ghidra and whether the plugin is reachable.
+
+    Reversing MCP does not run Ghidra itself. All ghidra_* tools talk to LaurieWired's
+    GhidraMCP plugin, which runs inside Ghidra and exposes an HTTP API (default port 8080).
+    You must have Ghidra running with a binary loaded and the GhidraMCP plugin started.
+
+    Args:
+        check_connection: If True (default), probe the plugin URL to report if it is reachable.
+
+    Returns:
+        Dict with setup_requirements, plugin_url, steps, bridge_loaded, and plugin_reachable.
+    """
+    import requests
+
+    out: dict[str, Any] = {
+        "how_ghidra_is_used": (
+            "This server does not embed or run Ghidra. It calls LaurieWired's GhidraMCP "
+            "plugin via HTTP. The plugin runs inside Ghidra and exposes decompilation, "
+            "disassembly, listings, and refs. All ghidra_* tools send requests to that API."
+        ),
+        "plugin_url": "http://127.0.0.1:8080/",
+        "setup_steps": [
+            "1. Install Ghidra (https://ghidra-sre.org/).",
+            "2. Install the GhidraMCP plugin (e.g. GhidraMCP.zip) into Ghidra.",
+            "3. Start Ghidra, create or open a project, import a binary, run analysis.",
+            "4. Start the GhidraMCP HTTP server from the plugin (default port 8080).",
+            "5. Then use ghidra_* tools from this MCP server; they will call the plugin.",
+        ],
+        "bridge_loaded": ghidra_available,
+        "plugin_reachable": None,
+    }
+    if not ghidra_available:
+        out["plugin_reachable"] = False
+        out["note"] = "Ghidra bridge failed to load (see server logs). Plugin check skipped."
+        return out
+    if not check_connection:
+        return out
+    try:
+        from . import bridge_mcp_ghidra
+
+        url = getattr(bridge_mcp_ghidra, "ghidra_server_url", "http://127.0.0.1:8080/")
+        r = requests.get(url, timeout=2)
+        out["plugin_reachable"] = r.ok
+        out["plugin_status_code"] = r.status_code
+    except Exception as e:
+        out["plugin_reachable"] = False
+        out["plugin_error"] = str(e)
+    return out
+
+
+@mcp.tool()
 async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
     """
     Get comprehensive help information about Reversing MCP tools and capabilities.
@@ -735,11 +789,17 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
         help_content = {
             "level": "basic",
             "description": "Essential tools and quick start guide",
+            "ghidra_note": (
+                "Ghidra tools (ghidra_*) use Ghidra via LaurieWired's GhidraMCP plugin over HTTP. "
+                "You must have Ghidra running with the plugin started (default: http://127.0.0.1:8080/). "
+                "Use ghidra_setup_help() for setup steps and status."
+            ),
             "quick_start": [
                 "1. Check available tools: check_tools()",
-                "2. Analyze a binary: analyze_binary('file.exe', ['static', 'strings'])",
-                "3. Extract strings: extract_strings('file.exe', min_length=8)",
-                "4. Get hex dump: get_hexdump('file.exe', offset=0, length=256)",
+                "2. Ghidra setup/status: ghidra_setup_help()",
+                "3. Analyze a binary: analyze_binary('file.exe', ['static', 'strings'])",
+                "4. Extract strings: extract_strings('file.exe', min_length=8)",
+                "5. Get hex dump: get_hexdump('file.exe', offset=0, length=256)",
             ],
             "essential_tools": [
                 "analyze_binary - Full binary analysis",
@@ -747,6 +807,7 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
                 "get_hexdump - View raw bytes",
                 "analyze_entropy - Detect compression/encryption",
                 "check_tools - See what's available",
+                "ghidra_setup_help - Ghidra plugin setup and connectivity",
             ],
             "next_steps": "Use level='intermediate' for detailed tool descriptions",
         }
@@ -769,15 +830,22 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
                     "analyze_pe_file(file_path) - Windows PE analysis",
                     "file_type detection, permissions, timestamps",
                 ],
-                "ghidra_tools": [
-                    "ghidra_decompile_function(name) - Decompile to C code",
-                    "ghidra_list_functions() - All functions in loaded binary",
-                    "ghidra_disassemble_function(addr) - Assembly code",
-                    "ghidra_list_strings() - Extract strings with addresses",
-                    "ghidra_get_xrefs_to/from(addr) - Cross-references",
-                ]
-                if ghidra_available
-                else ["Ghidra tools not available - install GhidraMCP plugin"],
+                "ghidra_tools": (
+                    [
+                        "ghidra_decompile_function(name) - Decompile to C code",
+                        "ghidra_list_functions() - All functions in loaded binary",
+                        "ghidra_disassemble_function(addr) - Assembly code",
+                        "ghidra_list_strings() - Extract strings with addresses",
+                        "ghidra_get_xrefs_to/from(addr) - Cross-references",
+                        "ghidra_setup_help() - Setup requirements and plugin status",
+                    ]
+                    if ghidra_available
+                    else ["Ghidra tools not available - install GhidraMCP plugin"]
+                ),
+                "ghidra_requirements": (
+                    "Ghidra tools talk to LaurieWired's GhidraMCP plugin inside Ghidra via HTTP "
+                    "(default http://127.0.0.1:8080/). Run Ghidra, load a binary, install and start the plugin."
+                ),
             },
             "workflows": {
                 "malware_analysis": [
@@ -804,7 +872,11 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
             "architecture": {
                 "core_components": {
                     "BinaryAnalyzer": "Multi-tool analysis orchestrator supporting IDA, Ghidra, radare2",
-                    "GhidraMCP Integration": "HTTP-based Ghidra plugin bridge for headless analysis",
+                    "GhidraMCP Integration": (
+                        "Ghidra is used via LaurieWired's GhidraMCP plugin over HTTP (default :8080). "
+                        "This server does not run Ghidra; it calls the plugin API. Run Ghidra with the "
+                        "plugin started to use ghidra_* tools. See ghidra_setup_help()."
+                    ),
                     "Directmedia Decompressor": "Legacy .DKI format reverse engineering",
                 },
                 "tool_detection": {
@@ -819,7 +891,7 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
                     "purpose": "Professional reverse engineering and malware analysis framework",
                     "license": "Apache License 2.0 (free and open source)",
                     "first_release": "2019, evolved from IDA Pro acquisition",
-                    "current_version": "Ghidra 11.x series (as of 2024)",
+                    "current_version": "Ghidra 11.x / 12.x (12.0+ for PyGhidra 3.x headless scripting)",
                 },
                 "technical_capabilities": {
                     "decompiler": "Industry-leading retargetable decompiler with multi-architecture support",
@@ -829,10 +901,10 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
                     "collaboration": "Multi-user analysis with version control integration",
                 },
                 "integration_architecture": {
-                    "mcp_bridge": "HTTP server plugin exposes Ghidra API to MCP clients",
-                    "headless_mode": "Non-GUI analysis for automation and CI/CD pipelines",
-                    "api_endpoints": "RESTful API for decompilation, disassembly, cross-references",
-                    "real_time_sync": "Live synchronization between GUI and headless sessions",
+                    "mcp_bridge": "LaurieWired plugin runs inside Ghidra GUI, exposes HTTP API; this server calls it.",
+                    "headless_note": "This integration requires Ghidra GUI + plugin. For headless use analyzeHeadless or PyGhidra/pyghidra-mcp.",
+                    "api_endpoints": "Plugin provides decompilation, disassembly, cross-references over HTTP (default :8080).",
+                    "see_ghidra_docs": "docs/GHIDRA.md in this repo for setup and headless options.",
                 },
                 "competitive_advantages": {
                     "vs_ida_pro": "Free alternative with comparable analysis quality, though steeper learning curve",
@@ -885,7 +957,7 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
             "troubleshooting": {
                 "common_issues": {
                     "memory_usage": "Large binaries may require increased heap size (-Xmx8G)",
-                    "analysis_time": "Complex binaries can take hours; use headless mode for batch processing",
+                    "analysis_time": "Complex binaries can take hours; for batch use analyzeHeadless or PyGhidra (see docs/GHIDRA.md)",
                     "false_positives": "Decompiler may produce incorrect code; always verify manually",
                     "plugin_conflicts": "Third-party plugins can cause stability issues",
                 },
@@ -939,8 +1011,24 @@ def main():
     logger.info("Starting Reversing MCP Server")
 
     # Run MCP server
-    mcp.run()
+    run_server(mcp, server_name="ReversingMCP")
 
+
+# ASGI app for uvicorn (e.g. web_sota: uvicorn reversing_mcp.server:app)
+# Mounts MCP at /mcp; add more routes here if needed.
+try:
+    from fastapi import FastAPI as _FastAPI
+
+    _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.1.0")
+
+    @_http_app.get("/health")
+    async def _health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    _http_app.mount("/mcp", mcp.http_app())
+    app = _http_app
+except ImportError:
+    pass  # no app when fastapi not installed; uvicorn reversing_mcp.server:app will fail
 
 if __name__ == "__main__":
     main()

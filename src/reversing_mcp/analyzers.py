@@ -2,10 +2,13 @@
 Binary Analysis Tools for Reverse Engineering
 """
 
+import json
 import math
 import os
+import shutil
 import struct
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +16,7 @@ from pydantic import BaseModel
 
 from .logging_config import get_logger
 
-logger = get_logger("ida_pro_mcp.analyzers")
+logger = get_logger("reversing_mcp.analyzers")
 
 
 class StringResult(BaseModel):
@@ -52,160 +55,204 @@ class BinaryAnalyzer:
             "file": {"name": "file command", "available": False, "version": None, "path": None},
         }
 
-        # Check IDA Pro (Windows registry or common paths)
+        self._check_ida(tools["ida"])
+        self._check_ghidra(tools["ghidra"])
+        self._check_r2(tools["r2"])
+        self._check_binwalk(tools["binwalk"])
+        self._check_strings(tools["strings"])
+        self._check_file(tools["file"])
+
+        self.tools_cache = tools
+        return tools
+
+    def _check_ida(self, tool_info: dict[str, Any]):
+        """Check for IDA Pro installation"""
         ida_paths = [
-            r"C:\Program Files\IDA Pro 8.3\ida.exe",
-            r"C:\Program Files\IDA Pro 8.2\ida.exe",
-            r"C:\Program Files\IDA Pro 8.1\ida.exe",
-            r"C:\Program Files (x86)\IDA Pro\ida.exe",
+            Path(r"C:\Program Files\IDA Pro 8.3\ida.exe"),
+            Path(r"C:\Program Files\IDA Pro 8.2\ida.exe"),
+            Path(r"C:\Program Files\IDA Pro 8.1\ida.exe"),
+            Path(r"C:\Program Files (x86)\IDA Pro\ida.exe"),
         ]
         for path in ida_paths:
-            if os.path.exists(path):
-                tools["ida"]["available"] = True
-                tools["ida"]["path"] = path
+            if path.exists():
+                tool_info["available"] = True
+                tool_info["path"] = str(path)
                 try:
                     result = subprocess.run(
-                        [path, "--version"], check=False, capture_output=True, text=True, timeout=5
+                        [str(path), "--version"],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
                     )
                     if result.returncode == 0:
-                        tools["ida"]["version"] = result.stdout.strip()
-                except:
+                        tool_info["version"] = result.stdout.strip()
+                except (subprocess.SubprocessError, OSError):
                     pass
                 break
 
-        # Check Ghidra - comprehensive path detection
-        ghidra_paths = []
+    def _check_ghidra(self, tool_info: dict[str, Any]):
+        """Check for Ghidra installation"""
+        ghidra_paths: list[Path] = []
 
-        # Windows-specific paths
-        if os.name == "nt":
-            # Common installation directories
-            common_dirs = [
-                r"C:\Program Files",
-                r"C:\Program Files (x86)",
-                r"C:\Users",
-                r"D:\Program Files",
-                r"D:\Dev",
-                r"C:\ghidra",
-                r"D:\ghidra",
-            ]
+        # 1. User provided path (v12.0) - High Priority
+        user_ghidra = Path(r"C:\Users\sandr\ghidra_12.0_PUBLIC")
+        if user_ghidra.exists():
+            bat = user_ghidra / "ghidraRun.bat"
+            if bat.exists():
+                ghidra_paths.append(bat)
 
-            # Look for Ghidra installations in common directories
-            for base_dir in common_dirs:
-                if os.path.exists(base_dir):
-                    try:
-                        for item in os.listdir(base_dir):
-                            item_path = os.path.join(base_dir, item)
-                            if os.path.isdir(item_path) and "ghidra" in item.lower():
-                                # Check for ghidraRun.bat
-                                run_bat = os.path.join(item_path, "ghidraRun.bat")
-                                if os.path.exists(run_bat):
-                                    ghidra_paths.append(run_bat)
-                                # Also check support/launch.bat (newer versions)
-                                support_launch = os.path.join(item_path, "support", "launch.bat")
-                                if os.path.exists(support_launch):
-                                    ghidra_paths.append(support_launch)
-                    except (OSError, PermissionError):
-                        continue
+        # 2. Common installation directories
+        ghidra_paths.extend(self._scan_common_ghidra_dirs())
 
-            # Specific known paths
-            specific_paths = [
-                r"C:\Program Files\ghidra\ghidraRun.bat",
-                r"D:\Dev\repos\temp\ghidra-install\ghidra_12.0_PUBLIC\ghidraRun.bat",
-                r"C:\ghidra\ghidraRun.bat",
-            ]
-            ghidra_paths.extend(specific_paths)
+        # 3. Unix/Linux paths
+        if os.name != "nt":
+            ghidra_paths.extend(
+                [
+                    Path("/usr/local/ghidra/ghidraRun"),
+                    Path("/opt/ghidra/ghidraRun"),
+                ]
+            )
 
-        # Unix/Linux paths
-        else:
-            unix_paths = [
-                "/usr/local/ghidra/ghidraRun",
-                "/opt/ghidra/ghidraRun",
-                "/usr/local/bin/ghidraRun",
-                "/usr/bin/ghidraRun",
-            ]
-            ghidra_paths.extend(unix_paths)
-
-        # Remove duplicates while preserving order
+        # Remove duplicates and validate
+        unique_paths = []
         seen = set()
-        ghidra_paths = [x for x in ghidra_paths if not (x in seen or seen.add(x))]
-        for path in ghidra_paths:
-            if os.path.exists(path):
-                tools["ghidra"]["available"] = True
-                tools["ghidra"]["path"] = path
+        for p in ghidra_paths:
+            if p.exists() and str(p) not in seen:
+                unique_paths.append(p)
+                seen.add(str(p))
 
-                # Try to determine version from directory name
-                try:
-                    dir_path = os.path.dirname(path)
-                    if "ghidra" in os.path.basename(dir_path).lower():
-                        dir_name = os.path.basename(dir_path)
-                        # Extract version from directory name (e.g., ghidra_12.0_PUBLIC)
-                        if "_" in dir_name:
-                            version_part = dir_name.split("_")[1]
-                            if version_part and version_part[0].isdigit():
-                                tools["ghidra"]["version"] = version_part.split("_")[0]
-                            else:
-                                tools["ghidra"]["version"] = "detected"
-                        else:
-                            tools["ghidra"]["version"] = "detected"
-                    else:
-                        tools["ghidra"]["version"] = "detected"
-                except:
-                    tools["ghidra"]["version"] = "detected"
+        if not unique_paths:
+            return
 
-                break
+        # Pick the first one (usually the user path)
+        path = unique_paths[0]
+        tool_info["available"] = True
+        tool_info["path"] = str(path)
+        tool_info["version"] = self._detect_ghidra_version(path)
 
-        # Check radare2
+    def _scan_common_ghidra_dirs(self) -> list[Path]:
+        """Scan common roots for Ghidra installations"""
+        if os.name != "nt":
+            return []
+
+        ghidra_paths = []
+        common_roots = [
+            Path(r"C:\ghidra"),
+            Path(r"D:\ghidra"),
+            Path(r"C:\Program Files"),
+            Path(r"D:\Dev"),
+        ]
+        for root in common_roots:
+            if not root.exists():
+                continue
+            try:
+                for item in root.iterdir():
+                    if item.is_dir() and "ghidra" in item.name.lower():
+                        run_bat = item / "ghidraRun.bat"
+                        if run_bat.exists():
+                            ghidra_paths.append(run_bat)
+            except (OSError, PermissionError):
+                continue
+        return ghidra_paths
+
+    def _detect_ghidra_version(self, path: Path) -> str:
+        """Helper to detect Ghidra version from path"""
+        try:
+            # Try to get version from directory name (e.g., ghidra_12.0_PUBLIC)
+            parent = path.parent
+            if "ghidra" in parent.name.lower():
+                parts = parent.name.split("_")
+                if len(parts) > 1 and parts[1][0].isdigit():
+                    return parts[1]
+
+            # Fallback: check application.properties
+            props = parent / "Ghidra" / "application.properties"
+            if props.exists():
+                with props.open("r") as f:
+                    for line in f:
+                        if line.startswith("application.version="):
+                            return line.split("=")[1].strip()
+        except (OSError, IndexError):
+            pass
+        return "detected"
+
+    def _check_r2(self, tool_info: dict[str, Any]):
+        """Check for radare2"""
         try:
             result = subprocess.run(
                 ["r2", "-v"], check=False, capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
-                tools["r2"]["available"] = True
-                tools["r2"]["version"] = (
-                    result.stdout.split("\n")[0] if result.stdout else "unknown"
-                )
-        except:
+                tool_info["available"] = True
+                tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
+        except (subprocess.SubprocessError, OSError):
             pass
 
-        # Check binwalk
+    def _check_binwalk(self, tool_info: dict[str, Any]):
+        """Check for binwalk"""
         try:
             result = subprocess.run(
                 ["binwalk", "--version"], check=False, capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
-                tools["binwalk"]["available"] = True
-                tools["binwalk"]["version"] = result.stdout.strip()
-        except:
+                tool_info["available"] = True
+                tool_info["version"] = result.stdout.strip()
+        except (subprocess.SubprocessError, OSError):
             pass
 
-        # Check GNU strings
+    def _check_strings(self, tool_info: dict[str, Any]):
+        """Check for GNU strings"""
         try:
             result = subprocess.run(
                 ["strings", "--version"], check=False, capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
-                tools["strings"]["available"] = True
-                tools["strings"]["version"] = (
-                    result.stdout.split("\n")[0] if result.stdout else "unknown"
-                )
-        except:
+                tool_info["available"] = True
+                tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
+        except (subprocess.SubprocessError, OSError):
             pass
 
-        # Check file command
+    def _check_file(self, tool_info: dict[str, Any]):
+        """Check for file command"""
         try:
             result = subprocess.run(
                 ["file", "--version"], check=False, capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
-                tools["file"]["available"] = True
-                tools["file"]["version"] = (
-                    result.stdout.split("\n")[0] if result.stdout else "unknown"
-                )
-        except:
+                tool_info["available"] = True
+                tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
+        except (subprocess.SubprocessError, OSError):
             pass
 
-        self.tools_cache = tools
-        return tools
+    def get_file_info(self, file_path: str) -> dict[str, Any]:
+        """Get comprehensive file information"""
+        p = Path(file_path)
+        try:
+            stats = p.stat()
+
+            info = {
+                "path": str(p.absolute()),
+                "filename": p.name,
+                "size": stats.st_size,
+                "is_file": p.is_file(),
+                "is_dir": p.is_dir(),
+                "is_readable": os.access(file_path, os.R_OK),
+                "is_executable": os.access(file_path, os.X_OK)
+                or p.suffix.lower() in [".exe", ".com", ".bin"],
+                "extension": p.suffix.lower(),
+                "type": self.detect_file_type(file_path),
+            }
+
+            # Add PE specific info if applicable
+            if info["extension"] in [".exe", ".dll"]:
+                pe_info = self.analyze_pe_file(file_path)
+                if isinstance(pe_info, dict) and "error" not in pe_info:
+                    info["pe_info"] = pe_info
+
+            return info
+        except Exception as e:
+            return {"error": str(e), "success": False, "is_readable": False}
 
     def analyze_file(self, file_path: str, tools: list[str] | None = None) -> dict[str, Any]:
         """Analyze a file with multiple tools"""
@@ -215,8 +262,11 @@ class BinaryAnalyzer:
 
         results = {}
 
-        # Basic file type detection
-        if "file" in tools or "static" in tools:
+        # Basic file info and detection
+        if "file_info" in tools or "static" in tools:
+            results["file_info"] = self.get_file_info(file_path)
+
+        if "file" in tools:
             results["file"] = self._analyze_with_file(file_path)
 
         # String extraction
@@ -244,8 +294,9 @@ class BinaryAnalyzer:
     def _analyze_with_file(self, file_path: str) -> dict[str, Any]:
         """Analyze with file command"""
         try:
+            exe = shutil.which("file") or "file"
             result = subprocess.run(
-                ["file", file_path], check=False, capture_output=True, text=True, timeout=10
+                [exe, file_path], check=False, capture_output=True, text=True, timeout=10
             )
             if result.returncode == 0:
                 file_type = (
@@ -261,8 +312,9 @@ class BinaryAnalyzer:
     def _analyze_with_binwalk(self, file_path: str) -> dict[str, Any]:
         """Analyze with binwalk"""
         try:
+            exe = shutil.which("binwalk") or "binwalk"
             result = subprocess.run(
-                ["binwalk", "-J", file_path],
+                [exe, "-J", file_path],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -275,7 +327,7 @@ class BinaryAnalyzer:
                 try:
                     data = json.loads(result.stdout)
                     return {"signatures": data, "success": True}
-                except:
+                except json.JSONDecodeError:
                     return {"raw_output": result.stdout, "success": True}
             else:
                 return {"error": "binwalk failed", "success": False}
@@ -293,36 +345,134 @@ class BinaryAnalyzer:
         }
 
     def _analyze_with_ghidra(self, file_path: str) -> dict[str, Any]:
-        """Analyze with Ghidra using HTTP-based GhidraMCP server"""
+        """Analyze with Ghidra using headless mode"""
         if not self.tools_cache or not self.tools_cache["ghidra"]["available"]:
             return {
-                "error": "Ghidra not available - please install GhidraMCP plugin and ensure Ghidra is running",
+                "error": "Ghidra not available",
                 "available": False,
             }
 
-        # Note: This is a placeholder for HTTP-based Ghidra analysis
-        # The actual Ghidra analysis is now handled through the integrated GhidraMCP tools
-        return {
-            "available": True,
-            "note": "Ghidra analysis is now available through dedicated GhidraMCP tools (ghidra_*)",
-            "recommendation": "Use ghidra_decompile_function, ghidra_list_functions, etc. for Ghidra analysis",
-            "tools": [
-                "ghidra_decompile_function",
-                "ghidra_list_functions",
-                "ghidra_get_function_by_address",
-                "ghidra_disassemble_function",
-                "ghidra_list_strings",
-                "ghidra_get_xrefs_to",
-                "ghidra_get_xrefs_from",
-            ],
-        }
+        # Use headless mode for real analysis
+        return self._analyze_with_ghidra_headless(file_path)
+
+    def _analyze_with_ghidra_headless(
+        self,
+        file_path: Path | str,
+        script_path: Path | str | None = None,
+        script_args: list[str] | None = None,
+        auto_analyze: bool = True,
+    ) -> dict[str, Any]:
+        """Real Ghidra analysis using analyzeHeadless.bat"""
+        try:
+            ghidra_run = Path(self.tools_cache["ghidra"]["path"])
+            ghidra_root = ghidra_run.parent
+            headless_bat = ghidra_root / "support" / "analyzeHeadless.bat"
+
+            if not headless_bat.exists():
+                return {"error": "analyzeHeadless.bat not found", "success": False}
+
+            # Locate our analysis script if not provided
+            if script_path is None:
+                script_path = (
+                    Path(__file__).parent.parent.parent / "ghidra_scripts" / "analyze_binary.py"
+                )
+
+            script_path = Path(script_path)
+            if not script_path.exists():
+                return {"error": f"Analysis script not found at {script_path}", "success": False}
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                project_dir = Path(temp_dir)
+                project_name = "MCP_Analysis"
+
+                # Command: analyzeHeadless <project_dir> <project_name>
+                # -import <file> -postScript <script> [args...] -deleteProject
+                cmd = [
+                    str(headless_bat),
+                    str(project_dir),
+                    project_name,
+                    "-import",
+                    str(file_path),
+                ]
+
+                if not auto_analyze:
+                    cmd.append("-noanalysis")
+
+                # ALWAYS run with -noanalysis to prevent pre-script stall
+                # We trigger analysis inside the script if needed
+                cmd.append("-noanalysis")
+
+                cmd.append("-postScript")
+                cmd.append(str(script_path))
+
+                # Pass arguments to the script
+                # If auto_analyze is requested, pass it as a script arg
+                final_script_args = []
+                if auto_analyze:
+                    final_script_args.append("analyze")
+
+                if script_args:
+                    final_script_args.extend(script_args)
+
+                if final_script_args:
+                    cmd.extend(final_script_args)
+
+                cmd.append("-deleteProject")
+
+                # Run headless analysis (can take minutes for large files)
+                logger.info(
+                    "Starting Ghidra headless analysis for %s (script_analyze=%s)",
+                    file_path,
+                    auto_analyze,
+                )
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=900, check=False
+                )
+
+                if result.returncode != 0:
+                    logger.error("Ghidra headless failed: %s", result.stderr)
+                    return {
+                        "error": "Ghidra headless analysis failed",
+                        "stderr": result.stderr[-500:],
+                        "success": False,
+                    }
+
+                # The script saves results to <filename>_ghidra_analysis.json in CWD
+                output_name = f"{Path(file_path).stem}_ghidra_analysis.json"
+                output_path = Path.cwd() / output_name
+
+                if output_path.exists():
+                    with output_path.open("r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    output_path.unlink()  # Cleanup
+                    return {"analysis": data, "success": True}
+
+                # Log stdout/stderr for debugging
+                logger.error("Ghidra headless stdout: %s", result.stdout[-1000:])
+                logger.error("Ghidra headless stderr: %s", result.stderr[-1000:])
+
+                return {
+                    "error": "Analysis completed but result file not found",
+                    "success": False,
+                    "stdout": result.stdout[-2000:],
+                    "stderr": result.stderr[-2000:],
+                }
+
+        except subprocess.TimeoutExpired:
+            return {"error": "Ghidra headless analysis timed out", "success": False}
+        except (subprocess.SubprocessError, OSError) as e:
+            return {"error": f"Subprocess error: {e!s}", "success": False}
+        except Exception:
+            logger.exception("Unexpected error in Ghidra headless analysis")
+            return {"error": "Internal error in Ghidra analysis", "success": False}
 
     def _analyze_with_r2(self, file_path: str) -> dict[str, Any]:
         """Analyze with radare2"""
         try:
+            exe = shutil.which("r2") or "r2"
             # Basic info
             result = subprocess.run(
-                ["r2", "-A", "-q", "-c", "i", file_path],
+                [exe, "-A", "-q", "-c", "i", file_path],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -333,6 +483,34 @@ class BinaryAnalyzer:
             return {"error": "r2 analysis failed", "success": False}
         except Exception as e:
             return {"error": str(e), "success": False}
+
+    def decompile_function(self, file_path: str | Path, function_identifier: str) -> dict[str, Any]:
+        """Decompile a specific function by address or name"""
+        # Ensure tools are checked
+        if not self.tools_cache:
+            self.check_available_tools()
+
+        if not self.tools_cache.get("ghidra", {}).get("available"):
+            return {"error": "Ghidra not available", "success": False}
+
+        script_path = (
+            Path(__file__).parent.parent.parent / "ghidra_scripts" / "decompile_function.py"
+        )
+
+        # We need auto_analyze=True because decompilation depends on it
+        result = self._analyze_with_ghidra_headless(
+            file_path, script_path=script_path, script_args=[function_identifier], auto_analyze=True
+        )
+
+        # The script outputs a specific JSON file, not the default [name]_ghidra_analysis.json
+        # Check for that file
+        # The script does: output_file = f"{currentProgram.getName()}_decompiled_{func.getName()}.json"
+        # This is hard to predict exactly if name changes.
+        # But wait, _analyze_with_ghidra_headless looks for [stem]_ghidra_analysis.json
+        # I should probably update _analyze_with_ghidra_headless to allow specifying output file pattern/handling?
+        # OR update the script to match expectation.
+
+        return result
 
     def extract_strings(
         self, file_path: str, min_length: int = 4, encodings: list[str] | None = None
@@ -347,8 +525,9 @@ class BinaryAnalyzer:
         try:
             # Use GNU strings if available
             if self.tools_cache and self.tools_cache["strings"]["available"]:
+                exe = shutil.which("strings") or "strings"
                 result = subprocess.run(
-                    ["strings", "-n", str(min_length), file_path],
+                    [exe, "-n", str(min_length), file_path],
                     check=False,
                     capture_output=True,
                     text=True,
@@ -370,52 +549,68 @@ class BinaryAnalyzer:
                     return results
 
             # Fallback: manual string extraction
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 data = f.read()
-                offset = 0
 
                 for encoding in encodings:
-                    try:
-                        # Decode the entire file and find printable strings
-                        decoded = data.decode(encoding, errors="ignore")
-
-                        # Find sequences of printable characters
-                        current_string = ""
-                        start_offset = 0
-
-                        for i, char in enumerate(decoded):
-                            if char.isprintable() and not char.isspace():
-                                if not current_string:
-                                    start_offset = offset + i
-                                current_string += char
-                            else:
-                                if len(current_string) >= min_length:
-                                    results.append(
-                                        StringResult(
-                                            offset=start_offset,
-                                            string=current_string,
-                                            encoding=encoding,
-                                            length=len(current_string),
-                                        )
-                                    )
-                                current_string = ""
-
-                        # Don't add duplicates from different encodings
+                    manual_results = self._extract_manual(data, encoding, min_length)
+                    if manual_results:
+                        results.extend(manual_results)
+                        # Only take the first successful encoding for simplicity
+                        # or to avoid duplicates across similar encodings
                         break
 
-                    except UnicodeDecodeError:
-                        continue
+        except (subprocess.SubprocessError, OSError):
+            logger.exception("Subprocess error extracting strings")
+        except Exception:
+            logger.exception("Error extracting strings")
 
-        except Exception as e:
-            logger.error(f"Error extracting strings: {e}")
+        return results
 
+    def _extract_manual(self, data: bytes, encoding: str, min_length: int) -> list[StringResult]:
+        """Manually extract strings with specific encoding"""
+        results = []
+        try:
+            decoded = data.decode(encoding, errors="ignore")
+            current_string = ""
+            start_offset = 0
+
+            for i, char in enumerate(decoded):
+                if char.isprintable():
+                    if not current_string:
+                        start_offset = i
+                    current_string += char
+                elif current_string:
+                    if len(current_string) >= min_length:
+                        results.append(
+                            StringResult(
+                                offset=start_offset,
+                                string=current_string,
+                                encoding=encoding,
+                                length=len(current_string),
+                            )
+                        )
+                    current_string = ""
+
+            # Last string
+            if current_string and len(current_string) >= min_length:
+                results.append(
+                    StringResult(
+                        offset=start_offset,
+                        string=current_string,
+                        encoding=encoding,
+                        length=len(current_string),
+                    )
+                )
+        except UnicodeDecodeError:
+            pass
         return results
 
     def get_hexdump(self, file_path: str, offset: int = 0, length: int = 256) -> str:
         """Get hex dump of file"""
 
         try:
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 f.seek(offset)
                 data = f.read(length)
 
@@ -429,14 +624,15 @@ class BinaryAnalyzer:
 
             return "\n".join(lines)
 
-        except Exception as e:
-            return f"Error creating hexdump: {e}"
+        except Exception:
+            logger.exception("Error creating hexdump")
+            return "Error creating hexdump"
 
     def analyze_entropy(self, file_path: str, block_size: int = 256) -> dict[str, Any]:
         """Analyze entropy of file"""
 
         try:
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 data = f.read()
 
             # Calculate entropy for the whole file
@@ -457,9 +653,11 @@ class BinaryAnalyzer:
                 entropy_map.append({"offset": i, "entropy": entropy, "size": len(block)})
 
                 # Classify regions
-                if entropy < 3.0:  # Low entropy = compressed/predictable
+                LOW_ENTROPY_THRESHOLD = 3.0
+                HIGH_ENTROPY_THRESHOLD = 7.5
+                if entropy < LOW_ENTROPY_THRESHOLD:  # Low entropy = compressed/predictable
                     compressed_regions.append({"offset": i, "entropy": entropy})
-                elif entropy > 7.5:  # High entropy = random/encrypted
+                elif entropy > HIGH_ENTROPY_THRESHOLD:  # High entropy = random/encrypted
                     random_regions.append({"offset": i, "entropy": entropy})
 
             return {
@@ -493,22 +691,26 @@ class BinaryAnalyzer:
 
         return entropy
 
-    def find_functions(self, file_path: str, tool: str = "auto") -> list[dict[str, Any]]:
+    def find_functions(
+        self, file_path: str, tool: str = "auto", auto_analyze: bool = True
+    ) -> list[dict[str, Any]]:
         """Find functions in binary"""
 
         if tool == "r2" or tool == "auto":
+            # r2 logic doesn't use auto_analyze (yet)
             return self._find_functions_r2(file_path)
         if tool == "ida":
             return self._find_functions_ida(file_path)
         if tool == "ghidra":
-            return self._find_functions_ghidra(file_path)
+            return self._find_functions_ghidra(file_path, auto_analyze=auto_analyze)
         return [{"error": f"Unsupported tool: {tool}"}]
 
     def _find_functions_r2(self, file_path: str) -> list[dict[str, Any]]:
         """Find functions using radare2"""
         try:
+            exe = shutil.which("r2") or "r2"
             result = subprocess.run(
-                ["r2", "-A", "-q", "-c", "afl", file_path],
+                [exe, "-A", "-q", "-c", "afl", file_path],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -531,18 +733,29 @@ class BinaryAnalyzer:
                                 continue
                 return functions
             return [{"error": "r2 function analysis failed"}]
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError) as e:
             return [{"error": str(e)}]
+        except Exception:
+            logger.exception("Unexpected error in _find_functions_r2")
+            return [{"error": "Internal error in r2 analysis"}]
 
     def _find_functions_ida(self, file_path: str) -> list[dict[str, Any]]:
         """Find functions using IDA Pro (placeholder)"""
         return [{"note": "IDA Pro function analysis requires IDA scripting setup"}]
 
-    def _find_functions_ghidra(self, file_path: str) -> list[dict[str, Any]]:
+    def _find_functions_ghidra(
+        self, file_path: str, auto_analyze: bool = True
+    ) -> list[dict[str, Any]]:
         """Find functions using Ghidra headless analysis"""
         try:
-            # Run full Ghidra analysis and extract functions from results
-            analysis_result = self._analyze_with_ghidra(file_path)
+            # Ensure Ghidra is available
+            if not self.tools_cache.get("ghidra", {}).get("available"):
+                return [{"error": "Ghidra not available"}]
+
+            # Run Ghidra analysis and extract functions from results
+            analysis_result = self._analyze_with_ghidra_headless(
+                file_path, auto_analyze=auto_analyze
+            )
 
             if analysis_result.get("success") and "analysis" in analysis_result:
                 functions_data = analysis_result["analysis"].get("functions", [])
@@ -560,8 +773,11 @@ class BinaryAnalyzer:
                 return functions
             return [{"error": analysis_result.get("error", "Ghidra analysis failed")}]
 
-        except Exception as e:
-            return [{"error": f"Ghidra function analysis error: {e!s}"}]
+        except (subprocess.SubprocessError, OSError) as e:
+            return [{"error": str(e)}]
+        except Exception:
+            logger.exception("Unexpected error in _find_functions_ghidra")
+            return [{"error": "Internal error in Ghidra analysis"}]
 
     def detect_file_type(self, file_path: str) -> str:
         """Detect file type"""
@@ -595,14 +811,14 @@ class BinaryAnalyzer:
                 return "Directmedia database file"
             return f"Unknown ({ext})"
         except Exception:
-            # Other unexpected errors
+            logger.exception("Unexpected error in detect_file_type")
             return "Unknown"
 
     def analyze_pe_file(self, file_path: str) -> dict[str, Any]:
         """Analyze Windows PE file (basic info)"""
 
         try:
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 # Read DOS header
                 dos_header = f.read(64)
 

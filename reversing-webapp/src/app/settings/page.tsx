@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { API_BASE } from '@/app/api/config'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -55,7 +56,7 @@ export default function SettingsPage() {
     setIsStartingGhidra(true)
     try {
       // Call the start Ghidra endpoint
-      const response = await fetch('http://localhost:3001/start_ghidra', {
+      const response = await fetch(`${API_BASE}/start_ghidra`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -85,7 +86,7 @@ export default function SettingsPage() {
 
       // Also check Ghidra status
       try {
-        const response = await fetch('http://localhost:3001/ghidra/status')
+        const response = await fetch(`${API_BASE}/ghidra/status`)
         if (response.ok) {
           const ghidraData = await response.json()
           setGhidraStatus(ghidraData)
@@ -104,7 +105,7 @@ export default function SettingsPage() {
   // LLM Management Functions
   const handleListProviders = async () => {
     try {
-      const response = await fetch('http://localhost:3001/llm/list_providers', {
+      const response = await fetch(`${API_BASE}/llm/list_providers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -119,7 +120,7 @@ export default function SettingsPage() {
   const handleListModels = async (provider: string) => {
     setIsLoadingModels(true)
     try {
-      const response = await fetch('http://localhost:3001/llm/list_models', {
+      const response = await fetch(`${API_BASE}/llm/list_models`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider })
@@ -136,7 +137,7 @@ export default function SettingsPage() {
 
   const handleSelectModel = async (provider: string, model: string) => {
     try {
-      await fetch('http://localhost:3001/llm/select_model', {
+      await fetch(`${API_BASE}/llm/select_model`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, model })
@@ -152,7 +153,7 @@ export default function SettingsPage() {
   const handleLoadModel = async (provider: string, model: string) => {
     setIsLoadingLLM(true)
     try {
-      await fetch('http://localhost:3001/llm/load_model', {
+      await fetch(`${API_BASE}/llm/load_model`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, model })
@@ -170,7 +171,7 @@ export default function SettingsPage() {
   const handleUnloadModel = async (provider: string, model?: string) => {
     setIsUnloadingLLM(true)
     try {
-      await fetch('http://localhost:3001/llm/unload_model', {
+      await fetch(`${API_BASE}/llm/unload_model`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, model })
@@ -187,7 +188,7 @@ export default function SettingsPage() {
 
   const handleCheckLLMStatus = async () => {
     try {
-      const response = await fetch('http://localhost:3001/llm/status', {
+      const response = await fetch(`${API_BASE}/llm/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -202,7 +203,7 @@ export default function SettingsPage() {
 
   const handleCheckLLMHealth = async (provider: string) => {
     try {
-      const response = await fetch('http://localhost:3001/llm/health', {
+      const response = await fetch(`${API_BASE}/llm/health`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider })

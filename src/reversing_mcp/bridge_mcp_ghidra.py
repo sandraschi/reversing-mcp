@@ -1,39 +1,48 @@
-# /// script
-# requires-python = ">=3.10"
-# dependencies = [
-#     "requests>=2,<3",
-#     "mcp>=1.2.0,<2",
-# ]
-# ///
-
 """
-OUR CUSTOM MCP BRIDGE - NOT FROM LAURIEWIRED
+OUR CUSTOM GHIDRA PLUGIN CLIENT - NOT FROM LAURIEWIRED
 
-This is our own MCP server implementation that connects to LaurieWired's
-GhidraMCP plugin via HTTP. We use their excellent Java plugin (GhidraMCP.zip)
-but built our own MCP integration layer for FastMCP 2.13+ compatibility.
+Plain HTTP client that connects to LaurieWired's GhidraMCP plugin.
+Tool registration is done in server.py (FastMCP 3.1). This module
+only provides callables used by the main MCP server.
 
 Architecture:
-- Their plugin: Runs in Ghidra, provides HTTP API on port 8080
-- Our bridge: MCP server that makes HTTP requests to their plugin
-- Our server.py: Imports this bridge and adds our other RE tools
+- Plugin: Runs in Ghidra, provides HTTP API on port 8080
+- This module: HTTP requests to the plugin
+- server.py: Registers ghidra_* tools that call these functions
 """
 
-import argparse
 import logging
 from urllib.parse import urljoin
 
 import requests
-from mcp.server.fastmcp import FastMCP
 
 DEFAULT_GHIDRA_SERVER = "http://127.0.0.1:8080/"
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("ghidra-mcp")
-
-# Initialize ghidra_server_url with default value
 ghidra_server_url = DEFAULT_GHIDRA_SERVER
+
+
+async def check_ghidra_status() -> dict:
+    """
+    Check if the GhidraMCP plugin HTTP server is reachable.
+    Returns dict with available, http_server_running, http_port.
+    """
+    try:
+        r = requests.get(ghidra_server_url, timeout=2)
+        return {
+            "available": True,
+            "version": None,
+            "http_server_running": r.ok,
+            "http_port": 8080,
+        }
+    except Exception:
+        return {
+            "available": True,
+            "version": None,
+            "http_server_running": False,
+            "http_port": 8080,
+        }
 
 
 def safe_get(endpoint: str, params: dict = None) -> list:
@@ -70,7 +79,6 @@ def safe_post(endpoint: str, data: dict | str) -> str:
         return f"Request failed: {e!s}"
 
 
-@mcp.tool()
 def list_methods(offset: int = 0, limit: int = 100) -> list:
     """
     List all function names in the program with pagination.
@@ -78,7 +86,6 @@ def list_methods(offset: int = 0, limit: int = 100) -> list:
     return safe_get("methods", {"offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def list_classes(offset: int = 0, limit: int = 100) -> list:
     """
     List all namespace/class names in the program with pagination.
@@ -86,7 +93,6 @@ def list_classes(offset: int = 0, limit: int = 100) -> list:
     return safe_get("classes", {"offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def decompile_function(name: str) -> str:
     """
     Decompile a specific function by name and return the decompiled C code.
@@ -94,7 +100,6 @@ def decompile_function(name: str) -> str:
     return safe_post("decompile", name)
 
 
-@mcp.tool()
 def rename_function(old_name: str, new_name: str) -> str:
     """
     Rename a function by its current name to a new user-defined name.
@@ -102,7 +107,6 @@ def rename_function(old_name: str, new_name: str) -> str:
     return safe_post("renameFunction", {"oldName": old_name, "newName": new_name})
 
 
-@mcp.tool()
 def rename_data(address: str, new_name: str) -> str:
     """
     Rename a data label at the specified address.
@@ -110,7 +114,6 @@ def rename_data(address: str, new_name: str) -> str:
     return safe_post("renameData", {"address": address, "newName": new_name})
 
 
-@mcp.tool()
 def list_segments(offset: int = 0, limit: int = 100) -> list:
     """
     List all memory segments in the program with pagination.
@@ -118,7 +121,6 @@ def list_segments(offset: int = 0, limit: int = 100) -> list:
     return safe_get("segments", {"offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def list_imports(offset: int = 0, limit: int = 100) -> list:
     """
     List imported symbols in the program with pagination.
@@ -126,7 +128,6 @@ def list_imports(offset: int = 0, limit: int = 100) -> list:
     return safe_get("imports", {"offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def list_exports(offset: int = 0, limit: int = 100) -> list:
     """
     List exported functions/symbols with pagination.
@@ -134,7 +135,6 @@ def list_exports(offset: int = 0, limit: int = 100) -> list:
     return safe_get("exports", {"offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def list_namespaces(offset: int = 0, limit: int = 100) -> list:
     """
     List all non-global namespaces in the program with pagination.
@@ -142,7 +142,6 @@ def list_namespaces(offset: int = 0, limit: int = 100) -> list:
     return safe_get("namespaces", {"offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def list_data_items(offset: int = 0, limit: int = 100) -> list:
     """
     List defined data labels and their values with pagination.
@@ -150,7 +149,6 @@ def list_data_items(offset: int = 0, limit: int = 100) -> list:
     return safe_get("data", {"offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def search_functions_by_name(query: str, offset: int = 0, limit: int = 100) -> list:
     """
     Search for functions whose name contains the given substring.
@@ -160,7 +158,6 @@ def search_functions_by_name(query: str, offset: int = 0, limit: int = 100) -> l
     return safe_get("searchFunctions", {"query": query, "offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def rename_variable(function_name: str, old_name: str, new_name: str) -> str:
     """
     Rename a local variable within a function.
@@ -170,7 +167,6 @@ def rename_variable(function_name: str, old_name: str, new_name: str) -> str:
     )
 
 
-@mcp.tool()
 def get_function_by_address(address: str) -> str:
     """
     Get a function by its address.
@@ -178,7 +174,6 @@ def get_function_by_address(address: str) -> str:
     return "\n".join(safe_get("get_function_by_address", {"address": address}))
 
 
-@mcp.tool()
 def get_current_address() -> str:
     """
     Get the address currently selected by the user.
@@ -186,7 +181,6 @@ def get_current_address() -> str:
     return "\n".join(safe_get("get_current_address"))
 
 
-@mcp.tool()
 def get_current_function() -> str:
     """
     Get the function currently selected by the user.
@@ -194,7 +188,6 @@ def get_current_function() -> str:
     return "\n".join(safe_get("get_current_function"))
 
 
-@mcp.tool()
 def list_functions() -> list:
     """
     List all functions in the database.
@@ -202,7 +195,6 @@ def list_functions() -> list:
     return safe_get("list_functions")
 
 
-@mcp.tool()
 def decompile_function_by_address(address: str) -> str:
     """
     Decompile a function at the given address.
@@ -210,7 +202,6 @@ def decompile_function_by_address(address: str) -> str:
     return "\n".join(safe_get("decompile_function", {"address": address}))
 
 
-@mcp.tool()
 def disassemble_function(address: str) -> list:
     """
     Get assembly code (address: instruction; comment) for a function.
@@ -218,7 +209,6 @@ def disassemble_function(address: str) -> list:
     return safe_get("disassemble_function", {"address": address})
 
 
-@mcp.tool()
 def set_decompiler_comment(address: str, comment: str) -> str:
     """
     Set a comment for a given address in the function pseudocode.
@@ -226,7 +216,6 @@ def set_decompiler_comment(address: str, comment: str) -> str:
     return safe_post("set_decompiler_comment", {"address": address, "comment": comment})
 
 
-@mcp.tool()
 def set_disassembly_comment(address: str, comment: str) -> str:
     """
     Set a comment for a given address in the function disassembly.
@@ -234,7 +223,6 @@ def set_disassembly_comment(address: str, comment: str) -> str:
     return safe_post("set_disassembly_comment", {"address": address, "comment": comment})
 
 
-@mcp.tool()
 def rename_function_by_address(function_address: str, new_name: str) -> str:
     """
     Rename a function by its address.
@@ -244,7 +232,6 @@ def rename_function_by_address(function_address: str, new_name: str) -> str:
     )
 
 
-@mcp.tool()
 def set_function_prototype(function_address: str, prototype: str) -> str:
     """
     Set a function's prototype.
@@ -254,7 +241,6 @@ def set_function_prototype(function_address: str, prototype: str) -> str:
     )
 
 
-@mcp.tool()
 def set_local_variable_type(function_address: str, variable_name: str, new_type: str) -> str:
     """
     Set a local variable's type.
@@ -269,7 +255,6 @@ def set_local_variable_type(function_address: str, variable_name: str, new_type:
     )
 
 
-@mcp.tool()
 def get_xrefs_to(address: str, offset: int = 0, limit: int = 100) -> list:
     """
     Get all references to the specified address (xref to).
@@ -285,7 +270,6 @@ def get_xrefs_to(address: str, offset: int = 0, limit: int = 100) -> list:
     return safe_get("xrefs_to", {"address": address, "offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def get_xrefs_from(address: str, offset: int = 0, limit: int = 100) -> list:
     """
     Get all references from the specified address (xref from).
@@ -301,7 +285,6 @@ def get_xrefs_from(address: str, offset: int = 0, limit: int = 100) -> list:
     return safe_get("xrefs_from", {"address": address, "offset": offset, "limit": limit})
 
 
-@mcp.tool()
 def get_function_xrefs(name: str, offset: int = 0, limit: int = 100) -> list:
     """
     Get all references to the specified function by name.
@@ -317,86 +300,35 @@ def get_function_xrefs(name: str, offset: int = 0, limit: int = 100) -> list:
     return safe_get("function_xrefs", {"name": name, "offset": offset, "limit": limit})
 
 
-@mcp.tool()
-def list_strings(offset: int = 0, limit: int = 2000, filter: str = None) -> list:
+def list_strings(offset: int = 0, limit: int = 2000, filter_str: str | None = None) -> list:
     """
     List all defined strings in the program with their addresses.
 
     Args:
         offset: Pagination offset (default: 0)
         limit: Maximum number of strings to return (default: 2000)
-        filter: Optional filter to match within string content
+        filter_str: Optional filter to match within string content
 
     Returns:
         List of strings with their addresses
     """
-    params = {"offset": offset, "limit": limit}
-    if filter:
-        params["filter"] = filter
+    params: dict = {"offset": offset, "limit": limit}
+    if filter_str:
+        params["filter"] = filter_str
     return safe_get("strings", params)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="MCP server for Ghidra")
-    parser.add_argument(
-        "--ghidra-server",
-        type=str,
-        default=DEFAULT_GHIDRA_SERVER,
-        help=f"Ghidra server URL, default: {DEFAULT_GHIDRA_SERVER}",
-    )
-    parser.add_argument(
-        "--mcp-host",
-        type=str,
-        default="127.0.0.1",
-        help="Host to run MCP server on (only used for sse), default: 127.0.0.1",
-    )
-    parser.add_argument(
-        "--mcp-port", type=int, help="Port to run MCP server on (only used for sse), default: 8081"
-    )
-    parser.add_argument(
-        "--transport",
-        type=str,
-        default="stdio",
-        choices=["stdio", "sse"],
-        help="Transport protocol for MCP, default: stdio",
-    )
-    args = parser.parse_args()
+def main() -> None:
+    """Run the main Reversing MCP server; this module is a client only."""
+    import sys
+    from pathlib import Path
 
-    # Use the global variable to ensure it's properly updated
-    global ghidra_server_url
-    if args.ghidra_server:
-        ghidra_server_url = args.ghidra_server
+    root = Path(__file__).resolve().parent.parent.parent
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    from reversing_mcp.server import main as server_main
 
-    if args.transport == "sse":
-        try:
-            # Set up logging
-            log_level = logging.INFO
-            logging.basicConfig(level=log_level)
-            logging.getLogger().setLevel(log_level)
-
-            # Configure MCP settings
-            mcp.settings.log_level = "INFO"
-            if args.mcp_host:
-                mcp.settings.host = args.mcp_host
-            else:
-                mcp.settings.host = "127.0.0.1"
-
-            if args.mcp_port:
-                mcp.settings.port = args.mcp_port
-            else:
-                mcp.settings.port = 8081
-
-            logger.info(f"Connecting to Ghidra server at {ghidra_server_url}")
-            logger.info(
-                f"Starting MCP server on http://{mcp.settings.host}:{mcp.settings.port}/sse"
-            )
-            logger.info(f"Using transport: {args.transport}")
-
-            mcp.run(transport="sse")
-        except KeyboardInterrupt:
-            logger.info("Server stopped by user")
-    else:
-        mcp.run()
+    server_main()
 
 
 if __name__ == "__main__":

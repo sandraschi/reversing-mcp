@@ -1,0 +1,16 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-8.4.2, pluggy-1.6.0 -- C:\Users\sandr\AppData\Local\Programs\Python\Python310\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default'
+metadata: {'Python': '3.10.11', 'Platform': 'Windows-10-10.0.28020-SP0', 'Packages': {'pytest': '8.4.2', 'pluggy': '1.6.0'}, 'Plugins': {'anyio': '4.11.0', 'respx': '0.22.0', 'dash': '3.2.0', 'hypothesis': '6.148.8', 'aio': '2.0.0', 'asyncio': '1.2.0', 'cov': '7.0.0', 'html': '4.1.1', 'metadata': '3.1.1', 'mock': '3.15.1', 'timeout': '2.4.0', 'xdist': '3.8.0'}, 'JAVA_HOME': 'C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.1.8-hotspot'}
+rootdir: D:\Dev\repos\reversing-mcp
+configfile: pytest.ini
+plugins: anyio-4.11.0, respx-0.22.0, dash-3.2.0, hypothesis-6.148.8, aio-2.0.0, asyncio-1.2.0, cov-7.0.0, html-4.1.1, metadata-3.1.1, mock-3.15.1, timeout-2.4.0, xdist-3.8.0
+asyncio: mode=strict, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 20 items / 17 deselected / 3 selected
+
+tests/test_reverse_engineering_pipeline.py::test_compilation_pipeline[binaries/hello.com] PASSED [ 33%]
+tests/test_reverse_engineering_pipeline.py::test_binary_analysis[binaries/hello.com] PASSED [ 66%]
+tests/test_reverse_engineering_pipeline.py::test_analysis_validation[binaries/hello.com] PASSED [100%]
+
+====================== 3 passed, 17 deselected in 0.64s =======================

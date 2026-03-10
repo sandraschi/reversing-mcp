@@ -15,7 +15,8 @@ import {
   Github,
   Cpu,
   Shield,
-  Code
+  Code,
+  MessageSquare
 } from 'lucide-react'
 
 export default function HomePage() {
@@ -26,13 +27,16 @@ export default function HomePage() {
         <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           Reversing MCP
         </h1>
-        <p className="text-xl text-muted-foreground mb-6">
+        <p className="text-xl text-muted-foreground mb-2">
           Professional Binary Analysis with Ghidra MCP Integration
         </p>
+        <p className="text-sm text-muted-foreground/80 italic mb-6">
+          NSA-grade binary archaeology. No agency endorsement implied.
+        </p>
         <div className="flex justify-center gap-2 mb-8">
-          <Badge variant="secondary">FastMCP 2.13+</Badge>
+          <Badge variant="secondary">FastMCP 3.1</Badge>
           <Badge variant="secondary">Ghidra Integration</Badge>
-          <Badge variant="secondary">React TypeScript</Badge>
+          <Badge variant="secondary">Ollama Chat</Badge>
         </div>
       </div>
 
@@ -81,15 +85,53 @@ export default function HomePage() {
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-2">
               <Settings className="w-6 h-6 text-purple-600" />
             </div>
-            <CardTitle className="text-lg">Ghidra Setup</CardTitle>
+            <CardTitle className="text-lg">Ghidra</CardTitle>
             <CardDescription>
-              Setup Ghidra integration for decompilation
+              Ghidra integration and plugin setup
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/ghidra">
+              <Button variant="outline" className="w-full">
+                Ghidra
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mb-2">
+              <MessageSquare className="w-6 h-6 text-amber-600" />
+            </div>
+            <CardTitle className="text-lg">Chat</CardTitle>
+            <CardDescription>
+              Talk to local LLM (Ollama). Set model in Settings.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/chat">
+              <Button variant="outline" className="w-full">
+                Open Chat
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center mb-2">
+              <Settings className="w-6 h-6 text-slate-600" />
+            </div>
+            <CardTitle className="text-lg">Settings</CardTitle>
+            <CardDescription>
+              Ollama model list/select, Ghidra and backend
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/settings">
               <Button variant="outline" className="w-full">
-                Setup Ghidra
+                Settings
               </Button>
             </Link>
           </CardContent>
@@ -187,7 +229,7 @@ export default function HomePage() {
           </Link>
         </div>
         <p className="text-sm">
-          Built with FastMCP 2.13+ • React TypeScript • Ghidra Plugin Integration
+          Built with FastMCP 3.1 • React TypeScript • Ollama • Ghidra Plugin
         </p>
       </div>
     </div>

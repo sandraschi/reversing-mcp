@@ -19,11 +19,33 @@ class BinaryAnalyzer(HeadlessScript):
     def __init__(self):
         super().__init__()
         self.results = {"functions": [], "strings": [], "symbols": [], "analysis_info": {}}
+        self.log_file = Path.cwd() / "ghidra_debug.log"
+        self._log("Initializing BinaryAnalyzer")
+
+    def _log(self, msg):
+        try:
+            with open(self.log_file, "a") as f:
+                f.write(f"{msg}\n")
+            print(f"[Ghidra] {msg}")
+        except:
+            print(f"[Ghidra] {msg}")
 
     def run(self):
         """Main analysis function"""
         try:
-            print(f"[Ghidra] Analyzing: {currentProgram.getName()}")
+            self._log(f"Analyzing: {currentProgram.getName()}")
+
+            # Check script args for analysis flag
+            args = getScriptArgs()
+            should_analyze = "analyze" in args
+            self._log(f"Script Args: {args}, Should Analyze: {should_analyze}")
+
+            if should_analyze:
+                self._log("Triggering analyzeALl()...")
+                # analyzeAll is available in GhidraScript context
+                analyzeAll(currentProgram)
+                self._log("analyzeAll() returned.")
+
             monitor = ConsoleTaskMonitor()
 
             # Get program info
@@ -36,23 +58,27 @@ class BinaryAnalyzer(HeadlessScript):
                 "min_address": hex(currentProgram.getMinAddress().getOffset()),
                 "max_address": hex(currentProgram.getMaxAddress().getOffset()),
             }
+            self._log("Extracted program info")
 
             # Extract functions
             self._extract_functions()
+            self._log("Functions extracted")
 
             # Extract strings
             self._extract_strings()
+            self._log("Strings extracted")
 
             # Extract symbols
             self._extract_symbols()
+            self._log("Symbols extracted")
 
             # Save results to JSON file
             self._save_results()
 
-            print(f"[Ghidra] Analysis complete for {currentProgram.getName()}")
+            self._log(f"Analysis complete for {currentProgram.getName()}")
 
         except Exception as e:
-            print(f"[Ghidra] Error during analysis: {e}")
+            self._log(f"Error during analysis: {e}")
             import traceback
 
             traceback.print_exc()
@@ -78,19 +104,20 @@ class BinaryAnalyzer(HeadlessScript):
             }
 
             # Try to get decompiled code (if possible)
-            try:
-                decomp = DecompInterface()
-                decomp.openProgram(currentProgram)
-                results = decomp.decompileFunction(
-                    func, 30, ConsoleTaskMonitor()
-                )  # 30 second timeout
-                if results and results.getDecompiledFunction():
-                    # Get first few lines of decompiled code
-                    decompiled = str(results.getDecompiledFunction())
-                    lines = decompiled.split("\n")[:10]  # First 10 lines
-                    func_info["decompiled_preview"] = "\n".join(lines)
-            except:
-                pass
+            # SKIPPING bulk decompilation for performance
+            # try:
+            #     decomp = DecompInterface()
+            #     decomp.openProgram(currentProgram)
+            #     results = decomp.decompileFunction(
+            #         func, 30, ConsoleTaskMonitor()
+            #     )  # 30 second timeout
+            #     if results and results.getDecompiledFunction():
+            #         # Get first few lines of decompiled code
+            #         decompiled = str(results.getDecompiledFunction())
+            #         lines = decompiled.split("\n")[:10]  # First 10 lines
+            #         func_info["decompiled_preview"] = "\n".join(lines)
+            # except:
+            #     pass
 
             self.results["functions"].append(func_info)
 

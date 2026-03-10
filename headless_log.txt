@@ -1,0 +1,235 @@
+INFO  Using log config file: jar:file:/C:/Users/sandr/ghidra_12.0_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml (LoggingInitialization)  
+INFO  Using log file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\application.log (LoggingInitialization)  
+INFO  Loading user preferences: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\preferences (Preferences)  
+INFO  Searching for classes... (ClassSearcher)  
+INFO  Class search complete (1701 ms) (ClassSearcher)  
+INFO  Initializing SSL Context (SSLContextInitializer)  
+INFO  Initializing Random Number Generator... (SecureRandomFactory)  
+INFO  Random Number Generator initialization complete: SHA1PRNG (SecureRandomFactory)  
+INFO  Trust manager disabled, cacerts have not been set (ApplicationTrustManagerFactory)  
+INFO  Headless startup complete (4477 ms) (AnalyzeHeadless)  
+INFO  Class searcher loaded 58 extension points (18 false positives) (ClassSearcher)  
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldOffset has been called by org.apache.felix.framework.util.SecureAction (file:/C:/Users/sandr/ghidra_12.0_PUBLIC/Ghidra/Features/Base/lib/org.apache.felix.framework-7.0.5.jar)
+WARNING: Please consider reporting this to the maintainers of class org.apache.felix.framework.util.SecureAction
+WARNING: sun.misc.Unsafe::staticFieldOffset will be removed in a future release
+INFO  HEADLESS Script Paths:
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\Extensions\MachineLearning\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\Jython\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    C:\Users\sandr\ghidra_12.0_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts (HeadlessAnalyzer)  
+INFO  HEADLESS: execution starts (HeadlessAnalyzer)  
+INFO  Creating temporary project: d:\Dev\repos\reversing-mcp\ManualProj (HeadlessAnalyzer)  
+INFO  Creating project: d:\Dev\repos\reversing-mcp\ManualProj (DefaultProject)  
+INFO  REPORT: Processing input files:  (HeadlessAnalyzer)  
+INFO       project: d:\Dev\repos\reversing-mcp\ManualProj (HeadlessAnalyzer)  
+INFO  IMPORTING: file:///D:/Dev/repos/reversing-mcp/tests/fixtures/exe files/Digibib5.exe (HeadlessAnalyzer)  
+INFO  Using Loader: Portable Executable (PE) (ProgramLoader)  
+INFO  Using Language/Compiler: x86:LE:32:default:borlanddelphi (ProgramLoader)  
+INFO  Using Library Search Path: [., C:\WINDOWS\SysWOW64, C:\Program Files\Eclipse Adoptium\jdk-25.0.1.8-hotspot\bin, C:\WINDOWS\Sun\Java\bin, C:\WINDOWS\system32, C:\WINDOWS, C:\Program Files\PowerShell\7, C:\Program Files\Zulu\zulu-25\bin\, c:\Users\sandr\AppData\Local\Programs\cursor\resources\app\bin, C:\Program Files\Microsoft\jdk-17.0.15.6-hotspot\bin, C:\Program Files\Eclipse Adoptium\jdk-17.0.15.6-hotspot\bin, C:\Program Files (x86)\Eclipse Adoptium\jdk-17.0.14.7-hotspot\bin, C:\Program Files (x86)\Embarcadero\Studio\19.0\bin, C:\Users\Public\Documents\Embarcadero\Studio\19.0\Bpl, C:\Program Files (x86)\Embarcadero\Studio\19.0\bin64, C:\Users\Public\Documents\Embarcadero\Studio\19.0\Bpl\Win64, C:\Program Files (x86)\Embarcadero\Studio\23.0\bin, C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl, C:\Program Files (x86)\Embarcadero\Studio\23.0\bin64, C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\Win64, C:\WINDOWS\System32\Wbem, C:\WINDOWS\System32\WindowsPowerShell\v1.0\, C:\WINDOWS\System32\OpenSSH\, C:\Program Files\NVIDIA Corporation\NVIDIA app\NvDLISR, C:\Program Files\Calibre2\, C:\Program Files\eSpeak NG\, C:\Program , C:\Program Files\Tailscale\, C:\minikube, C:\Program Files\nodejs\, C:\Program Files\CMake\bin, C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common, C:\Program Files (x86)\AOMEI\AOMEI Backupper\7.5.0, C:\Program Files\Pandoc\, C:\Program Files\dotnet\, C:\Program Files\Git\cmd, C:\Program Files\PowerShell\7\, C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\, C:\Program Files\Vagrant\bin, C:\Program Files\Docker\Docker\resources\bin, C:\Users\sandr\AppData\Local\Programs\Python\Python310\Scripts\, C:\Users\sandr\AppData\Local\Programs\Python\Python310\, C:\Users\sandr\AppData\Local\Programs\Python\Python313\Scripts\, C:\Users\sandr\AppData\Local\Programs\Python\Python313\, C:\Users\sandr\.cargo\bin, C:\Users\sandr\.local\bin, C:\Users\sandr\scoop\shims, C:\Users\sandr\AppData\Local\Programs\Python\Python312\Scripts\, C:\Users\sandr\AppData\Local\Programs\Python\Python312\, C:\Users\sandr\Pandoc\pandoc-3.1.13-windows-x86_64, C:\Python313\Scripts\, C:\Python313\, C:\Program Files (x86)\AOMEI\AOMEI Backupper\7.4.2, C:\ProgramData\chocolatey\bin, C:\Users\sandr\CascadeProjects\WakanLazarus\fpc\bin\i386-Win32, C:\Program Files\GitHub CLI\, C:\Users\sandr\AppData\Local\nvm, C:\nvm4w\nodejs, C:\Program Files (x86)\sbt\bin, C:\Users\sandr\AppData\Local\Programs\Ollama, C:\Users\sandr\.lmstudio\bin, C:\Program Files\Tesseract-OCR, C:\Program Files\AutoHotkey\v2, C:\Users\sandr\AppData\Local\Programs\Microsoft VS Code\bin, C:\ffmpeg, C:\Users\sandr\AppData\Local\Microsoft\WindowsApps, C:\Users\sandr\AppData\Local\GitHubDesktop\bin, C:\Users\sandr\AppData\Local\Programs\Windsurf Next\bin, C:\Users\sandr\AppData\Local\Programs\cursor\resources\app\bin, C:\Users\sandr\AppData\Roaming\npm, C:\Program Files\Oracle\VirtualBox, C:\Users\sandr\AppData\Local\Microsoft\WinGet\Packages\Microsoft.AIShell_Microsoft.Winget.Source_8wekyb3d8bbwe, C:\Users\sandr\AppData\Local\Programs\Windsurf\bin, C:\Users\sandr\AppData\Local\Microsoft\WinGet\Links, C:\Users\sandr\AppData\Local\Programs\Zed\bin, C:\Users\sandr\AppData\Local\Programs\Antigravity\bin, C:\Users\sandr\AppData\Local\Programs\MiKTeX\miktex\bin\x64\, c:\Users\sandr\.antigravity\extensions\ms-python.debugpy-2025.18.0-win32-x64\bundled\scripts\noConfigScripts] (ProgramLoader)  
+INFO  TLS callbacks at 795010 (TLSDirectory)  
+WARN  Invalid or missing function at 1007623c (ExportDataDirectory)  
+INFO  TLS callbacks at 100036e8 (TLSDirectory)  
+INFO  TLS callbacks at 10005788 (TLSDirectory)  
+INFO  TLS callbacks at 1000700c (TLSDirectory)  
+WARN  Invalid or missing function at 1008e248 (ExportDataDirectory)  
+INFO  TLS callbacks at 10028c70 (TLSDirectory)  
+WARN  Invalid or missing function at 105bac38 (ExportDataDirectory)  
+WARN  Invalid or missing function at 100c9a9c (ExportDataDirectory)  
+INFO  TLS callbacks at 10002504 (TLSDirectory)  
+WARN  Invalid or missing function at 10066894 (ExportDataDirectory)  
+WARN  Invalid or missing function at 100020c8 (ExportDataDirectory)  
+INFO  Additional info:
+Loading file:///D:/Dev/repos/reversing-mcp/tests/fixtures/exe files/Digibib5.exe?MD5=b1af37a0335ecbe8cfa83e0dbcf95601...
+------------------------------------------------
+
+Searching 71 paths for library ADVAPI32.DLL...
+Loading file:///C:/Windows/SysWOW64/advapi32.dll?MD5=45b1739a085fac0cd203e2da72deb151...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\advapi32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library AVIFIL32.DLL...
+Loading file:///C:/Windows/SysWOW64/avifil32.dll?MD5=331da5c4d985a779e46a82d5165913f7...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\avifil32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library COMCTL32.DLL...
+Loading file:///C:/Windows/SysWOW64/comctl32.dll?MD5=7759a07e2da3fbfbddd8a1aa3884886b...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\comctl32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library COMDLG32.DLL...
+Loading file:///C:/Windows/SysWOW64/comdlg32.dll?MD5=502eacd4500255d3d99a935e9a15f961...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\comdlg32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library GDI32.DLL...
+Loading file:///C:/Windows/SysWOW64/gdi32.dll?MD5=dfc570283e78c54d5f77e97cfd52a1ee...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\gdi32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library KERNEL32.DLL...
+Loading file:///C:/Windows/SysWOW64/kernel32.dll?MD5=e408fe6ab40472276e1854633509c0ef...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\kernel32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library MPR.DLL...
+Loading file:///C:/Windows/SysWOW64/mpr.dll?MD5=60d781de19e7435efe4980b27a6d9af3...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\mpr.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library MSVFW32.DLL...
+Loading file:///C:/Windows/SysWOW64/msvfw32.dll?MD5=8317e257159dc24398145cccfa488c91...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\msvfw32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library OLE32.DLL...
+Loading file:///C:/Windows/SysWOW64/ole32.dll?MD5=64bc32b6de9dffe969cbd79ea4a81225...
+[ole32.dll]: failed to create WEVTResource at 10136740: Failed to resolve data length for WEVTResource
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\ole32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library OLEAUT32.DLL...
+Loading file:///C:/Windows/SysWOW64/oleaut32.dll?MD5=ea4bdcbcc5d06dfa37a050bf011fe779...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\oleaut32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library SHELL32.DLL...
+Loading file:///C:/Windows/SysWOW64/shell32.dll?MD5=c58ed51e040efe86f2bb6cdaf76d460b...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\shell32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library USER32.DLL...
+Loading file:///C:/Windows/SysWOW64/user32.dll?MD5=8a69ad783bfad3228ca8771f949b8a92...
+[user32.dll]: failed to create WEVTResource at 100e5a70: Failed to resolve data length for WEVTResource
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\user32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library VERSION.DLL...
+Loading file:///C:/Windows/SysWOW64/version.dll?MD5=b33d34cec1a592971b80932f18ef54c0...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\version.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library WINMM.DLL...
+Loading file:///C:/Windows/SysWOW64/winmm.dll?MD5=33f9defd797c71a1a4bd374283412726...
+[winmm.dll]: failed to create WEVTResource at 1002b310: Failed to resolve data length for WEVTResource
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\winmm.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library WINSPOOL.DRV...
+Loading file:///C:/Windows/SysWOW64/winspool.drv?MD5=8c2caa9f9eaf7d9d2daab95faa87e16a...
+[winspool.drv]: failed to create WEVTResource at 1006e4b8: Failed to resolve data length for WEVTResource
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\winspool.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Searching 71 paths for library WSOCK32.DLL...
+Loading file:///C:/Windows/SysWOW64/wsock32.dll?MD5=49d99d20b5928d2498e394fd42a0c587...
+Using existing exports file: C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\wsock32.exports
+WARNING: Existing exports file may not be an exact match.
+Library not saved to project.
+------------------------------------------------
+
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\kernel32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\user32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\advapi32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\oleaut32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\mpr.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\version.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\gdi32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\ole32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\comctl32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\winspool.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\shell32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\comdlg32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\winmm.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\avifil32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\msvfw32.exports
+Applying C:\Users\sandr\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC\symbols\win32\wsock32.exports
+Linking the External Programs of 'Digibib5.exe' to imported libraries...
+  [KERNEL32.DLL] -> not found in project
+  [USER32.DLL] -> not found in project
+  [ADVAPI32.DLL] -> not found in project
+  [OLEAUT32.DLL] -> not found in project
+  [MPR.DLL] -> not found in project
+  [VERSION.DLL] -> not found in project
+  [GDI32.DLL] -> not found in project
+  [OLE32.DLL] -> not found in project
+  [COMCTL32.DLL] -> not found in project
+  [WINSPOOL.DRV] -> not found in project
+  [SHELL32.DLL] -> not found in project
+  [COMDLG32.DLL] -> not found in project
+  [WINMM.DLL] -> not found in project
+  [AVIFIL32.DLL] -> not found in project
+  [MSVFW32.DLL] -> not found in project
+  [WSOCK32.DLL] -> not found in project
+------------------------------------------------
+
+ (ProgramLoader)  
+INFO  IMPORTING: Loaded 0 additional files (HeadlessAnalyzer)  
+INFO  REPORT: Execute script: d:\Dev\repos\reversing-mcp\ghidra_scripts\analyze_binary.py  (HeadlessAnalyzer)  
+ERROR REPORT SCRIPT ERROR: d:\Dev\repos\reversing-mcp\ghidra_scripts\analyze_binary.py : Ghidra was not started with PyGhidra. Python is not available (HeadlessAnalyzer) ghidra.app.script.GhidraScriptLoadException: Ghidra was not started with PyGhidra. Python is not available
+	at ghidra.pyghidra.PyGhidraScriptProvider.getScriptInstance(PyGhidraScriptProvider.java:75)
+	at ghidra.app.util.headless.HeadlessAnalyzer.runScriptsList(HeadlessAnalyzer.java:924)
+	at ghidra.app.util.headless.HeadlessAnalyzer.analyzeProgram(HeadlessAnalyzer.java:1086)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processFileWithImport(HeadlessAnalyzer.java:1584)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processWithLoader(HeadlessAnalyzer.java:1744)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processWithImport(HeadlessAnalyzer.java:1685)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processWithImport(HeadlessAnalyzer.java:1769)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processLocal(HeadlessAnalyzer.java:462)
+	at ghidra.app.util.headless.AnalyzeHeadless.launch(AnalyzeHeadless.java:199)
+	at ghidra.GhidraLauncher.launch(GhidraLauncher.java:81)
+	at ghidra.Ghidra.main(Ghidra.java:54)
+ 
+INFO  /Digibib5.exe: file created (sandr) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /Digibib5.exe (ManualProj:/Digibib5.exe) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  

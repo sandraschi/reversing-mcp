@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-FastAPI Backend for Reversing MCP WebApp
+FastAPI Backend for Reversing MCP WebApp (FastMCP 3.1 single-backend pattern).
 
-This API server bridges the Next.js frontend with the MCP reversing server,
-providing REST endpoints for file analysis, Ghidra integration, and tool management.
+Serves REST (analysis, Ghidra, LLM, chat) and mounts MCP at /mcp.
 """
 
 import os
@@ -18,7 +17,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+_repo_root = Path(__file__).resolve().parent.parent.parent
+_src = _repo_root / "src"
+if str(_src) not in sys.path:
+    sys.path.insert(0, str(_src))
 
 from reversing_mcp.analyzers import BinaryAnalyzer
 from reversing_mcp.logging_config import get_logger
@@ -41,6 +43,10 @@ logger = get_logger("reversing_api")
 
 # Global analyzer instance
 analyzer = BinaryAnalyzer()
+
+# Ollama: base URL and selected model (in-memory state)
+OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+_selected_ollama_model: str | None = None
 
 
 @asynccontextmanager
@@ -68,6 +74,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount FastMCP 3.1 at /mcp (single-backend pattern)
+try:
+    from reversing_mcp.server import mcp
+    app.mount("/mcp", mcp.http_app())
+    logger.info("MCP mounted at /mcp (FastMCP 3.1)")
+except Exception as e:
+    logger.warning("Could not mount MCP: %s", e)
 
 # Pydantic models
 class AnalysisRequest(BaseModel):
@@ -254,6 +267,15 @@ async def analyze_file_path(request: AnalysisRequest):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}")
 
 
+@app.post("/start_ghidra")
+async def start_ghidra():
+    """Start Ghidra GUI. Prefer starting Ghidra manually or via MCP tool start_ghidra."""
+    return {
+        "ok": True,
+        "message": "Start Ghidra from your desktop or use the start_ghidra MCP tool in Cursor.",
+    }
+
+
 @app.get("/ghidra/status")
 async def get_ghidra_status():
     """Get Ghidra integration status"""
@@ -310,97 +332,130 @@ async def disassemble_ghidra_function(address: str):
         raise HTTPException(status_code=500, detail=f"Disassembly failed: {e!s}")
 
 
-# LLM Management Endpoints
+# --- Ollama (local LLM) helpers ---
+async def _ollama_tags() -> dict:
+    import httpx
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        r = await client.get(f"{OLLAMA_BASE}/api/tags")
+        r.raise_for_status()
+        return r.json()
+
+
+# LLM Management Endpoints (Ollama: list/select, status, health)
 @app.post("/llm/list_providers")
 async def list_llm_providers():
-    """List available LLM providers"""
-    try:
-        # Import the LLM tool dynamically
-        from user_advanced_memory_mcp_adn_llm import adn_llm
+    """List available LLM providers (Ollama for local stack)."""
+    return {"providers": [{"id": "ollama", "name": "Ollama"}]}
 
-        result = adn_llm(operation="list_providers")
-        return result
-    except Exception as e:
-        logger.error(f"Error listing LLM providers: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list providers: {e!s}")
+
+class LLMProviderBody(BaseModel):
+    provider: str = "ollama"
+
+
+class LLMSelectBody(BaseModel):
+    provider: str = "ollama"
+    model: str = ""
 
 
 @app.post("/llm/list_models")
-async def list_llm_models(provider: str):
-    """List models for a specific provider"""
+async def list_llm_models(body: LLMProviderBody | None = None):
+    """List models for Ollama (GET /api/tags)."""
+    provider = (body.provider if body else "ollama")
+    if provider != "ollama":
+        return {"models": []}
     try:
-        from user_advanced_memory_mcp_adn_llm import adn_llm
-
-        result = adn_llm(operation="list_models", provider=provider)
-        return result
+        data = await _ollama_tags()
+        models = [m.get("name", m.get("model", "")) for m in data.get("models", [])]
+        return {"models": models}
     except Exception as e:
-        logger.error(f"Error listing models for {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list models: {e!s}")
+        logger.error("Ollama list_models: %s", e)
+        return {"models": [], "error": str(e)}
 
 
 @app.post("/llm/select_model")
-async def select_llm_model(provider: str, model: str):
-    """Select a model for use"""
-    try:
-        from user_advanced_memory_mcp_adn_llm import adn_llm
-
-        result = adn_llm(operation="select_model", provider=provider, model=model)
-        return result
-    except Exception as e:
-        logger.error(f"Error selecting model {model} from {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to select model: {e!s}")
+async def select_llm_model(body: LLMSelectBody | None = None):
+    """Select Ollama model for chat."""
+    global _selected_ollama_model
+    if not body:
+        body = LLMSelectBody()
+    provider = body.provider
+    model = body.model
+    if provider == "ollama" and model:
+        _selected_ollama_model = model
+    return {"ok": True, "provider": provider, "model": model}
 
 
 @app.post("/llm/load_model")
-async def load_llm_model(provider: str, model: str):
-    """Load a model into memory"""
-    try:
-        from user_advanced_memory_mcp_adn_llm import adn_llm
-
-        result = adn_llm(operation="load_model", provider=provider, model=model)
-        return result
-    except Exception as e:
-        logger.error(f"Error loading model {model} from {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to load model: {e!s}")
+async def load_llm_model(body: LLMSelectBody | None = None):
+    """Ollama loads on first use; we just select."""
+    return await select_llm_model(body)
 
 
 @app.post("/llm/unload_model")
-async def unload_llm_model(provider: str, model: str | None = None):
-    """Unload a model from memory"""
-    try:
-        from user_advanced_memory_mcp_adn_llm import adn_llm
-
-        result = adn_llm(operation="unload_model", provider=provider, model=model)
-        return result
-    except Exception as e:
-        logger.error(f"Error unloading model{(model and f' {model}') or 's'} from {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to unload model: {e!s}")
+async def unload_llm_model(body: dict | None = None):
+    """Ollama has no unload; clear selection."""
+    global _selected_ollama_model
+    _selected_ollama_model = None
+    return {"ok": True}
 
 
 @app.post("/llm/status")
 async def get_llm_status():
-    """Get current LLM status"""
+    """Current Ollama selection and health."""
     try:
-        from user_advanced_memory_mcp_adn_llm import adn_llm
-
-        result = adn_llm(operation="status")
-        return result
-    except Exception as e:
-        logger.error(f"Error getting LLM status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get status: {e!s}")
+        await _ollama_tags()
+        healthy = True
+    except Exception:
+        healthy = False
+    return {
+        "provider": "ollama",
+        "model": _selected_ollama_model,
+        "healthy": healthy,
+        "base_url": OLLAMA_BASE,
+    }
 
 
 @app.post("/llm/health")
-async def check_llm_health(provider: str):
-    """Check health of an LLM provider"""
+async def check_llm_health(body: LLMProviderBody | None = None):
+    """Check Ollama reachability."""
+    provider = (body.provider if body else "ollama")
+    if provider != "ollama":
+        return {"healthy": False, "error": "Unknown provider"}
     try:
-        from user_advanced_memory_mcp_adn_llm import adn_llm
-
-        result = adn_llm(operation="health", provider=provider)
-        return result
+        await _ollama_tags()
+        return {"healthy": True, "provider": "ollama"}
     except Exception as e:
-        logger.error(f"Error checking health for {provider}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to check health: {e!s}")
+        return {"healthy": False, "error": str(e)}
+
+
+# Chat (Ollama)
+class ChatRequest(BaseModel):
+    message: str
+    history: list[dict[str, str]] = []
+
+
+@app.post("/api/v1/chat")
+async def chat(request: ChatRequest):
+    """Send message to selected Ollama model; returns reply."""
+    import httpx
+
+    model = _selected_ollama_model or "llama2"
+    messages = [{"role": "user", "content": request.message}]
+    for h in request.history:
+        messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            r = await client.post(
+                f"{OLLAMA_BASE}/api/chat",
+                json={"model": model, "messages": messages, "stream": False},
+            )
+            r.raise_for_status()
+            data = r.json()
+            reply = data.get("message", {}).get("content", "")
+            return {"reply": reply, "model": model}
+    except Exception as e:
+        logger.error("Chat error: %s", e)
+        raise HTTPException(status_code=502, detail=f"Ollama chat failed: {e!s}")
 
 
 # Helper functions
@@ -484,12 +539,17 @@ def check_for_obfuscation(results: dict[str, Any]) -> bool:
 
 
 if __name__ == "__main__":
+    import os
     import uvicorn
 
+    _port = int(os.environ.get("REVERSING_API_PORT", "10750"))
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=11112,
+        port=_port,
         reload=True,  # Enable auto-reload for development
-        reload_dirs=["."],  # Watch current directory and subdirectories
+        reload_dirs=[
+            ".",  # Watch API directory
+            "../../src"  # Watch core logic in src directory
+        ],
     )
