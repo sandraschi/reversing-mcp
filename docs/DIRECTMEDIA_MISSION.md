@@ -1,29 +1,33 @@
 # Primary Mission: Directmedia / Digitale Bibliothek 5
 
-## Goal
+## Goal and scope
 
-The main intent of the reversing-mcp server and webapp is to **decompile the Digitale Bibliothek 5 executable** to find out **how Directmedia files are read and expanded**.
+**Digibib5.exe** and the **`.DKI`** / Directmedia stack are the **reference example and test case** for reversing-mcp and its webapp: a **small-to-medium** Windows reader (not a huge suite like Word). The point is to validate the toolchain on a real app and to learn **how those files are read and expanded** — **not** to target arbitrarily large binaries.
+
+**ReVa:** Interactive Ghidra MCP tools (**decompile, xrefs, …**) are implemented by the **ReVa** project and exposed as a **separate MCP server**. This repository does **not** embed or re-export ReVa’s tool list; it provides **static** analysis, optional **headless** Ghidra, and DKI heuristics.
 
 ## Target binary
 
-- **Path (typical install):** `C:\Program Files (x86)\Digitale Bibliothek 5\Digibib5.exe`
-- **Role:** Reader app for Directmedia “Digitale Bibliothek” (1990s e‑book/product). It reads proprietary container/data formats (e.g. DKI).
-- **Objective:** Reverse the code paths that **read and expand** those Directmedia files so we can document or reimplement the format (e.g. for preservation or tooling).
+- **Path (typical install):** `C:\Program Files (x86)\Digitale Bibliothek 5\Digibib5.exe` (or fixture under `tests/fixtures/exe files\`)
+- **Role:** Reader for Directmedia “Digitale Bibliothek” (1990s e‑book product); proprietary containers (e.g. DKI).
+- **Objective:** Reverse the read/expand path enough to document or reimplement decoding (preservation / tooling).
 
 ## How this repo supports that
 
-- **Ghidra (MCP + plugin):** Load `Digibib5.exe` in Ghidra, run analysis, then use `ghidra_*` tools (decompile, list functions, xrefs, rename) to locate and understand file-reading and expansion logic.
+- **Ghidra via ReVa (separate MCP):** In Ghidra, use **ReVa** from your IDE’s MCP client for decompilation, xrefs, renames. Pair with **reversing-mcp** for strings, PE, hexdump, `digibib_research_snapshot`, etc. For large-volume **`text.dki`**, packed data is **not** reliably decoded by zlib heuristics alone — see **[DIGIBIB_DECOMPILE_PLAN.md](DIGIBIB_DECOMPILE_PLAN.md)**.
 - **Binary analysis:** Strings, entropy, PE analysis to get an overview before deep dive in Ghidra.
-- **Directmedia decompressor:** There is existing decompressor code in the repo, but it is **currently nonfunctional**. Reversing Digibib5.exe is needed to understand the real read/expand logic and fix or reimplement the decompressor.
+- **Directmedia .DKI decoder:** In-repo **heuristic** decoder (`src/reversing_mcp/directmedia_dki.py`) tries zlib/gzip and common header skips. It may help **some** small or zlib-wrapped blobs; **`tree.dki`** on real volumes is often **plain CP1252 text**, while **`text.dki`** on large books uses a **header + offset table + proprietary packed stream** — extend or replace logic only after the EXE path is understood. MCP: `decode_dki_file` / `analyze_directmedia_file`.
 - **Web UI + Ollama:** Load the binary, run analyses, and use the chat to reason about findings with a local LLM.
 
 ## Suggested workflow
 
+See **[DIRECTMEDIA_REVERSING_TOOLKIT.md](DIRECTMEDIA_REVERSING_TOOLKIT.md)** for CLI/MCP commands (`digibib_research_snapshot`, `scripts/analyze_digibib.py`). **Phased reverse plan:** **[DIGIBIB_DECOMPILE_PLAN.md](DIGIBIB_DECOMPILE_PLAN.md)**.
+
 1. Import `Digibib5.exe` into Ghidra (create a project, run analysis).
-2. Start the GhidraMCP plugin and reversing-mcp so `ghidra_*` tools are available.
-3. Use MCP/UI: list functions, search for strings related to “DKI”, “expand”, “read”, file extensions; decompile likely readers and decompressors; follow xrefs.
-4. Use findings to fix or reimplement the (currently nonfunctional) Directmedia decompressor; cross-check with any known DKI layout/docs.
-5. Document or implement the read/expand logic in this repo or a dedicated Directmedia tool.
+2. Add **ReVa** to your MCP client and connect it; use ReVa tools (names differ from old `ghidra_*` — discover via your host).
+3. Use MCP from the IDE: list functions, search strings (“DKI”, “expand”, “read”, …); decompile; follow xrefs. Use this repo’s webapp/static tools for overview (strings, PE, entropy, `get_hexdump` / `scripts/hex_peek.py` on small files).
+4. Follow **Phase B–C** in **DIGIBIB_DECOMPILE_PLAN.md** until the **`text.dki`** reader and codec are identified; then update `directmedia_dki.py` or add a spec-driven module.
+5. Document the read/expand logic in-repo (`docs/`) and implement a faithful decoder or viewer pipeline.
 
 ## Legal / ethics
 

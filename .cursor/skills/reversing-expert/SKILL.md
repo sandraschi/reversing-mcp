@@ -29,28 +29,30 @@ Use this skill whenever the task involves binary reverse engineering, Ghidra wor
 | `get_file_info(file_path)` | Size, type, permissions. |
 | `get_hexdump(file_path, offset, length)` | Inspect bytes at offset (e.g. after locating header in Ghidra). |
 | `find_functions(file_path, tool?)` | Function discovery when no Ghidra. |
-| `check_tools()` | List available tools (Ghidra bridge, Directmedia decompressor status). |
+| `check_tools()` | List available static tools and Directmedia status; see `notes.ghidra_mcp` for ReVa pointer. |
+| `digibib_research_snapshot(exe_path?)` | **Digitale Bibliothek 5:** static JSON bundle (keyword strings, entropy, PE summary, next_steps, viewer_roadmap). Auto-finds fixture or Program Files path. |
 
-**Ghidra (plugin HTTP, typically 127.0.0.1:8080):**  
-Prerequisite: Ghidra GUI running, binary imported and analyzed, GhidraMCP plugin started.
+**Ghidra (separate MCP server — ReVa):**
 
-| Tool | Purpose |
-|------|--------|
-| `ghidra_directmedia_find_candidates()` | Strings containing DKI/.dki and functions with dki/expand/decompress in name. Entry point for format recovery. |
-| `ghidra_list_strings(offset?, limit?, filter_str?)` | Filter by e.g. "DKI", ".dki", "expand", "decompress", "inflate", "uncompress". |
-| `ghidra_get_xrefs_to(address)` | Code locations referencing this address (string or data). Callers = reader/expansion logic. |
-| `ghidra_get_xrefs_from(address)` | What this function calls (follow call graph). |
-| `ghidra_get_function_by_address(address)` | Function containing address. |
-| `ghidra_decompile_by_address(address)` / `ghidra_decompile_function(name)` | Pseudocode. |
-| `ghidra_search_functions(query)` | By name substring: "dki", "expand", "decompress", "read", "open", "inflate", "lz". |
-| `ghidra_list_imports()` | Find ReadFile, CreateFileW, etc.; then xrefs_to(import_address) for high-level readers. |
-| `ghidra_rename_function_by_address`, `ghidra_rename_data`, `ghidra_set_decompiler_comment`, `ghidra_set_disassembly_comment` | Annotate for later sessions or export. |
+**reversing-mcp does not implement ReVa’s tools** (no decompile/xref tools in `server.py`). Add **ReVa** (reverse-engineering-assistant) as its **own** MCP server in Cursor or Claude Desktop to get those capabilities.
 
-**Directmedia (optional):**  
-`analyze_directmedia_file`, `decompress_directmedia_library` exist but are **nonfunctional** until Digibib5 read/expand logic is reversed and reimplemented.
+**Digibib5.exe / DKI** are the **reference small/medium-app test case** for this stack — not a benchmark for decompiling huge office binaries.
+
+1. Use the client’s tool list or ReVa’s discovery (`tool_search` / similar) to find the right tool
+   names (they differ from the old `ghidra_*` LaurieWired bridge).
+2. Typical flow mirrors the old tools: list strings → xrefs → decompile → rename/comment — but call
+   ReVa’s schemas with the parameters they define.
+3. **Headless / batch:** Ghidra 12+ may use ReVa’s `mcp-reva` + `GHIDRA_INSTALL_DIR`; otherwise
+   `analyze_binary(..., ['ghidra'])` for headless analyzer scripts in this repo, or
+   `analyzeHeadless` / scripts under `ghidra_scripts/`.
+4. Optional second server: mrphrazer `ghidra-headless-mcp` in `external/` if you need p-code or
+   `ghidra.eval` (see `CURSOR_HANDOFF.md`).
+
+**Directmedia (.DKI):**  
+`decode_dki_file(path)` — raw decode report (strategy, preview). `analyze_directmedia_file(path)` — decode + write `*_extracted.txt`. `decompress_directmedia_library` — batch `DB*/Data/TEXT.DKI`. Heuristic zlib/gzip; **`text.dki` on large volumes is usually a header + offset table + packed stream** — follow **`docs/DIGIBIB_DECOMPILE_PLAN.md`** (Ghidra/ReVa) before promising a decoder; then extend `directmedia_dki.py` from EXE facts. **`tree.dki`** is often plain CP1252 TOC.
 
 **Webapp:**  
-- **Analyzer** (exe/com/dll): Upload binary, optional headless Ghidra run; returns overview, strings, decompilation.  
+- **Analyzer** (exe/com/dll): Upload binary; static overview (strings, entropy, PE). No in-browser Ghidra decompilation.  
 - **Chat:** Persona "Reversing expert" sends the same system prompt to Ollama for tool-oriented RE guidance.
 
 ---
@@ -60,21 +62,21 @@ Prerequisite: Ghidra GUI running, binary imported and analyzed, GhidraMCP plugin
 **Generic binary (any exe/dll):**
 
 1. **Overview:** `analyze_binary(path)` or webapp Analyzer. Review PE, strings, entropy.
-2. **Strings:** `extract_strings(path)` and/or `ghidra_list_strings(filter_str="...")`. Note interesting addresses.
-3. **Call graph:** For each interesting string/import address, `ghidra_get_xrefs_to(addr)` then `ghidra_get_function_by_address` and `ghidra_decompile_by_address` (or `ghidra_decompile_function`).
-4. **Deeper:** From decompiled code, use `ghidra_get_xrefs_from` to follow callees (e.g. actual decompress routine).
-5. **Annotate:** Rename functions/data and set comments so the next session or export is readable.
+2. **Strings:** `extract_strings(path)` and/or ReVa string listing with filters. Note interesting addresses.
+3. **Call graph:** With ReVa: xrefs to string/import → function → decompile (per ReVa tool schemas).
+4. **Deeper:** From decompiled code, follow callees with ReVa xref/call tools.
+5. **Annotate:** ReVa rename/comment tools per their parameters.
 
 **Directmedia / DKI (Digibib5.exe):**
 
-1. **Entry:** `ghidra_directmedia_find_candidates()` or `ghidra_list_strings(filter_str="DKI")`, then `.dki`, `expand`, `decompress`, `inflate`, `uncompress`.
-2. **Xrefs:** For each candidate string address, `ghidra_get_xrefs_to(addr)`; decompile the referring functions.
-3. **I/O layer:** `ghidra_list_imports` → find ReadFile/CreateFileW → `ghidra_get_xrefs_to(import_addr)` to get file-reading code; from there follow to parsers and decompress.
+1. **Entry:** ReVa string search / listing filtered for `DKI`, `.dki`, `expand`, `decompress`, etc.; or static `extract_strings` on Digibib5.exe.
+2. **Xrefs:** For each candidate address, ReVa xrefs-to → decompile referring functions.
+3. **I/O layer:** ReVa imports listing → ReadFile/CreateFileW → xrefs to those thunks → follow to parsers.
 4. **Dynamic (optional):** Frida script (e.g. hook CreateFileW + ReadFile, dump .dki reads to `tools/directmedia/captures/`). See `docs/DIRECTMEDIA_REVERSING_TOOLKIT.md` and `scripts/directmedia/`.
 5. **Automation:** `scripts/directmedia/ghidra_static_report.py` for a full static report; `scripts/directmedia/binary_overview.py` for PE/strings/entropy without Ghidra.
 
 **Headless (no GUI):**  
-Use webapp Analyzer with "Run headless Ghidra" or run `analyzeHeadless` + export script (e.g. `ghidra_scripts/ExportDecompileToJson.py`) and parse output in this repo.
+Use `analyze_binary(..., ['ghidra'])` when headless Ghidra is installed, or `analyzeHeadless` + export script (e.g. `ghidra_scripts/ExportDecompileToJson.py`), or ReVa headless (`mcp-reva`) when supported.
 
 ---
 
@@ -100,7 +102,7 @@ Use webapp Analyzer with "Run headless Ghidra" or run `analyzeHeadless` + export
 
 - **Local LLM:** Ollama (model selectable in webapp Settings).
 - **Chat:** Webapp Chat page, persona "Reversing expert", sends the reversing-expert system prompt to Ollama.
-- **Webapp ports:** Backend 10750, frontend 10751 (SOTA). Start from repo: `.\start-webapp.ps1` or `reversing-webapp\start.bat`; from fleet: `mcp-central-docs\starts\reversing-start.bat`.
+- **Webapp ports:** Backend 10750, frontend 10751 (fleet registry). Start from repo: `.\start-webapp.ps1` or `reversing-webapp\start.bat`; from fleet: `mcp-central-docs\starts\reversing-start.bat`.
 - **MCP:** FastMCP 3.1; tools and prompt `reversing_expert` available when Reversing MCP server is connected. Use sampling/agentic workflow when the client supports it.
 - **Docs:** `docs/DIRECTMEDIA_MISSION.md`, `docs/DIRECTMEDIA_REVERSING_TOOLKIT.md`, `docs/GHIDRA.md`; scripts in `scripts/directmedia/`.
 
@@ -108,7 +110,7 @@ Use webapp Analyzer with "Run headless Ghidra" or run `analyzeHeadless` + export
 
 ## 7. Constraints
 
-- Prefer existing `ghidra_*` and `analyze_*` tools over ad-hoc shell commands or one-off scripts.
+- Prefer **ReVa** tools (when connected) plus `analyze_*` / `extract_*` in reversing-mcp over ad-hoc shell.
 - No emojis in logger/API/code; concise, technical answers.
 - When suggesting dynamic analysis (Frida, debugger, hooks), point to the toolkit doc and repo scripts; do not invent offsets or injectors.
-- Do not claim the Directmedia decompressor works until the reader has been reversed and logic reimplemented.
+- Do not claim **full** DKI format coverage: the built-in decoder is zlib/gzip-heuristic; odd volumes need `directmedia_dki.py` updates from real samples or Ghidra.

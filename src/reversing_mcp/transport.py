@@ -7,7 +7,7 @@ Provides unified transport configuration for STDIO, HTTP Streamable, and legacy 
 Environment Variables:
     MCP_TRANSPORT: Transport mode (stdio, http, sse). Default: stdio
     MCP_HOST: Bind address for HTTP/SSE. Default: 127.0.0.1
-    MCP_PORT: Port for HTTP/SSE. Default: 8000
+    MCP_PORT: Port for HTTP/SSE. Default: 10750 (fleet 10700+; set MCP_PORT to override)
     MCP_PATH: HTTP endpoint path. Default: /mcp
 
 CLI Arguments:
@@ -32,7 +32,7 @@ import argparse
 import asyncio
 import logging
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ TransportType = Literal["stdio", "http", "sse"]
 # Environment variable standards
 ENV_TRANSPORT = "MCP_TRANSPORT"  # stdio | http | sse
 ENV_HOST = "MCP_HOST"  # default: 127.0.0.1
-ENV_PORT = "MCP_PORT"  # default: 8000
+ENV_PORT = "MCP_PORT"  # default: 10750
 ENV_PATH = "MCP_PATH"  # default: /mcp (HTTP only)
 
 
@@ -55,7 +55,7 @@ def get_transport_config() -> dict:
     return {
         "transport": os.getenv(ENV_TRANSPORT, "stdio").lower(),
         "host": os.getenv(ENV_HOST, "127.0.0.1"),
-        "port": int(os.getenv(ENV_PORT, "8000")),
+        "port": int(os.getenv(ENV_PORT, "10750")),
         "path": os.getenv(ENV_PATH, "/mcp"),
     }
 
@@ -77,7 +77,7 @@ def create_argument_parser(server_name: str) -> argparse.ArgumentParser:
 Environment Variables:
   {ENV_TRANSPORT}    Transport mode: stdio, http, sse (default: stdio)
   {ENV_HOST}         Bind address (default: 127.0.0.1)
-  {ENV_PORT}         Port number (default: 8000)
+  {ENV_PORT}         Port number (default: 10750)
   {ENV_PATH}         HTTP endpoint path (default: /mcp)
 
 Examples:
@@ -85,10 +85,10 @@ Examples:
   python -m {server_name.replace("-", "_")} --stdio
 
   # HTTP mode (web apps)
-  python -m {server_name.replace("-", "_")} --http --port 8080
+  python -m {server_name.replace("-", "_")} --http --port 10750
 
   # Via environment
-  MCP_TRANSPORT=http MCP_PORT=8080 python -m {server_name.replace("-", "_")}
+  MCP_TRANSPORT=http MCP_PORT=10750 python -m {server_name.replace("-", "_")}
 """,
     )
 
@@ -107,7 +107,7 @@ Examples:
         "--host", default=None, help=f"Host to bind to (default: ${ENV_HOST} or 127.0.0.1)"
     )
     parser.add_argument(
-        "--port", type=int, default=None, help=f"Port to listen on (default: ${ENV_PORT} or 8000)"
+        "--port", type=int, default=None, help=f"Port to listen on (default: ${ENV_PORT} or 10750)"
     )
     parser.add_argument(
         "--path", default=None, help=f"HTTP endpoint path (default: ${ENV_PATH} or /mcp)"
@@ -134,25 +134,22 @@ def resolve_transport(args: argparse.Namespace) -> TransportType:
     """
     if args.http:
         return "http"
-    elif args.sse:
+    if args.sse:
         logger.warning(
             "SSE transport is deprecated. Consider using --http instead. "
             "SSE support will be removed in a future version."
         )
         return "sse"
-    elif args.stdio:
+    if args.stdio:
         return "stdio"
-    else:
-        # Fall back to environment variable
-        env_transport = os.getenv(ENV_TRANSPORT, "stdio").lower()
-        if env_transport not in ("stdio", "http", "sse"):
-            logger.warning(f"Invalid {ENV_TRANSPORT}='{env_transport}', defaulting to stdio")
-            return "stdio"
-        if env_transport == "sse":
-            logger.warning(
-                "SSE transport is deprecated. Consider using MCP_TRANSPORT=http instead."
-            )
-        return env_transport  # type: ignore
+    # Fall back to environment variable
+    env_transport = os.getenv(ENV_TRANSPORT, "stdio").lower()
+    if env_transport not in ("stdio", "http", "sse"):
+        logger.warning(f"Invalid {ENV_TRANSPORT}='{env_transport}', defaulting to stdio")
+        return "stdio"
+    if env_transport == "sse":
+        logger.warning("SSE transport is deprecated. Consider using MCP_TRANSPORT=http instead.")
+    return env_transport  # type: ignore
 
 
 def resolve_config(args: argparse.Namespace) -> dict:
@@ -178,7 +175,7 @@ def resolve_config(args: argparse.Namespace) -> dict:
 
 
 def run_server(
-    mcp_app, args: Optional[argparse.Namespace] = None, server_name: str = "mcp-server"
+    mcp_app, args: argparse.Namespace | None = None, server_name: str = "mcp-server"
 ) -> None:
     """
     Unified server runner for all transport modes.
@@ -199,7 +196,7 @@ def run_server(
 
 
 async def run_server_async(
-    mcp_app, args: Optional[argparse.Namespace] = None, server_name: str = "mcp-server"
+    mcp_app, args: argparse.Namespace | None = None, server_name: str = "mcp-server"
 ) -> None:
     """
     Asynchronous unified server runner for all transport modes.
@@ -253,15 +250,15 @@ async def run_server_async(
 
 # Export public API
 __all__ = [
-    "TransportType",
-    "ENV_TRANSPORT",
     "ENV_HOST",
-    "ENV_PORT",
     "ENV_PATH",
-    "get_transport_config",
+    "ENV_PORT",
+    "ENV_TRANSPORT",
+    "TransportType",
     "create_argument_parser",
-    "resolve_transport",
+    "get_transport_config",
     "resolve_config",
+    "resolve_transport",
     "run_server",
     "run_server_async",
 ]

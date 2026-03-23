@@ -1,39 +1,39 @@
-# Reversing MCP - Professional Reverse Engineering Toolkit
+# Reversing MCP - Reverse Engineering Toolkit
 
 [![FastMCP](https://img.shields.io/badge/FastMCP-2.13+-blue)](https://github.com/jlowin/fastmcp)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-sandraschi/reversing--mcp-blue)](https://github.com/sandraschi/reversing-mcp)
 
-**FastMCP 3.1 server for reverse engineering with Ghidra + local LLM (Ollama) + web UI + Directmedia decompression**
+FastMCP 3.1 server for **static** binary analysis and Directmedia/DKI helpers. **ReVa’s MCP tools are not implemented here** — ReVa is a **separate** MCP server ([reverse-engineering-assistant](https://github.com/cyberkaida/reverse-engineering-assistant)); configure both servers in your IDE if you want static tools plus interactive Ghidra.
 
 ## Primary mission
 
-The main intent of this MCP server and webapp is to **decompile Digitale Bibliothek 5** (`C:\Program Files (x86)\Digitale Bibliothek 5\Digibib5.exe`) to understand **how Directmedia files are read and expanded** (DKI format). The toolkit supports that goal with Ghidra integration (decompilation, xrefs, renaming), binary analysis, and existing Directmedia decompressor logic. See [docs/DIRECTMEDIA_MISSION.md](docs/DIRECTMEDIA_MISSION.md) for the target binary and workflow.
+**Scope:** This stack is aimed at **small and medium Windows programs**, not at decompiling huge office suites (think **`Digibib5.exe`**, not **`WINWORD.EXE`**).
 
-## 🎯 **Overview**
+**Reference example / test case:** **`Digibib5.exe`** and the Directmedia **`.DKI`** volume layout are the main **worked example** to see whether reversing-mcp plus the webapp are actually usable for real (but modest-sized) apps: static overview in the webapp/MCP, deeper work in Ghidra via **ReVa** when needed. The goal is to learn **how those volumes are read and decoded** (especially packed **`text.dki`**), not to promise a universal decompiler.
 
-A comprehensive reverse engineering toolkit built on **FastMCP 2.13+**, providing programmatic access to professional reverse engineering tools with a revolutionary **Compilation-Decompilation-Comparison** testing methodology.
+**Plan:** [docs/DIGIBIB_DECOMPILE_PLAN.md](docs/DIGIBIB_DECOMPILE_PLAN.md). More context: [docs/DIRECTMEDIA_MISSION.md](docs/DIRECTMEDIA_MISSION.md), [docs/DIRECTMEDIA_REVERSING_TOOLKIT.md](docs/DIRECTMEDIA_REVERSING_TOOLKIT.md).
 
-**Key Features:**
-- 🔬 **Professional Reverse Engineering**: Ghidra integration with 25+ analysis tools
-- 🤖 **SOTA AI/LLM Stack**: Local (Ollama, LM Studio) + Cloud (OpenAI, Anthropic, Google AI) support
-- 🌐 **Modern Web Interface**: React TypeScript frontend with drag-and-drop analysis
-- 📊 **CDC Testing Methodology**: Empirical validation of reverse engineering accuracy
-- 📚 **Directmedia Support**: Decompression of 1990s e-book formats
-- 🎮 **DOS Game Collections**: Access to 1980s MS-DOS game source code for testing
+**Built-in `.DKI` helpers** (`decode_dki_file`, `analyze_directmedia_file`, `decompress_directmedia_library`) use **zlib-oriented heuristics**; they may work for some blobs or cleartext `tree.dki`, but **large-book body text** requires the codec and layout from **EXE reverse**. After Ghidra identifies the real reader, extend or replace logic in `src/reversing_mcp/directmedia_dki.py`. **Changelog:** [CHANGELOG.md](CHANGELOG.md).
 
-### 🎭 **The Ethical Spectrum of Reverse Engineering**
+## Overview
 
-Reverse engineering exists in the **"grey zone"** of technology - simultaneously powerful and controversial:
+Python toolkit on **FastMCP 3.1+** with programmatic binary analysis and a **Compilation–Decompilation–Comparison (CDC)** test workflow for fixtures.
 
-- **🛡️ Defensive Security**: Malware analysis, vulnerability discovery, threat intelligence
-- **📚 Digital Preservation**: Reviving "antediluvian" (ancient) software that vendors abandoned
-- **🔧 Interoperability**: Understanding proprietary formats and protocols for compatibility
-- **⚖️ Research**: Academic study of algorithms, security mechanisms, and software architecture
+**Features:**
 
-**This project democratizes access to these capabilities**, making professional reverse engineering tools available to researchers, security professionals, and digital archivists who need them for legitimate purposes.
+- Static analysis (PE, strings, entropy, hexdump); optional **headless** Ghidra from this repo; **interactive** Ghidra only via **ReVa** (other MCP server)
+- LLM providers: Ollama, LM Studio, OpenAI, Anthropic, Google AI (configurable)
+- Web UI: Next.js frontend, FastAPI backend ([reversing-webapp](reversing-webapp/))
+- CDC tests: compile fixtures, decompile, compare to source where applicable
+- Directmedia: heuristic DKI tools and [docs/DIGIBIB_DECOMPILE_PLAN.md](docs/DIGIBIB_DECOMPILE_PLAN.md) for full EXE-led decode
+- Test fixtures including DOS-era game **source** repos (external) for sample complexity
 
-## 🚀 **Quick Start**
+### Ethical use
+
+Typical legitimate uses: security research, malware analysis, interoperability, format recovery, and preservation of obsolete software. Ensure you have the right to analyze any binary you load. This project is not legal advice.
+
+## Quick Start
 
 ```powershell
 # One-command setup and launch
@@ -41,210 +41,87 @@ Reverse engineering exists in the **"grey zone"** of technology - simultaneously
 
 # Or from fleet (mcp-central-docs): starts\reversing-start.bat
 
-# Access: frontend http://localhost:10751, backend http://localhost:10750 (SOTA ports)
-# Webapp also startable from reversing-webapp: start.bat or .\start.ps1
+# Frontend http://localhost:10751, backend http://localhost:10750 (see operations/WEBAPP_PORTS.md in mcp-central-docs)
+# Webapp also: reversing-webapp\start.bat or .\start.ps1
 ```
 
-## ✨ **New Features Added**
+## Architecture
 
-### 🤖 **SOTA AI/LLM Management System**
-- **Local LLMs**: Ollama, LM Studio with automatic model discovery
-- **Cloud LLMs**: OpenAI GPT-4, Anthropic Claude, Google Gemini
-- **Model Management**: List, select, load, unload models dynamically
-- **Hugging Face Integration**: Access to thousands of open-source models
-- **Performance Tuning**: Context windows, temperature, token limits
-- **Real-time Health Monitoring**: Provider and model status checking
+### Core components
 
-### 🎮 **Enhanced Test Fixtures**
-- **Classic Game Fixture**: Early Windows-style snake game with text sprites
-- **DOS Game Collections**: Access to Wolfenstein 3D, Doom, Commander Keen source code
-- **CDC Methodology**: Compilation-Decompilation-Comparison testing framework
-
-### 🛠️ **Code Quality Improvements**
-- **Ruff Linting**: Comprehensive code formatting and quality checks
-- **Modern Python**: Type hints, proper imports, logging instead of print
-- **Git Hygiene**: Fixed .gitignore to exclude Node.js build artifacts
-
-## 📋 **Architecture**
-
-### **Core Components**
 ```
 reversing-mcp/
 ├── BinaryAnalyzer (analyzers.py)     # Multi-tool analysis engine
-├── DirectmediaDecompressor (integrated) # DKI decompression
-├── MCP Server (server.py)            # FastMCP 2.13+ interface
-├── AI/LLM Manager (settings)         # SOTA LLM integration
-├── Web Interface (reversing-webapp/) # Next.js React TypeScript UI
-├── Ghidra Bridge (bridge_mcp_ghidra.py) # Connects to LaurieWired's plugin
-└── Test Suite (tests/)               # CDC validation framework
+├── directmedia_dki.py                # Heuristic DKI / library paths
+├── MCP Server (server.py)            # FastMCP 3.1+ interface
+├── LLM settings / API                # Provider configuration
+├── Web Interface (reversing-webapp/) # Next.js + FastAPI
+└── Test Suite (tests/)               # CDC and unit tests
 ```
 
-### **Ghidra integration**
+### Ghidra integration
 
-Reversing-MCP does **not** run Ghidra. It talks to **LaurieWired's GhidraMCP plugin** over HTTP (default `http://127.0.0.1:8080/`). You run Ghidra (GUI), install the plugin, start the plugin's HTTP server, then use `ghidra_*` tools. The plugin runs inside Ghidra and exposes decompilation, listings, and refs.
+| Layer | Where it lives |
+|-------|----------------|
+| **ReVa MCP tools** (decompile, xrefs, strings in Ghidra, …) | **[ReVa / reverse-engineering-assistant](https://github.com/cyberkaida/reverse-engineering-assistant)** — **not** in reversing-mcp. Add it as a **second** MCP server in your client. |
+| **Headless Ghidra** (batch JSON) | This repo: `analyze_binary(..., ['ghidra'])` when `analyzeHeadless` is installed ([docs/GHIDRA.md](docs/GHIDRA.md)). |
+| **LaurieWired `ghidra_*` HTTP bridge** | Removed from this repo. |
 
-- **Headless:** The plugin is GUI-oriented. For true headless (CI, batch, no display), use Ghidra's `analyzeHeadless` and scripts, or a PyGhidra-based MCP (e.g. pyghidra-mcp). See [docs/GHIDRA.md](docs/GHIDRA.md) for setup, architecture, and headless options.
-- **Setup check:** Use the MCP tool `ghidra_setup_help(check_connection=True)` to verify the plugin is reachable.
+**Rationale:** [CURSOR_HANDOFF.md](CURSOR_HANDOFF.md), [TODO_REFACTOR.md](TODO_REFACTOR.md).
 
-### **AI/LLM Integration**
-- **Provider Support**: Ollama, LM Studio, OpenAI, Anthropic, Google AI
-- **Model Management**: Dynamic loading/unloading with health monitoring
-- **API Endpoints**: `/llm/list_providers`, `/llm/load_model`, `/llm/status`
-- **Configuration**: Per-provider settings and performance tuning
+### AI / LLM
 
-### **Web Interface Features**
-- **Drag-and-drop file upload** with validation
-- **Real-time analysis progress** with multiple tool support
-- **AI/LLM management dashboard** with model selection
-- **Ghidra integration** with decompilation and GUI launch
-- **Security analysis** with malware detection and entropy analysis
-- **Professional UI** with responsive design and dark/light themes
+Ollama, LM Studio, OpenAI, Anthropic, Google AI; endpoints such as `/llm/list_providers`, `/llm/load_model`, `/llm/status`.
 
-## 🧪 **Revolutionary CDC Testing**
+### Web UI
 
-**Compilation-Decompilation-Comparison** testing validates the entire reverse engineering pipeline:
+Upload and analyze binaries, LLM dashboard, static analysis. Ghidra decompilation runs in the IDE via ReVa, not inside the browser.
 
-1. **Compile** source code fixtures into binaries
-2. **Decompile** using reverse engineering tools
-3. **Compare** decompiled output to original source
-4. **Validate** that critical information is preserved
+## CDC testing
 
-### **Test Fixtures**
-- `hello_world.c`: Simple program validation
-- `simple_math.c`: Function detection and arithmetic
-- `data_structures.c`: Complex structures and memory operations
-- `simple_asm.asm`: Low-level assembly analysis
-- `classic_game.c`: Early Windows-style game with text sprites, game loops, and algorithms
+**Compilation–Decompilation–Comparison:** compile C/asm fixtures, run tools (e.g. Ghidra), compare output to source to spot gross information loss.
 
-### **🎮 DOS Game Source Code Collections**
+**Fixtures include:** `hello_world.c`, `simple_math.c`, `data_structures.c`, `simple_asm.asm`, `classic_game.c` (game-loop style code).
 
-**Perfect for reverse engineering test fixtures!** Here are excellent GitHub repositories with 1980s MS-DOS game source code:
+### DOS game source (external)
 
-#### **1. Awesome DOS Games Collection**
-**Repository**: `balintkissdev/awesome-dos`  
-**URL**: https://github.com/balintkissdev/awesome-dos
+Useful **source** references for non-trivial examples (clone separately if needed):
 
-**Classic Games with Source Code:**
-- **Wolfenstein 3D** (1992) - FPS pioneer, raycasting graphics
-- **Doom** (1993) - id Software's groundbreaking FPS
-- **Commander Keen** (1990-1991) - Platformer series
-- **Catacomb 3D** (1991) - Early 3D FPS
-- **Hovertank 3D** (1991) - Pseudo-3D tank shooter
-- **Sopwith** (1984) - Classic biplane shoot-em-up
-- **Beneath a Steel Sky** (1994) - Point-and-click adventure
-- **Abuse** (1995) - Innovative side-scroller
+- [awesome-dos](https://github.com/balintkissdev/awesome-dos) — Wolf3D, Doom, Keen, etc.
+- [DOS-Progs](https://github.com/Panda381/DOS-Progs) — assorted DOS sources
+- [Gist list](https://gist.github.com/lucasw/af65aa7314886764e650ccf561ee6291) — open DOS games
 
-#### **2. DOS-Progs Collection**
-**Repository**: `Panda381/DOS-Progs`  
-**URL**: https://github.com/Panda381/DOS-Progs
-
-**Contains**: Old DOS programs, utilities, and games by Gema Soft/Gemtree Software with full source code.
-
-#### **3. Open Source DOS Games**
-**Gist**: https://gist.github.com/lucasw/af65aa7314886764e650ccf561ee6291
-
-**Lists**: DOS games that can be recompiled with DOS tools and played in DOSBox.
-
-### **🎯 Recommended Test Fixtures from These Collections:**
-
-**For Simple Analysis:**
-- **Wolfenstein 3D**: Raycasting algorithms, game loops, memory management
-- **Catacomb 3D**: 3D math, collision detection, sprite rendering
-- **Commander Keen**: Platformer physics, level loading, animation systems
-
-**For Complex Analysis:**
-- **Doom**: Advanced graphics, sound systems, game state management
-- **Abuse**: Lisp scripting, advanced graphics techniques
-
-**Why These Are Perfect:**
-- ✅ **Authentic 1980s/1990s Code**: Real DOS-era programming patterns
-- ✅ **Complete Source**: Full C/assembly code for analysis
-- ✅ **Various Complexity Levels**: From simple arcade games to complex 3D engines
-- ✅ **Historical Significance**: Represents actual game development from the era
-
-**🎭 Amusing Sidenote**: The `awesome-dos` collection is basically a time capsule of 90s gaming history - complete with the source code that powered the games we all remember fondly (or played obsessively). Who knew reverse engineering test fixtures could double as nostalgia fuel? 🎮😄
-
-### **📥 Integration Ideas:**
-
-```bash
-# Clone the collection
-git clone https://github.com/balintkissdev/awesome-dos.git
-
-# Add specific games as test fixtures
-# Example: Add Wolfenstein 3D source as fixture
-cp -r awesome-dos/games/wolf3d tests/fixtures/wolf3d_source/
-```
-
-## 🎮 **New Test Fixture: Classic Game Analysis**
-
-**Added `classic_game.c`** - A comprehensive test fixture simulating early Windows games like Nibbles/Ants:
-
-- **Game Mechanics**: Text-based sprites, collision detection, scoring systems
-- **Data Structures**: Snake body arrays, game state management, position tracking
-- **Algorithms**: Random food placement, boundary checking, input handling
-- **File I/O**: High score saving/loading (simulates real game persistence)
-- **Memory Patterns**: Dynamic arrays, struct usage, pointer arithmetic
-
-**Why This Matters for Reverse Engineering:**
-- **Real-World Code**: Represents actual game development patterns from the 90s/early 2000s
-- **Complex Logic**: Game loops, state machines, and algorithmic code harder to reverse than simple programs
-- **Memory Analysis**: Array manipulations and struct handling common in larger applications
-- **Anti-Analysis**: Can test detection of obfuscated patterns and complex control flow
-
-**This fixture bridges the gap between simple "hello world" programs and complex real-world binaries!** 🎯🕹️
-
-## 🏆 **Supported Analysis Capabilities**
+## Supported analysis (this repo)
 
 | Tool | Status | Purpose |
 |------|--------|---------|
-| **Ghidra** | ✅ **Via plugin** | Primary decompiler; used via LaurieWired GhidraMCP plugin (HTTP). See [docs/GHIDRA.md](docs/GHIDRA.md). |
-| **radare2** | **NOT USED** | Command-line reverse engineering |
-| **Binwalk** | **NOT USED** | Firmware and binary extraction |
-| **GNU strings** | ✅ **USED** | String extraction |
-| **PE Analysis** | ✅ **USED** | Windows executable analysis |
-| **IDA Pro** | **NOT USED** | Monopoly destroyed by NSA's Ghidra - no excuse for $3,000+ pricing anymore |
+| **Ghidra (interactive)** | **ReVa** MCP server (separate install) | Decompilation, xrefs, etc. in the IDE |
+| **Ghidra (headless)** | This repo: `analyze_binary(..., ['ghidra'])` | Scripts under `ghidra_scripts/` |
+| **radare2** | Not integrated | — |
+| **Binwalk** | Not integrated | — |
+| **strings / PE** | Used | Via `BinaryAnalyzer` |
+| **IDA Pro** | Not used | Ghidra is the supported free path for this project |
 
-### **Why These Tools Are "Not Used"**
-- **radare2/Binwalk**: Excellent tools, but Ghidra provides superior analysis capabilities
-- **IDA Pro**: **MONOPOLY DESTROYED** by NSA's Ghidra release
-  - **Pre-Ghidra**: High price ($3,000+) was somewhat understandable due to monopoly
-  - **Post-Ghidra**: Absurd pricing now indefensible - NSA proved professional RE can be FREE
-  - Annual subscriptions + add-ons make it even more expensive
-  - Forces users to torrent download cracked versions (security risks, malware, legal issues)
-  - **Ghidra provides 95%+ of IDA Pro functionality for FREE** - no reason to use IDA anymore
+## Legal
 
-**Philosophy**: We focus on free, open-source tools that provide professional-grade reverse engineering without vendor lock-in or exorbitant costs. Thanks to the NSA, the monopoly is broken forever.
+- Analyze only binaries you are entitled to analyze.
+- Intended for research, security, education, and interoperability.
+- **Directmedia note:** DKI payloads may embed copyrighted text; do not redistribute book content with tooling.
+- Not legal advice; consult counsel for your jurisdiction.
 
-## ⚖️ **Legal & Ethical Considerations**
+## Installation
 
-### **Important Legal Notes**
-- **Always ensure you have legal rights** to analyze any binaries you work with
-- **This tool is provided for legitimate research**, security, and educational purposes only
-- **Reverse engineering operates in the "grey zone"** of technology with both defensive and controversial applications
+- [uv](https://docs.astral.sh/uv/) recommended; Python 3.12+ for the MCP package.
+- Webapp: Node.js 18+; optional Ghidra for headless/interactive workflows.
 
-### **Directmedia DKI Format Case Study**
-Our planned Directmedia-MCP project demonstrates complex legal issues in data format reverse engineering:
-- **Application vs. Data Format**: Reading app may be simpler legally than cracking DKI format
-- **Copyrighted Content**: DKI files contain actual ebooks with early 20th-century German translations
-- **Database Rights**: Compilation of thousands of works creates separate legal protection
-- **Successor Rights**: Copyright ownership may have transferred to creditors/IP holding companies
+**Run MCP via uv:**
 
-**📜 This is not legal advice.** Laws vary dramatically by jurisdiction. Always consult qualified legal counsel.
-
-## 🚀 Installation
-
-### Prerequisites
-- [uv](https://docs.astral.sh/uv/) installed (RECOMMENDED)
-- Python 3.12+
-
-### 📦 Quick Start
-Run immediately via `uvx`:
 ```bash
 uvx reversing-mcp
 ```
 
-### 🎯 Claude Desktop Integration
-Add to your `claude_desktop_config.json`:
+**Claude Desktop** (example):
+
 ```json
 "mcpServers": {
   "reversing-mcp": {
@@ -253,118 +130,39 @@ Add to your `claude_desktop_config.json`:
   }
 }
 ```
-### **Prerequisites**
-- Python 3.10+ (backend)
-- Node.js 18+ (webapp)
-- Ghidra (for full reverse engineering capabilities)
-- GCC/NASM (for test fixture compilation)
 
-### **Quick Setup**
+**Full clone:**
+
 ```bash
-# Clone the repository
 git clone https://github.com/sandraschi/reversing-mcp.git
 cd reversing-mcp
-
-# Install dependencies
 pip install -r requirements-dev.txt
-cd reversing-webapp && npm install
-
-# Launch everything
-cd .. && .\start-webapp.ps1
+cd reversing-webapp
+npm install
+cd ..
+.\start-webapp.ps1
 ```
 
-## 🔧 **Usage Examples**
+## Usage
 
-### **Web Interface (Recommended)**
-Access `http://localhost:10751` for the full graphical interface (backend `http://localhost:10750`) with:
-- Drag-and-drop binary analysis
-- Real-time progress monitoring
-- AI/LLM model management
-- Ghidra integration controls
+- **Web:** `http://localhost:10751` (API `http://localhost:10750`).
+- **MCP only:** `python -m src.reversing_mcp.server`
+- **Tests:** `pytest` from repo root (see `tests/` for scope).
 
-### **MCP Server Only**
-```bash
-python -m src.reversing_mcp.server
-```
+**MCP tools (this server only):** e.g. `analyze_binary`, `extract_strings`, `get_hexdump`, `analyze_entropy`, `decompress_directmedia_library`, `digibib_research_snapshot`, LLM list/load/status. **Ghidra decompilation / xrefs** are **ReVa’s** tools on a **separate** MCP server — not registered by reversing-mcp.
 
-### **Run Tests**
-```bash
-# All tests with CDC methodology
-pytest
+## Development status
 
-# Specific fixture
-python tests/run_tests.py --fixture classic_game.c
-```
+**Working:** static analysis stack, webapp, MCP surface, heuristic DKI helpers, docs for Digibib5 reverse ([DIGIBIB_DECOMPILE_PLAN.md](docs/DIGIBIB_DECOMPILE_PLAN.md)).
 
-### **Available MCP Tools**
-```
-analyze_binary()      - Full binary analysis with multiple tools
-extract_strings()     - String extraction with encoding support
-get_hexdump()         - Hex dump analysis with offset control
-analyze_entropy()     - Compression and encryption detection
-decompress_directmedia_library() - DKI file decompression
+**Planned:** spec-driven `text.dki` decode once EXE analysis is done; more providers/fixtures as needed.
 
-# Ghidra Tools (our MCP wrappers around LaurieWired's plugin)
-ghidra_decompile_function(name) - Decompile function to C code
-ghidra_list_functions() - List all functions in binary
-ghidra_disassemble_function(addr) - Get assembly code
-ghidra_get_xrefs_to(addr) - Find cross-references to address
-start_ghidra(file_path) - Launch Ghidra GUI manually
+## Acknowledgments
 
-# LLM Management Tools
-llm_list_providers()  - List available LLM providers
-llm_list_models()     - List models for a provider
-llm_select_model()    - Select model for use
-llm_load_model()      - Load model into memory
-llm_unload_model()    - Unload model from memory
-llm_get_status()      - Get current LLM status
-```
+Contributors and upstream projects including **ReVa**, **Ghidra**, **FastMCP**, and **Directmedia Publishing** (historical publisher of the Digitale Bibliothek line). See licenses in respective repositories.
 
-## 🏗️ **Development Status**
+### Third-party
 
-### **✅ Production Ready Features**
-- ✅ Professional reverse engineering toolkit with Ghidra integration
-- ✅ SOTA AI/LLM management system (Ollama, LM Studio, OpenAI, Anthropic, Google AI)
-- ✅ Modern web interface with drag-and-drop analysis
-- ✅ Revolutionary CDC testing methodology with empirical validation
-- ✅ Complete Directmedia decompression for 1990s e-book formats
-- ✅ Hybrid architecture: Our tools + LaurieWired's proven Ghidra plugin
-- ✅ Comprehensive documentation and user-friendly interface
-
-### **🔄 Planned Features**
-- 🔄 Real Directmedia DKI format reverse engineering (currently mock tools)
-- 🔄 Additional LLM provider integrations
-- 🔄 Advanced AI-assisted reverse engineering workflows
-- 🔄 More DOS game test fixtures from the awesome-dos collection
-
-## 🙏 **Acknowledgments**
-
-- **Sandra Schipal**: For driving this comprehensive reverse engineering effort
-- **Directmedia Publishing**: For pioneering digital literature in the 1990s
-- **Ghidra Team (NSA)**: For providing professional-grade free reverse engineering tools
-- **LaurieWired**: For the excellent GhidraMCP plugin (we use their `GhidraMCP.zip` directly)
-- **FastMCP Framework**: For enabling modern tool integration
-- **Open Source Community**: For making high-quality reverse engineering accessible
-
-### 📚 **Third-Party Components Used**
-- **GhidraMCP Plugin**: `GhidraMCP.zip` from https://github.com/LaurieWired/GhidraMCP (Apache 2.0)
-- **Ghidra**: NSA-developed reverse engineering framework (Apache 2.0)
-- **FastMCP**: Model Context Protocol framework (our integration layer)
-
----
-
-## 🎯 **Mission Accomplished**
-
-**Reversing MCP successfully delivers:**
-- ✅ Professional reverse engineering toolkit with Ghidra integration
-- ✅ SOTA AI/LLM stack with local and cloud LLM support
-- ✅ Revolutionary Compilation-Decompilation-Comparison testing methodology
-- ✅ Complete Directmedia decompression for 1990s e-book formats
-- ✅ Production-ready MCP server (FastMCP 2.13+ compliant)
-- ✅ Modern web interface with drag-and-drop analysis (Next.js + TypeScript)
-- ✅ Hybrid architecture: Our tools + LaurieWired's proven Ghidra plugin
-- ✅ Comprehensive documentation and user-friendly interface
-
-**This project transforms reverse engineering from subjective analysis to empirically validated science, accessible through both command-line and modern web interfaces.** 🔬🌐✨
-
-**Ready to reverse engineer more legacy formats?** 🕵️‍♂️🔧📚
+- [ReVa](https://github.com/cyberkaida/reverse-engineering-assistant) — Ghidra MCP
+- [Ghidra](https://ghidra-sre.org/) — Apache 2.0
+- [FastMCP](https://github.com/jlowin/fastmcp) — MCP framework

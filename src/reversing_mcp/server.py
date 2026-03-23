@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-Reversing MCP Server - Ghidra and Free Reverse Engineering Tools
+Reversing MCP Server — static binary analysis and Directmedia tools.
+
+For interactive Ghidra analysis over MCP, run the ReVa (reverse-engineering-assistant)
+server separately and connect it in your MCP client. See docs/GHIDRA.md and
+CURSOR_HANDOFF.md in this repository.
 """
 
 import os
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -12,61 +15,23 @@ from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
 from .analyzers import BinaryAnalyzer
+from .digibib_research import build_research_snapshot, resolve_digibib_exe
+from .directmedia_dki import (
+    decode_dki_path,
+    legacy_extract_for_server,
+    resolve_digitale_library_root,
+    result_to_mcp_dict,
+)
 from .logging_config import get_logger
-from .transport import run_server, run_server_async
+from .transport import run_server
 
 logger = get_logger("reversing_mcp")
 
-# Try to import Directmedia decompressor (optional)
-try:
-    from directmedia_mcp.directmedia_decompressor import DirectmediaDecompressor
-
-    directmedia_available = True
-except ImportError:
-    directmedia_available = False
-    logger.warning("Directmedia decompressor not available - Directmedia tools will be disabled")
+# Built-in .DKI decoder (zlib/gzip heuristics); no external directmedia-mcp wheel required
+directmedia_available = True
 
 # Initialize MCP server
-mcp = FastMCP("ReversingMCP", version="0.1.0")
-
-# Import OUR CUSTOM Ghidra bridge (connects to LaurieWired's plugin)
-try:
-    from .bridge_mcp_ghidra import (
-        decompile_function,
-        decompile_function_by_address,
-        disassemble_function,
-        get_current_address,
-        get_current_function,
-        get_function_by_address,
-        get_function_xrefs,
-        get_xrefs_from,
-        get_xrefs_to,
-        list_classes,
-        list_data_items,
-        list_exports,
-        list_functions,
-        list_imports,
-        # These are OUR MCP tools that call THEIR Ghidra plugin via HTTP
-        list_methods,
-        list_namespaces,
-        list_segments,
-        list_strings,
-        rename_data,
-        rename_function,
-        rename_function_by_address,
-        rename_variable,
-        search_functions_by_name,
-        set_decompiler_comment,
-        set_disassembly_comment,
-        set_function_prototype,
-        set_local_variable_type,
-    )
-
-    ghidra_available = True
-    logger.info("OUR Ghidra bridge loaded successfully (connects to LaurieWired's plugin)")
-except ImportError as e:
-    ghidra_available = False
-    logger.warning(f"OUR Ghidra bridge not available: {e}")
+mcp = FastMCP("ReversingMCP", version="0.4.0")
 
 
 class AnalysisResult(BaseModel):
@@ -92,7 +57,6 @@ class StringResult(BaseModel):
 
 # Global analyzer instances
 analyzer = BinaryAnalyzer()
-directmedia_decompressor = DirectmediaDecompressor() if directmedia_available else None
 
 
 @mcp.tool()
@@ -251,21 +215,12 @@ async def check_tools() -> dict[str, Any]:
     try:
         available_tools = analyzer.check_available_tools()
 
-        # Add GhidraMCP status
-        available_tools["ghidra_mcp"] = {
-            "name": "GhidraMCP (HTTP Server)",
-            "available": ghidra_available,
-            "version": "1.2" if ghidra_available else None,
-            "description": "Ghidra plugin with HTTP server for MCP integration",
-            "endpoint": "http://127.0.0.1:8080/" if ghidra_available else None,
-        }
-
         # Add Directmedia status
         available_tools["directmedia"] = {
-            "name": "Directmedia Decompressor",
+            "name": "Directmedia DKI (built-in)",
             "available": directmedia_available,
-            "version": "1.0" if directmedia_available else None,
-            "description": "Extract text from Directmedia Digitale Bibliothek files",
+            "version": "0.4",
+            "description": "Heuristic zlib/gzip .DKI decode (analyze_directmedia_file, decode_dki_file)",
         }
 
         return {
@@ -273,17 +228,60 @@ async def check_tools() -> dict[str, Any]:
             "summary": {
                 "total": len(available_tools),
                 "available": len([t for t in available_tools.values() if t["available"]]),
-                "recommended": ["ghidra", "ghidra_mcp", "r2", "binwalk"],  # Free/open source tools
-                "premium": ["ida"],  # Commercial tools
+                "recommended": ["ghidra", "r2", "binwalk"],
+                "premium": ["ida"],
             },
             "notes": {
-                "ghidra_setup": "Install GhidraMCP plugin (GhidraMCP.zip) and start Ghidra for HTTP server access",
+                "ghidra_mcp": (
+                    "Ghidra MCP is not bundled here. Install ReVa (reverse-engineering-assistant) "
+                    "and add it to your MCP client; see docs/GHIDRA.md."
+                ),
                 "directmedia_setup": "Install directmedia-mcp for .DKI file analysis",
+                "digibib5": (
+                    "Digitale Bibliothek 5: digibib_research_snapshot() for static prelude; "
+                    "see docs/DIRECTMEDIA_REVERSING_TOOLKIT.md"
+                ),
             },
         }
     except Exception as e:
         logger.error(f"Error checking tools: {e}")
         return {"error": f"Tool check failed: {e!s}"}
+
+
+@mcp.tool()
+async def digibib_research_snapshot(exe_path: str | None = None) -> dict[str, Any]:
+    """
+    DIGIBIB_RESEARCH_SNAPSHOT — Static research bundle for Digibib5.exe / Directmedia viewer work.
+
+    PORTMANTEAU PATTERN RATIONALE: Single entry point for the Digitale Bibliothek 5 mission:
+    file metadata, PE summary, entropy, and keyword-filtered strings (DKI, decompress, …)
+    before interactive Ghidra/ReVa decompilation.
+
+    Args:
+        exe_path: Optional absolute path to Digibib5.exe. If omitted, uses repo fixture
+            tests/fixtures/exe files/Digibib5.exe then the standard Program Files install path.
+
+    Returns:
+        success, exe_path, file_info, directmedia_string_hits, counts, entropy, tools,
+        next_steps, viewer_roadmap; or error + paths_searched when not found.
+
+    Examples:
+        digibib_research_snapshot()
+        digibib_research_snapshot("D:\\\\Dev\\\\repos\\\\reversing-mcp\\\\tests\\\\fixtures\\\\exe files\\\\Digibib5.exe")
+    """
+    resolved, tried = resolve_digibib_exe(exe_path)
+    if resolved is None:
+        return {
+            "success": False,
+            "error": "Digibib5.exe not found",
+            "paths_searched": tried,
+            "hint": "Copy Digibib5.exe into tests/fixtures/exe files/ or pass exe_path.",
+        }
+    try:
+        return build_research_snapshot(analyzer, resolved)
+    except Exception as e:
+        logger.exception("digibib_research_snapshot failed")
+        return {"success": False, "error": f"Snapshot failed: {e!s}", "exe_path": str(resolved)}
 
 
 @mcp.tool()
@@ -306,12 +304,32 @@ async def analyze_pe_file(file_path: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+async def decode_dki_file(file_path: str) -> dict[str, Any]:
+    """
+    DECODE_DKI_FILE — Decompress a Directmedia .DKI using built-in zlib/gzip autodetection.
+
+    PORTMANTEAU PATTERN RATIONALE: Explicit decode report (strategy, preview, attempts) without
+    also writing sidecar .txt files.
+
+    Args:
+        file_path: Path to a .DKI (e.g. volume Data/TEXT.DKI)
+
+    Returns:
+        success, strategy_used, encoding_guess, text_preview, attempts, uncompressed_bytes, or error.
+    """
+    if not os.path.exists(file_path):
+        return {"success": False, "error": f"File not found: {file_path}"}
+    r = decode_dki_path(Path(file_path))
+    return result_to_mcp_dict(file_path, r)
+
+
+@mcp.tool()
 async def analyze_directmedia_file(file_path: str) -> dict[str, Any]:
     """
     Analyze a Directmedia .DKI file and extract text content
 
-    This tool can reverse engineer Directmedia Digitale Bibliothek files
-    from the 1990s, extracting readable text content from proprietary formats.
+    Uses the in-repo heuristic decoder (zlib/gzip / header skip). Writes *_extracted.txt
+    next to the .DKI on success.
 
     Args:
         file_path: Path to the .DKI file to analyze
@@ -320,7 +338,13 @@ async def analyze_directmedia_file(file_path: str) -> dict[str, Any]:
         return {"error": f"File not found: {file_path}"}
 
     try:
-        result = directmedia_decompressor.extract_text_content(Path(file_path))
+        result = legacy_extract_for_server(Path(file_path))
+        if not result.get("success"):
+            return {
+                "error": result.get("error", "DKI decode failed"),
+                "file_path": file_path,
+                "extraction_status": "failed",
+            }
 
         # Format the response for MCP
         response = {
@@ -390,20 +414,29 @@ async def analyze_directmedia_file(file_path: str) -> dict[str, Any]:
 
 @mcp.tool()
 async def decompress_directmedia_library(
-    library_path: str, volume_filter: str | None = None
+    library_path: str | None = None, volume_filter: str | None = None
 ) -> dict[str, Any]:
     """
     Batch decompress all Directmedia volumes in a library
 
     Args:
-        library_path: Path to the Directmedia library directory
+        library_path: Path to the Directmedia library directory (DB* folders). If omitted,
+            uses env DIGITALE_BIBLIOTHEK_ROOT, then the default L:\\Multimedia Files\\... tree.
         volume_filter: Optional filter for volume names (e.g., "DB002" or "*philo*")
     """
-    if not os.path.exists(library_path):
-        return {"error": f"Library path not found: {library_path}"}
+    if not directmedia_available:
+        return {"error": "Directmedia decoder unavailable"}
+
+    resolved, paths_searched = resolve_digitale_library_root(library_path)
+    if resolved is None:
+        return {
+            "error": "Digitale Bibliothek library directory not found",
+            "paths_searched": paths_searched,
+            "hint": "Set DIGITALE_BIBLIOTHEK_ROOT or pass library_path to your DB* parent folder.",
+        }
 
     try:
-        lib_path = Path(library_path)
+        lib_path = resolved
         results = []
 
         # Find all DBxxx directories
@@ -429,7 +462,12 @@ async def decompress_directmedia_library(
             text_dki = data_dir / "TEXT.DKI"
             if text_dki.exists():
                 try:
-                    result = directmedia_decompressor.extract_text_content(text_dki)
+                    result = legacy_extract_for_server(text_dki)
+                    if not result.get("success"):
+                        results.append(
+                            {"volume": volume_dir.name, "error": result.get("error", "decode failed")}
+                        )
+                        continue
 
                     volume_result = {
                         "volume": volume_dir.name,
@@ -446,7 +484,7 @@ async def decompress_directmedia_library(
                     results.append({"volume": volume_dir.name, "error": str(e)})
 
         return {
-            "library_path": library_path,
+            "library_path": str(lib_path),
             "volumes_processed": processed_volumes,
             "total_volumes_found": len(volume_dirs),
             "total_text_extracted": total_text_extracted,
@@ -457,315 +495,6 @@ async def decompress_directmedia_library(
     except Exception as e:
         logger.error(f"Error in batch Directmedia decompression: {e}")
         return {"error": f"Batch decompression failed: {e!s}"}
-
-
-# GhidraMCP Tools Integration (if available)
-if ghidra_available:
-    # Register all GhidraMCP tools with the main MCP server
-
-    @mcp.tool()
-    async def ghidra_list_methods(offset: int = 0, limit: int = 100) -> list:
-        """List all function names in the Ghidra program with pagination."""
-        return list_methods(offset, limit)
-
-    @mcp.tool()
-    async def ghidra_list_classes(offset: int = 0, limit: int = 100) -> list:
-        """List all namespace/class names in the Ghidra program with pagination."""
-        return list_classes(offset, limit)
-
-    @mcp.tool()
-    async def ghidra_decompile_function(name: str) -> str:
-        """Decompile a specific function by name and return the decompiled C code."""
-        return decompile_function(name)
-
-    @mcp.tool()
-    async def ghidra_rename_function(old_name: str, new_name: str) -> str:
-        """Rename a function by its current name to a new user-defined name."""
-        return rename_function(old_name, new_name)
-
-    @mcp.tool()
-    async def ghidra_rename_data(address: str, new_name: str) -> str:
-        """Rename a data label at the specified address."""
-        return rename_data(address, new_name)
-
-    @mcp.tool()
-    async def ghidra_list_segments(offset: int = 0, limit: int = 100) -> list:
-        """List all memory segments in the Ghidra program with pagination."""
-        return list_segments(offset, limit)
-
-    @mcp.tool()
-    async def ghidra_list_imports(offset: int = 0, limit: int = 100) -> list:
-        """List imported symbols in the Ghidra program with pagination."""
-        return list_imports(offset, limit)
-
-    @mcp.tool()
-    async def ghidra_list_exports(offset: int = 0, limit: int = 100) -> list:
-        """List exported functions/symbols with pagination."""
-        return list_exports(offset, limit)
-
-    @mcp.tool()
-    async def ghidra_list_namespaces(offset: int = 0, limit: int = 100) -> list:
-        """List all non-global namespaces in the Ghidra program with pagination."""
-        return list_namespaces(offset, limit)
-
-    @mcp.tool()
-    async def ghidra_list_data_items(offset: int = 0, limit: int = 100) -> list:
-        """List defined data labels and their values with pagination."""
-        return list_data_items(offset, limit)
-
-    @mcp.tool()
-    async def ghidra_search_functions(query: str, offset: int = 0, limit: int = 100) -> list:
-        """Search for functions whose name contains the given substring."""
-        return search_functions_by_name(query, offset, limit)
-
-    @mcp.tool()
-    async def ghidra_rename_variable(function_name: str, old_name: str, new_name: str) -> str:
-        """Rename a local variable within a function."""
-        return rename_variable(function_name, old_name, new_name)
-
-    @mcp.tool()
-    async def ghidra_get_function_by_address(address: str) -> str:
-        """Get a function by its address."""
-        return get_function_by_address(address)
-
-    @mcp.tool()
-    async def ghidra_get_current_address() -> str:
-        """Get the address currently selected by the user."""
-        return get_current_address()
-
-    @mcp.tool()
-    async def ghidra_get_current_function() -> str:
-        """Get the function currently selected by the user."""
-        return get_current_function()
-
-    @mcp.tool()
-    async def ghidra_list_functions() -> list:
-        """List all functions in the Ghidra database."""
-        return list_functions()
-
-    @mcp.tool()
-    async def ghidra_decompile_by_address(address: str) -> str:
-        """Decompile a function at the given address."""
-        return decompile_function_by_address(address)
-
-    @mcp.tool()
-    async def ghidra_disassemble_function(address: str) -> list:
-        """Get assembly code for a function."""
-        return disassemble_function(address)
-
-    @mcp.tool()
-    async def ghidra_set_decompiler_comment(address: str, comment: str) -> str:
-        """Set a comment for a given address in the function pseudocode."""
-        return set_decompiler_comment(address, comment)
-
-    @mcp.tool()
-    async def ghidra_set_disassembly_comment(address: str, comment: str) -> str:
-        """Set a comment for a given address in the function disassembly."""
-        return set_disassembly_comment(address, comment)
-
-    @mcp.tool()
-    async def ghidra_rename_function_by_address(function_address: str, new_name: str) -> str:
-        """Rename a function by its address."""
-        return rename_function_by_address(function_address, new_name)
-
-    @mcp.tool()
-    async def ghidra_set_function_prototype(function_address: str, prototype: str) -> str:
-        """Set a function's prototype."""
-        return set_function_prototype(function_address, prototype)
-
-    @mcp.tool()
-    async def ghidra_set_variable_type(
-        function_address: str, variable_name: str, new_type: str
-    ) -> str:
-        """Set a local variable's type."""
-        return set_local_variable_type(function_address, variable_name, new_type)
-
-    @mcp.tool()
-    async def ghidra_get_xrefs_to(address: str, offset: int = 0, limit: int = 100) -> list:
-        """Get all references to the specified address."""
-        return get_xrefs_to(address, offset, limit)
-
-    @mcp.tool()
-    async def ghidra_get_xrefs_from(address: str, offset: int = 0, limit: int = 100) -> list:
-        """Get all references from the specified address."""
-        return get_xrefs_from(address, offset, limit)
-
-    @mcp.tool()
-    async def ghidra_get_function_xrefs(name: str, offset: int = 0, limit: int = 100) -> list:
-        """Get all references to the specified function by name."""
-        return get_function_xrefs(name, offset, limit)
-
-    @mcp.tool()
-    async def ghidra_list_strings(
-        offset: int = 0, limit: int = 2000, filter_str: str = None
-    ) -> list:
-        """List all defined strings in the Ghidra program with their addresses."""
-        return list_strings(offset, limit, filter_str)
-
-
-@mcp.tool()
-async def start_ghidra(
-    file_path: str = None, project_name: str = None, wait: bool = False
-) -> dict[str, Any]:
-    """
-    Start Ghidra GUI with optional binary file loading.
-
-    This tool launches Ghidra manually when you want to use the Ghidra interface
-    directly instead of through MCP tools. Useful for complex analysis or when
-    you need the full Ghidra GUI experience.
-
-    Args:
-        file_path: Optional path to a binary file to open in Ghidra
-        project_name: Optional project name to create/use (default: auto-generated)
-        wait: Whether to wait for Ghidra to exit before returning (default: False)
-
-    Returns:
-        Dictionary with launch status and Ghidra information
-    """
-    try:
-        # Check if Ghidra is available
-        if not analyzer.tools_cache or not analyzer.tools_cache["ghidra"]["available"]:
-            return {
-                "error": "Ghidra not found on system",
-                "available": False,
-                "suggestion": "Install Ghidra and ensure GhidraMCP plugin is installed",
-            }
-
-        ghidra_path = analyzer.tools_cache["ghidra"]["path"]
-        version = analyzer.tools_cache["ghidra"].get("version", "unknown")
-
-        # Build command arguments
-        cmd = [ghidra_path]
-
-        # Add project creation if specified
-        if project_name:
-            # Create a temporary project directory if needed
-            import tempfile
-
-            temp_dir = tempfile.gettempdir()
-            project_dir = os.path.join(temp_dir, f"ghidra_mcp_{project_name}")
-            os.makedirs(project_dir, exist_ok=True)
-            cmd.extend(["-import", project_dir])
-
-        # Add file to import if specified
-        if file_path:
-            if not os.path.exists(file_path):
-                return {
-                    "error": f"File not found: {file_path}",
-                    "ghidra_path": ghidra_path,
-                    "version": version,
-                }
-            cmd.extend(["-import", file_path])
-
-        logger.info(f"Starting Ghidra: {' '.join(cmd)}")
-
-        # Launch Ghidra
-        if wait:
-            # Synchronous launch - wait for Ghidra to exit
-            result = run_server(subprocess, server_name="ReversingMCP")
-            return {
-                "success": True,
-                "ghidra_path": ghidra_path,
-                "version": version,
-                "command": " ".join(cmd),
-                "file_loaded": file_path,
-                "project_name": project_name,
-                "waited": True,
-                "return_code": result.returncode,
-                "stdout": result.stdout[-500:] if result.stdout else None,
-                "stderr": result.stderr[-500:] if result.stderr else None,
-            }
-        # Asynchronous launch - don't wait
-        process = subprocess.Popen(
-            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
-        )
-
-        # Give Ghidra a moment to start
-        import time
-
-        time.sleep(2)
-
-        # Check if process is still running
-        process.poll()
-
-        return {
-            "success": True,
-            "ghidra_path": ghidra_path,
-            "version": version,
-            "command": " ".join(cmd),
-            "file_loaded": file_path,
-            "project_name": project_name,
-            "waited": False,
-            "process_id": process.pid if process.poll() is None else None,
-            "process_running": process.poll() is None,
-            "note": "Ghidra launched in background. Use MCP Ghidra tools once a binary is loaded.",
-        }
-
-    except subprocess.TimeoutExpired:
-        return {
-            "error": "Ghidra launch timed out",
-            "ghidra_path": ghidra_path if "ghidra_path" in locals() else None,
-            "suggestion": "Try launching Ghidra manually or check system resources",
-        }
-    except Exception as e:
-        return {
-            "error": f"Failed to start Ghidra: {e!s}",
-            "ghidra_path": ghidra_path if "ghidra_path" in locals() else None,
-            "suggestion": "Check Ghidra installation and try launching manually",
-        }
-
-
-@mcp.tool()
-async def ghidra_setup_help(check_connection: bool = True) -> dict[str, Any]:
-    """
-    Ghidra setup and status: how this server uses Ghidra and whether the plugin is reachable.
-
-    Reversing MCP does not run Ghidra itself. All ghidra_* tools talk to LaurieWired's
-    GhidraMCP plugin, which runs inside Ghidra and exposes an HTTP API (default port 8080).
-    You must have Ghidra running with a binary loaded and the GhidraMCP plugin started.
-
-    Args:
-        check_connection: If True (default), probe the plugin URL to report if it is reachable.
-
-    Returns:
-        Dict with setup_requirements, plugin_url, steps, bridge_loaded, and plugin_reachable.
-    """
-    import requests
-
-    out: dict[str, Any] = {
-        "how_ghidra_is_used": (
-            "This server does not embed or run Ghidra. It calls LaurieWired's GhidraMCP "
-            "plugin via HTTP. The plugin runs inside Ghidra and exposes decompilation, "
-            "disassembly, listings, and refs. All ghidra_* tools send requests to that API."
-        ),
-        "plugin_url": "http://127.0.0.1:8080/",
-        "setup_steps": [
-            "1. Install Ghidra (https://ghidra-sre.org/).",
-            "2. Install the GhidraMCP plugin (e.g. GhidraMCP.zip) into Ghidra.",
-            "3. Start Ghidra, create or open a project, import a binary, run analysis.",
-            "4. Start the GhidraMCP HTTP server from the plugin (default port 8080).",
-            "5. Then use ghidra_* tools from this MCP server; they will call the plugin.",
-        ],
-        "bridge_loaded": ghidra_available,
-        "plugin_reachable": None,
-    }
-    if not ghidra_available:
-        out["plugin_reachable"] = False
-        out["note"] = "Ghidra bridge failed to load (see server logs). Plugin check skipped."
-        return out
-    if not check_connection:
-        return out
-    try:
-        from . import bridge_mcp_ghidra
-
-        url = getattr(bridge_mcp_ghidra, "ghidra_server_url", "http://127.0.0.1:8080/")
-        r = requests.get(url, timeout=2)
-        out["plugin_reachable"] = r.ok
-        out["plugin_status_code"] = r.status_code
-    except Exception as e:
-        out["plugin_reachable"] = False
-        out["plugin_error"] = str(e)
-    return out
 
 
 @mcp.tool()
@@ -790,16 +519,17 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
             "level": "basic",
             "description": "Essential tools and quick start guide",
             "ghidra_note": (
-                "Ghidra tools (ghidra_*) use Ghidra via LaurieWired's GhidraMCP plugin over HTTP. "
-                "You must have Ghidra running with the plugin started (default: http://127.0.0.1:8080/). "
-                "Use ghidra_setup_help() for setup steps and status."
+                "Ghidra MCP is provided by a separate server (ReVa / reverse-engineering-assistant). "
+                "Add it in your MCP client; use its tools for decompilation and listings. "
+                "This server covers static analysis and Directmedia."
             ),
             "quick_start": [
                 "1. Check available tools: check_tools()",
-                "2. Ghidra setup/status: ghidra_setup_help()",
-                "3. Analyze a binary: analyze_binary('file.exe', ['static', 'strings'])",
-                "4. Extract strings: extract_strings('file.exe', min_length=8)",
-                "5. Get hex dump: get_hexdump('file.exe', offset=0, length=256)",
+                "2. Analyze a binary: analyze_binary('file.exe', ['static', 'strings'])",
+                "3. Extract strings: extract_strings('file.exe', min_length=8)",
+                "4. Get hex dump: get_hexdump('file.exe', offset=0, length=256)",
+                "5. For Ghidra: connect ReVa MCP (see docs/GHIDRA.md)",
+                "6. Digibib5 / Directmedia: digibib_research_snapshot() (see docs/DIRECTMEDIA_REVERSING_TOOLKIT.md)",
             ],
             "essential_tools": [
                 "analyze_binary - Full binary analysis",
@@ -807,7 +537,7 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
                 "get_hexdump - View raw bytes",
                 "analyze_entropy - Detect compression/encryption",
                 "check_tools - See what's available",
-                "ghidra_setup_help - Ghidra plugin setup and connectivity",
+                "digibib_research_snapshot - Static bundle for Digibib5.exe / viewer roadmap",
             ],
             "next_steps": "Use level='intermediate' for detailed tool descriptions",
         }
@@ -824,35 +554,28 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
                     "get_hexdump(file_path, offset, length) - Raw byte viewer",
                     "analyze_entropy(file_path, block_size) - Detect packed/encrypted sections",
                     "find_functions(file_path, tool) - Locate functions in binaries",
+                    "digibib_research_snapshot(exe_path?) - Digibib5 / Directmedia static prelude + roadmap",
                 ],
                 "file_info": [
                     "get_file_info(file_path) - Basic file metadata",
                     "analyze_pe_file(file_path) - Windows PE analysis",
+                    "decode_dki_file(path) - Directmedia .DKI zlib/gzip decode report",
                     "file_type detection, permissions, timestamps",
                 ],
-                "ghidra_tools": (
-                    [
-                        "ghidra_decompile_function(name) - Decompile to C code",
-                        "ghidra_list_functions() - All functions in loaded binary",
-                        "ghidra_disassemble_function(addr) - Assembly code",
-                        "ghidra_list_strings() - Extract strings with addresses",
-                        "ghidra_get_xrefs_to/from(addr) - Cross-references",
-                        "ghidra_setup_help() - Setup requirements and plugin status",
-                    ]
-                    if ghidra_available
-                    else ["Ghidra tools not available - install GhidraMCP plugin"]
-                ),
+                "ghidra_tools": [
+                    "Use the ReVa MCP server (reverse-engineering-assistant) for Ghidra-backed tools.",
+                    "Discover tools via your client's tool list or ReVa's tool_search when available.",
+                ],
                 "ghidra_requirements": (
-                    "Ghidra tools talk to LaurieWired's GhidraMCP plugin inside Ghidra via HTTP "
-                    "(default http://127.0.0.1:8080/). Run Ghidra, load a binary, install and start the plugin."
+                    "Install ReVa for Ghidra MCP (assistant or headless mode per Ghidra version). "
+                    "See docs/GHIDRA.md and CURSOR_HANDOFF.md."
                 ),
             },
             "workflows": {
                 "malware_analysis": [
-                    "1. check_tools() - Verify Ghidra availability",
-                    "2. analyze_binary(file.exe, ['ghidra']) - Full analysis",
-                    "3. ghidra_list_functions() - See all functions",
-                    "4. ghidra_decompile_function('main') - Analyze main function",
+                    "1. check_tools() - Verify local RE tools",
+                    "2. analyze_binary(file.exe, ['static', 'strings', 'ghidra']) - Static + headless Ghidra if installed",
+                    "3. Use ReVa MCP for interactive decompilation and xrefs in Ghidra",
                 ],
                 "firmware_research": [
                     "1. get_hexdump(file.bin, 0, 1024) - Check headers",
@@ -871,11 +594,10 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
             "description": "Technical architecture, Ghidra deep-dive, and expert references",
             "architecture": {
                 "core_components": {
-                    "BinaryAnalyzer": "Multi-tool analysis orchestrator supporting IDA, Ghidra, radare2",
-                    "GhidraMCP Integration": (
-                        "Ghidra is used via LaurieWired's GhidraMCP plugin over HTTP (default :8080). "
-                        "This server does not run Ghidra; it calls the plugin API. Run Ghidra with the "
-                        "plugin started to use ghidra_* tools. See ghidra_setup_help()."
+                    "BinaryAnalyzer": "Multi-tool analysis orchestrator supporting IDA, Ghidra headless, radare2",
+                    "Ghidra MCP": (
+                        "Interactive Ghidra analysis is a separate concern: run ReVa MCP alongside this server. "
+                        "analyze_binary(..., ['ghidra']) may still use headless Ghidra when installed."
                     ),
                     "Directmedia Decompressor": "Legacy .DKI format reverse engineering",
                 },
@@ -901,9 +623,9 @@ async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
                     "collaboration": "Multi-user analysis with version control integration",
                 },
                 "integration_architecture": {
-                    "mcp_bridge": "LaurieWired plugin runs inside Ghidra GUI, exposes HTTP API; this server calls it.",
-                    "headless_note": "This integration requires Ghidra GUI + plugin. For headless use analyzeHeadless or PyGhidra/pyghidra-mcp.",
-                    "api_endpoints": "Plugin provides decompilation, disassembly, cross-references over HTTP (default :8080).",
+                    "reva_mcp": "ReVa (reverse-engineering-assistant) exposes Ghidra as MCP; connect it in your client.",
+                    "headless_note": "Ghidra 12.0+: ReVa headless (`mcp-reva`). Older: assistant mode with Ghidra GUI.",
+                    "companion_server": "reversing-mcp stays focused on static tools + Directmedia without GUI coupling.",
                     "see_ghidra_docs": "docs/GHIDRA.md in this repo for setup and headless options.",
                 },
                 "competitive_advantages": {
@@ -1019,7 +741,7 @@ def main():
 try:
     from fastapi import FastAPI as _FastAPI
 
-    _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.1.0")
+    _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.4.0")
 
     @_http_app.get("/health")
     async def _health() -> dict[str, str]:

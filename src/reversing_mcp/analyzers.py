@@ -92,17 +92,33 @@ class BinaryAnalyzer:
                 break
 
     def _check_ghidra(self, tool_info: dict[str, Any]):
-        """Check for Ghidra installation"""
+        """Check for Ghidra installation. Prefer GHIDRA_HOME env (install dir)."""
         ghidra_paths: list[Path] = []
 
-        # 1. User provided path (v12.0) - High Priority
-        user_ghidra = Path(r"C:\Users\sandr\ghidra_12.0_PUBLIC")
-        if user_ghidra.exists():
-            bat = user_ghidra / "ghidraRun.bat"
-            if bat.exists():
-                ghidra_paths.append(bat)
+        # 1. GHIDRA_HOME (or GHIDRA_INSTALL_DIR) - explicit, recommended
+        for env_key in ("GHIDRA_HOME", "GHIDRA_INSTALL_DIR"):
+            val = os.environ.get(env_key)
+            if val:
+                base = Path(val).resolve()
+                if base.is_dir():
+                    bat = base / "ghidraRun.bat"
+                    if bat.exists():
+                        ghidra_paths.append(bat)
+                        break
+                    # Allow base to be repo root with ghidra_*_PUBLIC child
+                    for child in base.iterdir():
+                        if (
+                            child.is_dir()
+                            and "ghidra" in child.name.lower()
+                            and "PUBLIC" in child.name
+                        ):
+                            run_bat = child / "ghidraRun.bat"
+                            if run_bat.exists():
+                                ghidra_paths.append(run_bat)
+                                break
+                break
 
-        # 2. Common installation directories
+        # 2. Common installation directories (avoid temp; prefer stable install)
         ghidra_paths.extend(self._scan_common_ghidra_dirs())
 
         # 3. Unix/Linux paths
@@ -114,18 +130,24 @@ class BinaryAnalyzer:
                 ]
             )
 
-        # Remove duplicates and validate
-        unique_paths = []
-        seen = set()
+        # Remove duplicates; prefer stable installs over temp/unpack locations
+        seen: set[str] = set()
+        stable: list[Path] = []
+        temp_candidates: list[Path] = []
         for p in ghidra_paths:
-            if p.exists() and str(p) not in seen:
-                unique_paths.append(p)
-                seen.add(str(p))
+            if not p.exists() or str(p) in seen:
+                continue
+            seen.add(str(p))
+            if "temp" in str(p).lower() or "tmp" in str(p).lower():
+                temp_candidates.append(p)
+            else:
+                stable.append(p)
 
+        unique_paths = stable + temp_candidates
         if not unique_paths:
             return
 
-        # Pick the first one (usually the user path)
+        # Prefer first (env or stable path); temp only if nothing else
         path = unique_paths[0]
         tool_info["available"] = True
         tool_info["path"] = str(path)

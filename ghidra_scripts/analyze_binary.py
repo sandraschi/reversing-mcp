@@ -8,7 +8,6 @@ import json
 from pathlib import Path
 
 # Ghidra imports
-from ghidra.app.decompiler import DecompInterface
 from ghidra.app.util.headless import HeadlessScript
 from ghidra.util.task import ConsoleTaskMonitor
 

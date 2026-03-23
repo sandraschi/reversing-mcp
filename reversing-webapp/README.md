@@ -1,18 +1,15 @@
 # Reversing MCP WebApp
 
-A modern React TypeScript web application for reverse engineering analysis with Ghidra MCP integration.
+Next.js + TypeScript frontend and FastAPI backend for binary upload and static analysis. Interactive Ghidra decompilation is done via **ReVa MCP** in the IDE, not inside this UI.
 
 ## Features
 
-- 🏗️ **Modern Architecture**: Next.js 14 with TypeScript and Tailwind CSS
-- 📁 **File Upload**: Drag-and-drop binary file upload with validation
-- 🔍 **Multi-Tool Analysis**: File analysis, strings extraction, entropy analysis, PE parsing
-- 🐉 **Ghidra Integration**: Decompilation, disassembly, and cross-reference analysis
-- 🛡️ **Security Analysis**: Malware detection, obfuscation detection, PDB analysis
-- 📊 **Rich Visualizations**: Interactive charts and analysis dashboards
-- 🚀 **FastAPI Backend**: REST API bridging frontend with MCP server (with hot reload)
-- 🔧 **Professional UI**: Radix UI components with modern design
-- ⚡ **Hot Reload**: Automatic server restart on code changes (watchfiles)
+- Next.js 14, TypeScript, Tailwind, Radix UI
+- Drag-and-drop binary upload with validation
+- Static analysis: file type, strings, entropy, PE
+- Security-oriented summaries where implemented (entropy, basic heuristics)
+- Charts / dashboards for analysis output
+- FastAPI backend with hot reload (watchfiles)
 
 ## Tech Stack
 
@@ -54,8 +51,8 @@ A modern React TypeScript web application for reverse engineering analysis with 
    - Create Python virtual environment
    - Install backend dependencies
    - Install Node.js dependencies
-   - Start FastAPI backend on port 10750 (SOTA)
-   - Start Next.js frontend on port 10751 (SOTA)
+   - Start FastAPI backend on port 10750
+   - Start Next.js frontend on port 10751
 
    **From fleet:** run `mcp-central-docs\starts\reversing-start.bat` (same ports). Or from this folder: `start.bat` or `.\start.ps1`.
 
@@ -103,7 +100,7 @@ If you prefer manual control:
 - **Strings Extraction**: ASCII/Unicode string extraction with encoding detection
 - **Entropy Analysis**: Compression/encryption detection
 - **PE Analysis**: Windows executable structure analysis
-- **Ghidra Integration**: Professional decompilation and disassembly
+- **Ghidra**: Decompilation in the IDE via ReVa MCP; webapp may show status or proxies where configured
 
 ## API Documentation
 
@@ -133,19 +130,19 @@ If you prefer manual control:
 Create `.env.local` in the frontend directory:
 
 ```bash
-# API Configuration (SOTA backend port 10750)
+# API Configuration (backend default 10750)
 NEXT_PUBLIC_API_URL=http://localhost:10750
 
 # Development
 NODE_ENV=development
 ```
 
-### Ghidra Setup
+### Ghidra + ReVa MCP
 
 1. Download and install Ghidra from NSA's official site
-2. Install the GhidraMCP plugin
-3. Enable the HTTP server in Ghidra developer settings
-4. Configure the plugin to run on port 8080
+2. Install the **ReVa** extension (release zip matching your Ghidra version)
+3. Add **ReVa** to Cursor or Claude Desktop MCP config (see parent repo `docs/GHIDRA.md`)
+4. Use this webapp for static analysis; use ReVa from the IDE for decompilation
 
 ## Development
 
@@ -211,10 +208,9 @@ pytest
    - Verify file permissions
    - Check console for error messages
 
-4. **Ghidra not available:**
-   - Install Ghidra from official site
-   - Install GhidraMCP plugin
-   - Enable HTTP server in Ghidra settings
+4. **Ghidra / decompilation:**
+   - Install Ghidra; add **ReVa** per parent `docs/GHIDRA.md`
+   - Decompilation runs through the MCP client, not necessarily through these REST stubs
 
 ### Logs
 
@@ -238,5 +234,5 @@ This project is part of the Reversing MCP suite. See the main repository for lic
 
 - [Reversing MCP Repository](https://github.com/sandraschi/reversing-mcp)
 - [Ghidra NSA](https://ghidra-sre.org/)
-- [GhidraMCP Plugin](https://github.com/LaurieWired/GhidraMCP)
+- [ReVa (Ghidra MCP)](https://github.com/cyberkaida/reverse-engineering-assistant)
 - [FastMCP](https://fastmcp.io/)

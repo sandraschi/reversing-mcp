@@ -17,9 +17,9 @@ export default function GhidraPage() {
             ← Back to Home
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold mb-2">Ghidra Integration</h1>
+        <h1 className="text-3xl font-bold mb-2">Ghidra + ReVa MCP</h1>
         <p className="text-muted-foreground mb-2">
-          Professional decompilation and disassembly via the GhidraMCP plugin
+          Decompilation and listings run through ReVa in your MCP client, not this webapp
         </p>
         <p className="text-sm text-muted-foreground/80 italic">
           NSA-grade binary archaeology. No agency endorsement implied.
@@ -31,22 +31,22 @@ export default function GhidraPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Server className="w-5 h-5 text-purple-500" />
-              <CardTitle>How Reversing MCP Uses Ghidra</CardTitle>
+              <CardTitle>How this fits together</CardTitle>
             </div>
             <CardDescription>
-              This server does not run or embed Ghidra. All ghidra_* tools talk to LaurieWired&apos;s
-              <strong> GhidraMCP plugin</strong>, which runs inside Ghidra and exposes an HTTP API.
+              <strong>reversing-mcp</strong> (this repo) exposes static analysis and Directmedia
+              tools. <strong>ReVa</strong> (reverse-engineering-assistant) exposes Ghidra as MCP.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <p>
-              <strong>Plugin URL (default):</strong>{' '}
-              <code className="bg-muted px-1.5 py-0.5 rounded">http://127.0.0.1:8080/</code>
+              Add ReVa to <strong>Cursor</strong> or <strong>Claude Desktop</strong>. Use assistant
+              mode (Ghidra GUI + extension) or <code className="bg-muted px-1 rounded">mcp-reva</code>{' '}
+              headless on Ghidra 12+ per ReVa docs.
             </p>
             <p>
-              You must have Ghidra running with a binary loaded and the GhidraMCP plugin server
-              started. Then MCP tools (decompile, list functions, xrefs, etc.) send requests to
-              that API.
+              The Next.js webapp talks to the FastAPI backend for uploads and static metrics only; it
+              does not proxy Ghidra MCP.
             </p>
           </CardContent>
         </Card>
@@ -55,20 +55,20 @@ export default function GhidraPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Wrench className="w-5 h-5 text-green-500" />
-              <CardTitle>Setup Steps</CardTitle>
+              <CardTitle>Setup (short)</CardTitle>
             </div>
-            <CardDescription>Get Ghidra tools working with this webapp and MCP</CardDescription>
+            <CardDescription>Install Ghidra, ReVa, then wire MCP</CardDescription>
           </CardHeader>
           <CardContent>
             <ol className="list-decimal list-inside space-y-2 text-sm">
               <li>Install Ghidra from ghidra-sre.org</li>
-              <li>Install the GhidraMCP plugin (e.g. GhidraMCP.zip) into Ghidra</li>
-              <li>Start Ghidra, create or open a project, import a binary, run analysis</li>
-              <li>Start the GhidraMCP HTTP server from the plugin (default port 8080)</li>
-              <li>Use ghidra_* MCP tools or this webapp; they will call the plugin</li>
+              <li>Install ReVa extension zip matching your Ghidra version</li>
+              <li>Register ReVa in your MCP client (see docs/GHIDRA.md in the repo)</li>
+              <li>Use ReVa tools from the IDE; use this webapp for strings / entropy / PE</li>
             </ol>
             <p className="text-xs text-muted-foreground mt-3">
-              For setup status and connectivity check, use the MCP tool <code>ghidra_setup_help()</code> in Claude/Cursor.
+              Legacy LaurieWired GhidraMCP + <code>bridge_mcp_ghidra.py</code> were removed from
+              reversing-mcp.
             </p>
           </CardContent>
         </Card>
@@ -81,7 +81,9 @@ export default function GhidraPage() {
             <CardTitle>Headless</CardTitle>
           </div>
           <CardDescription>
-            This integration requires the Ghidra GUI and the plugin. For headless (CI, batch, no display) use Ghidra&apos;s <code>analyzeHeadless</code> or a PyGhidra-based MCP (e.g. pyghidra-mcp). See <code>docs/GHIDRA.md</code> in the repo.
+            For batch analysis without the GUI, use Ghidra&apos;s{' '}
+            <code className="bg-muted px-1 rounded">analyzeHeadless</code> or ReVa headless mode when
+            supported. See <code>docs/GHIDRA.md</code>.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -90,21 +92,21 @@ export default function GhidraPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Code className="w-5 h-5 text-blue-500" />
-            <CardTitle>Ghidra at a Glance</CardTitle>
+            <CardTitle>Ghidra at a glance</CardTitle>
           </div>
           <CardDescription>Open-source reverse engineering framework (NSA)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>
             Ghidra is a professional reverse engineering suite: decompiler, disassembler, and
-            analysis engine. This project integrates with it via the community GhidraMCP plugin so
-            you can drive Ghidra from natural language (MCP) and this web interface.
+            analysis engine. ReVa turns that into MCP tools for agents; this project no longer
+            bundles the old HTTP plugin bridge.
           </p>
           <div className="flex flex-wrap gap-2 mt-4">
             <Badge variant="secondary">Decompilation</Badge>
             <Badge variant="secondary">Disassembly</Badge>
             <Badge variant="secondary">90+ architectures</Badge>
-            <Badge variant="secondary">HTTP API via plugin</Badge>
+            <Badge variant="secondary">MCP via ReVa</Badge>
           </div>
           <Link
             href="https://ghidra-sre.org/"

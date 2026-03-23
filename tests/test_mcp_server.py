@@ -109,7 +109,8 @@ class TestMCPServerBasic:
     def test_mcp_server_initialization(self):
         """Test that MCP server initializes correctly"""
         assert mcp is not None
-        assert hasattr(mcp, "settings")
+        assert getattr(mcp, "name", None) == "ReversingMCP"
+        assert callable(mcp.get_tool)
 
 
 if __name__ == "__main__":

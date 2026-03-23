@@ -1,8 +1,8 @@
 # Decompile a specific function by address or name
 # @category Analysis
 
-import sys
 import json
+
 from ghidra.app.decompiler import DecompInterface
 from ghidra.util.task import ConsoleTaskMonitor
 
@@ -64,8 +64,6 @@ def main():
 
         # Determine output filename
         output_file = f"{currentProgram.getName()}_decompiled_{func.getName()}.json"
-
-        import os
 
         # Write to CWD (or where script is run)
         with open(output_file, "w") as f:

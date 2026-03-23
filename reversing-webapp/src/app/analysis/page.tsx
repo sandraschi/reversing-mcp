@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
 import { useRouter } from 'next/navigation'
+import { API_BASE } from '@/app/api/config'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -45,7 +46,7 @@ export default function AnalysisPage() {
   useEffect(() => {
     const checkGhidraStatus = async () => {
       try {
-        const response = await fetch('http://localhost:3001/ghidra/status')
+        const response = await fetch(`${API_BASE}/ghidra/status`)
         if (response.ok) {
           const status = await response.json()
           setGhidraStatus(status)
@@ -105,50 +106,32 @@ export default function AnalysisPage() {
     is_obfuscated: isObfuscated
   }
 
-  // Ghidra action handlers
-  const handleDecompileFunctions = async () => {
-    if (!current_file) return
+  const revaHint =
+    'Decompilation and xrefs are not available in this webapp. Add ReVa (reverse-engineering-assistant) to your MCP client and analyze the same binary from Cursor or Claude. See docs/GHIDRA.md in the reversing-mcp repository.'
 
-    try {
-      const response = await fetch('http://localhost:3001/ghidra/decompile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ function_name: 'main' }) // Start with main function
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        alert(`Decompiled main function:\n\n${result.decompiled_code?.substring(0, 500)}...`)
-      } else {
-        throw new Error(`Failed to decompile: ${response.statusText}`)
-      }
-    } catch (error) {
-      console.error('Decompilation failed:', error)
-      alert(`Decompilation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
+  const handleDecompileInfo = () => {
+    alert(revaHint)
   }
 
-  const handleStartGhidra = async () => {
+  const handleStartGhidraHint = async () => {
     try {
-      const response = await fetch('http://localhost:3001/start_ghidra', {
+      const response = await fetch(`${API_BASE}/start_ghidra`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file_path: current_file?.name })
+        body: JSON.stringify({})
       })
-
-      if (response.ok) {
-        alert('Ghidra GUI started successfully!')
-        // Refresh Ghidra status
-        const statusResponse = await fetch('http://localhost:3001/ghidra/status')
-        if (statusResponse.ok) {
-          setGhidraStatus(await statusResponse.json())
-        }
-      } else {
-        throw new Error(`Failed to start Ghidra: ${response.statusText}`)
+      const data = (await response.json().catch(() => ({}))) as { message?: string }
+      if (!response.ok) {
+        throw new Error(response.statusText)
+      }
+      alert(data.message || 'OK')
+      const statusResponse = await fetch(`${API_BASE}/ghidra/status`)
+      if (statusResponse.ok) {
+        setGhidraStatus(await statusResponse.json())
       }
     } catch (error) {
-      console.error('Failed to start Ghidra:', error)
-      alert(`Failed to start Ghidra: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error('Ghidra hint request failed:', error)
+      alert(error instanceof Error ? error.message : 'Unknown error')
     }
   }
 
@@ -527,66 +510,77 @@ export default function AnalysisPage() {
         <TabsContent value="ghidra" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Ghidra Analysis</CardTitle>
+              <CardTitle>Ghidra + ReVa MCP</CardTitle>
               <CardDescription>
-                Professional decompilation and disassembly
+                This dashboard does not run Ghidra decompilation. Use ReVa from your IDE.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              {ghidraStatus?.available ? (
-                <div className="space-y-4">
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-green-700">
-                      <CheckCircle className="w-4 h-4" />
-                      <span className="text-sm">Ghidra MCP is available and ready</span>
+            <CardContent className="space-y-4">
+              <div
+                className={`p-4 rounded-lg border ${ghidraStatus?.installed ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}
+              >
+                <div className="flex items-center gap-2 text-sm">
+                  {ghidraStatus?.installed ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-green-700" />
+                      <span className="text-green-800">
+                        Ghidra installation detected on this machine (binary path known to the
+                        backend).
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-4 h-4 text-amber-700" />
+                      <span className="text-amber-800">
+                        Ghidra not detected by the backend. Install Ghidra for local analysis and
+                        ReVa.
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground">{revaHint}</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button className="h-auto p-4" onClick={handleDecompileInfo}>
+                  <div className="text-left">
+                    <div className="font-medium">Why no decompile button?</div>
+                    <div className="text-sm text-muted-foreground">Open explanation (ReVa)</div>
+                  </div>
+                </Button>
+
+                <Button variant="outline" className="h-auto p-4" onClick={handleDecompileInfo}>
+                  <div className="text-left">
+                    <div className="font-medium">Cross references</div>
+                    <div className="text-sm text-muted-foreground">Use ReVa MCP in the IDE</div>
+                  </div>
+                </Button>
+
+                <Button variant="outline" className="h-auto p-4" onClick={handleStartGhidraHint}>
+                  <div className="text-left">
+                    <div className="font-medium">Launch reminder</div>
+                    <div className="text-sm text-muted-foreground">From API (Ghidra / ReVa hint)</div>
+                  </div>
+                </Button>
+
+                <Button variant="outline" className="h-auto p-4" asChild>
+                  <a
+                    href="https://github.com/cyberkaida/reverse-engineering-assistant"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <div className="text-left">
+                      <div className="font-medium">ReVa on GitHub</div>
+                      <div className="text-sm text-muted-foreground">Extension + MCP setup</div>
                     </div>
-                  </div>
+                  </a>
+                </Button>
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Button className="h-auto p-4" onClick={handleDecompileFunctions}>
-                      <div className="text-left">
-                        <div className="font-medium">Decompile Functions</div>
-                        <div className="text-sm text-muted-foreground">View C code from binary</div>
-                      </div>
-                    </Button>
-
-                    <Button variant="outline" className="h-auto p-4">
-                      <div className="text-left">
-                        <div className="font-medium">Cross References</div>
-                        <div className="text-sm text-muted-foreground">Find function calls</div>
-                      </div>
-                    </Button>
-
-                    <Button variant="outline" className="h-auto p-4" onClick={handleStartGhidra}>
-                      <div className="text-left">
-                        <div className="font-medium">Start Ghidra GUI</div>
-                        <div className="text-sm text-muted-foreground">Manual analysis</div>
-                      </div>
-                    </Button>
-
-                    <Button variant="outline" className="h-auto p-4">
-                      <div className="text-left">
-                        <div className="font-medium">Export Analysis</div>
-                        <div className="text-sm text-muted-foreground">Save results</div>
-                      </div>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-yellow-700">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="text-sm">
-                      Ghidra MCP not available. Please install Ghidra plugin and start Ghidra.
-                    </span>
-                  </div>
-                  <Link href="/settings">
-                    <Button variant="outline" className="mt-3">
-                      Configure Ghidra
-                    </Button>
-                  </Link>
-                </div>
-              )}
+              <Link href="/settings">
+                <Button variant="secondary">Ghidra + ReVa settings</Button>
+              </Link>
             </CardContent>
           </Card>
         </TabsContent>

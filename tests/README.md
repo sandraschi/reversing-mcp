@@ -2,7 +2,7 @@
 
 This test suite validates the complete reverse engineering pipeline using **compilation-decompilation-comparison** methodology.
 
-## 🎯 Test Strategy
+## Test strategy
 
 The tests follow this methodology:
 1. **Compile** source code fixtures into binaries
@@ -10,7 +10,7 @@ The tests follow this methodology:
 3. **Compare** decompiled output to original source code
 4. **Validate** that key information is preserved
 
-## 🧪 Test Fixtures
+## Test fixtures
 
 ### Source Code Fixtures (Compiled to Binaries)
 
@@ -42,7 +42,7 @@ Located in `tests/fixtures/dangerous/` - these demonstrate malware analysis tech
 | `obfuscated_malware.c` | String obfuscation, anti-debugging | Deobfuscation techniques |
 | `packed_executable.c` | Runtime unpacking simulation | Packers, protectors |
 
-## 🚀 Running Tests
+## Running tests
 
 ### Prerequisites
 - Python 3.10+
@@ -61,7 +61,7 @@ pip install -e ".[dev]"
 
 ### Run All Tests
 ```bash
-# Comprehensive test suite (NEW - recommended)
+# Comprehensive test suite
 python tests/comprehensive_test_runner.py --coverage --verbose
 
 # Original test runner
@@ -91,7 +91,7 @@ python tests/run_tests.py --coverage        # With coverage
 python tests/run_tests.py --fixtures
 ```
 
-## 🏗️ Test Architecture
+## Test architecture
 
 ### Test Classes
 - `ReverseEngineeringTestFixture`: Manages test fixtures and configuration
@@ -118,16 +118,16 @@ Test configuration is in `tests/fixtures/test_config.json`:
 }
 ```
 
-## 📊 Test Results
+## Test results
 
 Tests validate:
-- ✅ **Compilation Success**: Source code compiles without errors
-- ✅ **Binary Analysis**: Binaries can be analyzed by reversing tools
-- ✅ **String Extraction**: Expected strings are found in binary
-- ✅ **Function Detection**: Functions are identified in analysis
-- ✅ **Information Preservation**: Key source code information is preserved
 
-## 🛠️ Adding New Fixtures
+- Compilation: source builds
+- Analysis: binaries run through configured tools
+- Strings / functions: expected artifacts present where defined
+- Preservation: key metadata still visible after compile
+
+## Adding new fixtures
 
 1. Add source file to `tests/fixtures/`
 2. Update `test_config.json` with compilation settings
@@ -160,7 +160,7 @@ int main() {
 }
 ```
 
-## 🔍 Debugging Tests
+## Debugging tests
 
 ### Common Issues
 - **Compilation fails**: Check that GCC/NASM is installed and in PATH
@@ -182,7 +182,7 @@ print(result)
 "
 ```
 
-## 📈 Coverage
+## Coverage
 
 Run tests with coverage:
 ```bash
@@ -191,7 +191,7 @@ python tests/run_tests.py --coverage
 
 Coverage report will be generated in `htmlcov/` directory.
 
-## 🤝 Contributing
+## Contributing
 
 When adding new test fixtures:
 1. Follow the naming convention: `{name}.{extension}`
@@ -199,12 +199,6 @@ When adding new test fixtures:
 3. Test on multiple platforms if possible
 4. Update this README
 
-## 🎯 Why This Matters
+## Rationale
 
-These tests ensure that:
-- **Reverse engineering tools work correctly**
-- **Analysis results are reliable and accurate**
-- **New tool versions don't break functionality**
-- **Complex analysis pipelines are validated end-to-end**
-
-This methodology provides confidence that the reversing MCP can reliably analyze real-world binaries and extract meaningful information for reverse engineering tasks.
+Regression coverage for the analyzer and fixture pipeline: compilers, tool paths, and expectations stay aligned as dependencies change.

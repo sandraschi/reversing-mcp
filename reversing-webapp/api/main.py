@@ -25,21 +25,13 @@ if str(_src) not in sys.path:
 from reversing_mcp.analyzers import BinaryAnalyzer
 from reversing_mcp.logging_config import get_logger
 
-# Try to import Ghidra bridge
-try:
-    from reversing_mcp.bridge_mcp_ghidra import (
-        check_ghidra_status,
-        decompile_function,
-        disassemble_function,
-        get_function_by_address,
-        list_functions,
-    )
-
-    ghidra_available = True
-except ImportError:
-    ghidra_available = False
-
 logger = get_logger("reversing_api")
+
+# Ghidra MCP: use ReVa (reverse-engineering-assistant) in your MCP client — not this HTTP API.
+REVERSING_MCP_GHIDRA_NOTE = (
+    "Ghidra MCP is provided by ReVa; connect it in Cursor/Claude. "
+    "This API no longer proxies LaurieWired GhidraMCP. See docs/GHIDRA.md."
+)
 
 # Global analyzer instance
 analyzer = BinaryAnalyzer()
@@ -60,7 +52,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="Reversing MCP API",
-    description="REST API for reverse engineering analysis with Ghidra integration",
+    description="REST API for static RE analysis; Ghidra MCP via ReVa separately",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -68,7 +60,12 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:11111", "http://127.0.0.1:11111"],
+    allow_origins=[
+        "http://localhost:10751",
+        "http://127.0.0.1:10751",
+        "http://localhost:11111",
+        "http://127.0.0.1:11111",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,10 +74,12 @@ app.add_middleware(
 # Mount FastMCP 3.1 at /mcp (single-backend pattern)
 try:
     from reversing_mcp.server import mcp
+
     app.mount("/mcp", mcp.http_app())
     logger.info("MCP mounted at /mcp (FastMCP 3.1)")
 except Exception as e:
     logger.warning("Could not mount MCP: %s", e)
+
 
 # Pydantic models
 class AnalysisRequest(BaseModel):
@@ -90,6 +89,7 @@ class AnalysisRequest(BaseModel):
 
 class GhidraStatus(BaseModel):
     available: bool
+    installed: bool = False  # Ghidra binary found on disk
     version: str | None = None
     http_server_running: bool = False
     http_port: int | None = None
@@ -116,7 +116,7 @@ async def root():
     return {
         "message": "Reversing MCP API Server",
         "version": "1.0.0",
-        "ghidra_available": ghidra_available,
+        "ghidra_mcp": REVERSING_MCP_GHIDRA_NOTE,
         "endpoints": [
             "/analyze/file",
             "/analyze/upload",
@@ -144,12 +144,13 @@ async def health_check():
 async def get_tools_status():
     """Get status of available analysis tools"""
     try:
-        # Check Ghidra status
-        ghidra_status = (
-            await check_ghidra_status()
-            if ghidra_available
-            else {"available": False, "error": "Ghidra MCP bridge not available"}
-        )
+        ghidra_bin = analyzer.check_available_tools().get("ghidra", {})
+        ghidra_status = {
+            "available": False,
+            "installed": bool(ghidra_bin.get("available")),
+            "version": ghidra_bin.get("version"),
+            "note": REVERSING_MCP_GHIDRA_NOTE,
+        }
 
         return {
             "tools": {
@@ -269,72 +270,60 @@ async def analyze_file_path(request: AnalysisRequest):
 
 @app.post("/start_ghidra")
 async def start_ghidra():
-    """Start Ghidra GUI. Prefer starting Ghidra manually or via MCP tool start_ghidra."""
+    """Legacy endpoint: launch Ghidra from the desktop; use ReVa MCP for agentic Ghidra."""
     return {
         "ok": True,
-        "message": "Start Ghidra from your desktop or use the start_ghidra MCP tool in Cursor.",
+        "message": (
+            "Start Ghidra from the desktop if you need the GUI. "
+            "For MCP decompilation and analysis, add ReVa to your MCP client (see docs/GHIDRA.md)."
+        ),
     }
 
 
 @app.get("/ghidra/status")
 async def get_ghidra_status():
-    """Get Ghidra integration status"""
-    if not ghidra_available:
-        return GhidraStatus(available=False).dict()
-
+    """Ghidra binary detection only; MCP/plugin status lives in ReVa."""
+    installed = False
+    version = None
     try:
-        status = await check_ghidra_status()
-        return GhidraStatus(**status).dict()
-    except Exception as e:
-        logger.error(f"Error checking Ghidra status: {e}")
-        return GhidraStatus(available=False, error=str(e)).dict()
+        tools = analyzer.check_available_tools()
+        g = tools.get("ghidra", {}) if tools else {}
+        installed = bool(g.get("available"))
+        version = g.get("version")
+    except Exception:
+        pass
+
+    return GhidraStatus(
+        available=False,
+        installed=installed,
+        version=version,
+        http_server_running=False,
+        http_port=None,
+    ).dict() | {"note": REVERSING_MCP_GHIDRA_NOTE}
 
 
 @app.get("/ghidra/functions")
 async def get_ghidra_functions():
-    """Get list of functions from Ghidra"""
-    if not ghidra_available:
-        raise HTTPException(status_code=503, detail="Ghidra MCP bridge not available")
-
-    try:
-        functions = await list_functions()
-        return {"functions": functions, "count": len(functions) if functions else 0}
-    except Exception as e:
-        logger.error(f"Error getting Ghidra functions: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get functions: {e!s}")
+    """Deprecated: use ReVa MCP for Ghidra function lists."""
+    raise HTTPException(status_code=503, detail=REVERSING_MCP_GHIDRA_NOTE)
 
 
 @app.post("/ghidra/decompile")
 async def decompile_ghidra_function(function_name: str):
-    """Decompile a function using Ghidra"""
-    if not ghidra_available:
-        raise HTTPException(status_code=503, detail="Ghidra MCP bridge not available")
-
-    try:
-        code = await decompile_function(function_name)
-        return {"function_name": function_name, "decompiled_code": code}
-    except Exception as e:
-        logger.error(f"Error decompiling function {function_name}: {e}")
-        raise HTTPException(status_code=500, detail=f"Decompilation failed: {e!s}")
+    """Deprecated: use ReVa MCP for decompilation."""
+    raise HTTPException(status_code=503, detail=REVERSING_MCP_GHIDRA_NOTE)
 
 
 @app.post("/ghidra/disassemble")
 async def disassemble_ghidra_function(address: str):
-    """Disassemble a function using Ghidra"""
-    if not ghidra_available:
-        raise HTTPException(status_code=503, detail="Ghidra MCP bridge not available")
-
-    try:
-        asm = await disassemble_function(address)
-        return {"address": address, "assembly": asm}
-    except Exception as e:
-        logger.error(f"Error disassembling at {address}: {e}")
-        raise HTTPException(status_code=500, detail=f"Disassembly failed: {e!s}")
+    """Deprecated: use ReVa MCP for disassembly."""
+    raise HTTPException(status_code=503, detail=REVERSING_MCP_GHIDRA_NOTE)
 
 
 # --- Ollama (local LLM) helpers ---
 async def _ollama_tags() -> dict:
     import httpx
+
     async with httpx.AsyncClient(timeout=10.0) as client:
         r = await client.get(f"{OLLAMA_BASE}/api/tags")
         r.raise_for_status()
@@ -360,7 +349,7 @@ class LLMSelectBody(BaseModel):
 @app.post("/llm/list_models")
 async def list_llm_models(body: LLMProviderBody | None = None):
     """List models for Ollama (GET /api/tags)."""
-    provider = (body.provider if body else "ollama")
+    provider = body.provider if body else "ollama"
     if provider != "ollama":
         return {"models": []}
     try:
@@ -418,7 +407,7 @@ async def get_llm_status():
 @app.post("/llm/health")
 async def check_llm_health(body: LLMProviderBody | None = None):
     """Check Ollama reachability."""
-    provider = (body.provider if body else "ollama")
+    provider = body.provider if body else "ollama"
     if provider != "ollama":
         return {"healthy": False, "error": "Unknown provider"}
     try:
@@ -540,6 +529,7 @@ def check_for_obfuscation(results: dict[str, Any]) -> bool:
 
 if __name__ == "__main__":
     import os
+
     import uvicorn
 
     _port = int(os.environ.get("REVERSING_API_PORT", "10750"))
@@ -550,6 +540,6 @@ if __name__ == "__main__":
         reload=True,  # Enable auto-reload for development
         reload_dirs=[
             ".",  # Watch API directory
-            "../../src"  # Watch core logic in src directory
+            "../../src",  # Watch core logic in src directory
         ],
     )

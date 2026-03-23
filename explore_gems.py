@@ -91,17 +91,18 @@ def detect_file_format(file_path: Path) -> tuple[str, str]:
                 return "GIF", "HIGH"
 
             # Check RIFF formats
-            if (header.startswith(b"RIFF") and
-                len(header) > RIFF_TYPE_OFFSET + RIFF_TYPE_SIZE):
-                riff_type = header[RIFF_TYPE_OFFSET:RIFF_TYPE_OFFSET + RIFF_TYPE_SIZE]
+            if header.startswith(b"RIFF") and len(header) > RIFF_TYPE_OFFSET + RIFF_TYPE_SIZE:
+                riff_type = header[RIFF_TYPE_OFFSET : RIFF_TYPE_OFFSET + RIFF_TYPE_SIZE]
                 if riff_type in (b"WAVE", b"AVI "):
                     return "WAV" if riff_type == b"WAVE" else "AVI", "HIGH"
 
             # PE file detection
-            if (header.startswith(b"MZ") and len(header) >= MIN_PE_HEADER_SIZE):
+            if header.startswith(b"MZ") and len(header) >= MIN_PE_HEADER_SIZE:
                 pe_offset = struct.unpack("<I", header[60:64])[0]
-                if (pe_offset < len(header) - PE_SIGNATURE_SIZE and
-                    header[pe_offset:pe_offset + PE_SIGNATURE_SIZE] == b"PE\x00\x00"):
+                if (
+                    pe_offset < len(header) - PE_SIGNATURE_SIZE
+                    and header[pe_offset : pe_offset + PE_SIGNATURE_SIZE] == b"PE\x00\x00"
+                ):
                     return "PE", "HIGH"
 
             return "UNKNOWN", "LOW"
@@ -198,7 +199,9 @@ def scan_directory_for_gems(directory: Path, max_files: int = 100) -> list[dict]
             interesting_files.append(analysis)
         logger.info(
             "Found interesting file: %s (%s, entropy: %.2f)",
-            file_path.name, analysis["format"], analysis["entropy"]
+            file_path.name,
+            analysis["format"],
+            analysis["entropy"],
         )
 
     return interesting_files
@@ -227,10 +230,20 @@ def assess_preservation_value(analysis: dict) -> dict:
     if size_mb > LARGE_FILE_THRESHOLD_MB:
         score += 1
 
-    complexity = ("HIGH" if score > HIGH_PRESERVATION_SCORE else
-                  "MEDIUM" if score > MEDIUM_PRESERVATION_SCORE else "LOW")
-    recommendation = ("HIGH PRIORITY" if score > HIGH_PRESERVATION_SCORE else
-                     "CONSIDER" if score > MEDIUM_PRESERVATION_SCORE else "SKIP")
+    complexity = (
+        "HIGH"
+        if score > HIGH_PRESERVATION_SCORE
+        else "MEDIUM"
+        if score > MEDIUM_PRESERVATION_SCORE
+        else "LOW"
+    )
+    recommendation = (
+        "HIGH PRIORITY"
+        if score > HIGH_PRESERVATION_SCORE
+        else "CONSIDER"
+        if score > MEDIUM_PRESERVATION_SCORE
+        else "SKIP"
+    )
 
     return {
         "file": analysis["path"],
@@ -290,8 +303,11 @@ def main():
     for i, assessment in enumerate(assessments[:10]):  # Top 10
         logger.info(
             "%2d. Format: %s, Complexity: %s, Recommendation: %s, Path: %s",
-            i + 1, assessment["format"], assessment["complexity"],
-            assessment["recommendation"], assessment["file"]
+            i + 1,
+            assessment["format"],
+            assessment["complexity"],
+            assessment["recommendation"],
+            assessment["file"],
         )
 
     # Save detailed results

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 // Force dynamic rendering
@@ -7,6 +8,7 @@ export const dynamic = 'force-dynamic'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { API_BASE } from '@/app/api/config'
 import {
   Upload,
   Search,
@@ -16,10 +18,28 @@ import {
   Cpu,
   Shield,
   Code,
-  MessageSquare
+  MessageSquare,
+  GitBranch
 } from 'lucide-react'
 
 export default function HomePage() {
+  const [ghidraStatus, setGhidraStatus] = useState<{
+    installed: boolean
+    pluginRunning: boolean
+  } | null>(null)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/ghidra/status`)
+      .then((r) => r.json())
+      .then((d) =>
+        setGhidraStatus({
+          installed: d?.installed === true,
+          pluginRunning: d?.http_server_running === true,
+        })
+      )
+      .catch(() => setGhidraStatus({ installed: false, pluginRunning: false }))
+  }, [])
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
@@ -33,10 +53,24 @@ export default function HomePage() {
         <p className="text-sm text-muted-foreground/80 italic mb-6">
           NSA-grade binary archaeology. No agency endorsement implied.
         </p>
-        <div className="flex justify-center gap-2 mb-8">
+        <div className="flex justify-center flex-wrap gap-2 mb-8">
           <Badge variant="secondary">FastMCP 3.1</Badge>
           <Badge variant="secondary">Ghidra Integration</Badge>
           <Badge variant="secondary">Ollama Chat</Badge>
+          {ghidraStatus === null && (
+            <Badge variant="outline">Ghidra: checking...</Badge>
+          )}
+          {ghidraStatus && !ghidraStatus.installed && (
+            <Badge variant="destructive">Ghidra: not found</Badge>
+          )}
+          {ghidraStatus && ghidraStatus.installed && !ghidraStatus.pluginRunning && (
+            <Badge className="bg-amber-600 hover:bg-amber-700">
+              Ghidra: found, plugin not running
+            </Badge>
+          )}
+          {ghidraStatus && ghidraStatus.installed && ghidraStatus.pluginRunning && (
+            <Badge className="bg-green-600 hover:bg-green-700">Ghidra: found</Badge>
+          )}
         </div>
       </div>
 
@@ -47,9 +81,9 @@ export default function HomePage() {
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-2">
               <Upload className="w-6 h-6 text-blue-600" />
             </div>
-            <CardTitle className="text-lg">Load Binary</CardTitle>
+            <CardTitle className="text-lg">Analyzer</CardTitle>
             <CardDescription>
-              Upload and analyze executable files
+              Load binary, run analysis (file / PE / strings / Ghidra)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -151,6 +185,25 @@ export default function HomePage() {
             <Link href="/help">
               <Button variant="outline" className="w-full">
                 View Docs
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center mb-2">
+              <GitBranch className="w-6 h-6 text-cyan-600" />
+            </div>
+            <CardTitle className="text-lg">Workflow</CardTitle>
+            <CardDescription>
+              Reversed-app flowchart (Mermaid)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/workflow">
+              <Button variant="outline" className="w-full">
+                View Flowchart
               </Button>
             </Link>
           </CardContent>

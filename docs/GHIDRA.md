@@ -1,49 +1,67 @@
 # Ghidra Integration
 
-## How Reversing-MCP Uses Ghidra
+## Current model (2026)
 
-Reversing-MCP **does not run or embed Ghidra**. All `ghidra_*` tools talk to **LaurieWired's GhidraMCP plugin** over HTTP.
+**reversing-mcp** no longer ships LaurieWired **GhidraMCP** HTTP bridge tools (`ghidra_*`, `ghidra_setup_help`, `start_ghidra`). Those required a human at the Ghidra GUI with the plugin running.
 
-1. **You run Ghidra** (GUI) with the GhidraMCP plugin installed.
-2. The **plugin** runs inside Ghidra and starts an **HTTP server** (default `http://127.0.0.1:8080/`).
-3. **Reversing-MCP** sends HTTP GET/POST requests to that API; the plugin calls Ghidra's Java API and returns results.
+For **Ghidra over MCP**, add **[ReVa](https://github.com/cyberkaida/reverse-engineering-assistant)** (reverse-engineering-assistant) as a **separate MCP server** in your client:
 
-If Ghidra (with the plugin) is not running, or the plugin is not listening, `ghidra_*` tools will return connection errors. Other tools (binary analysis, Directmedia, etc.) do not depend on Ghidra.
+- **Assistant mode:** Ghidra GUI + ReVa extension; HTTP endpoint (e.g. streamable HTTP to `/mcp/message`).
+- **Headless (Ghidra 12.0+):** `mcp-reva` with `GHIDRA_INSTALL_DIR` set — see ReVa release notes for your Ghidra version.
 
-## Setup (GUI Path)
+Discover ReVa tools from your host’s tool list; names differ from the old `ghidra_*` wrappers.
 
-1. Install [Ghidra](https://ghidra-sre.org/) (e.g. 11.x or 12.x).
-2. Install the [GhidraMCP plugin](https://github.com/LaurieWired/GhidraMCP) (e.g. `GhidraMCP.zip`) via Ghidra **File → Install Extensions**.
-3. Start Ghidra, create or open a project, import a binary, run analysis.
-4. Start the GhidraMCP HTTP server from the plugin (default port 8080).
-5. Use `ghidra_*` tools from Reversing-MCP; they call the plugin API.
+### Do you need both reversing-mcp and ReVa?
 
-Use the MCP tool **`ghidra_setup_help(check_connection=True)`** to verify setup and whether the plugin is reachable.
+| If you only want… | Enough with… |
+|-------------------|----------------|
+| Decompile, xrefs, rename, etc. **in Ghidra** via MCP | **ReVa** (plus Ghidra + extension). reversing-mcp is **not** required for that. |
+| **Strings, PE, entropy, hexdump** without starting Ghidra | **reversing-mcp** (or any other static analyzer). |
+| **Digitale Bibliothek** helpers: `digibib_research_snapshot`, heuristic `.DKI` decode/batch, doc’d workflow | **reversing-mcp** (ReVa does not replace these). |
+| **Web upload** static overview + LLM dashboard | **reversing-mcp** webapp / API — it is **not** a UI for **reva-chat** / ReVa CLI; it calls this repo’s FastAPI + `BinaryAnalyzer`. |
 
-## Headless Use
+So: **not barking up the wrong tree** — ReVa is the right MCP surface **for Ghidra**. **reversing-mcp is not superfluous** if you care about static-only triage, DKI experiments, headless `analyzeHeadless` from `analyze_binary`, or the webapp. For “Ghidra session only,” ReVa alone can be sufficient.
 
-**The GhidraMCP plugin is built for the Ghidra GUI.** There is no documented headless mode for the plugin. `analyzeHeadless` runs scripts and exits; it does not keep a long-lived HTTP server.
+### `GHIDRA_INSTALL_DIR` (headless / ReVa tooling)
 
-- **With this setup (plugin + Reversing-MCP):** Headless is **not** supported. You must run the Ghidra GUI with the plugin.
-- **For true headless** (no display, CI, batch):
-  - Use **Ghidra's headless analyzer**: `support/analyzeHeadless` with `-preScript` / `-postScript` for batch analysis (no MCP/HTTP).
-  - Or use a **headless MCP stack**: e.g. [pyghidra-mcp](https://clearbluejar.github.io/posts/pyghidra-mcp-headless-ghidra-mcp-server-for-project-wide-multi-binary-analysis/) (PyGhidra-based, project-wide analysis). That is a different integration from Reversing-MCP's plugin-based one.
-  - **Ghidra 12+** and **PyGhidra 3.x** allow Python 3 scripting in headless for automation without the plugin.
+Point this at the **root of your Ghidra distribution** (the folder that contains `support\analyzeHeadless.bat` and `Ghidra\` or equivalent). Examples:
 
-## Why Headless Matters
+- `C:\Program Files\ghidra_12.0_PUBLIC` (common system install)
+- `C:\Users\<you>\AppData\Roaming\ghidra\ghidra_12.0_PUBLIC` (user-local install — use this if that is where your **actual** 12.0 tree lives)
 
-- **Servers / CI / SSH:** No display (e.g. GitHub Actions, Docker, remote boxes).
-- **Batch:** Analyze many binaries without opening the GUI.
-- **Resources:** Headless typically uses less RAM/CPU than the GUI.
-- **Automation:** Scripts and pipelines that do not require a human at the desktop.
+If you have **two** trees, use the one that matches how you launch Ghidra and where `analyzeHeadless` runs.
 
-## Plugin URL
+### Cursor (`~/.cursor/mcp.json`)
 
-Default: `http://127.0.0.1:8080/`. The bridge in `bridge_mcp_ghidra.py` uses this; it can be overridden via the bridge module's `ghidra_server_url` if your plugin is configured on another port.
+**Assistant mode** (Ghidra GUI + ReVa extension listening on default port):
+
+```json
+"reva-assistant": {
+  "url": "http://127.0.0.1:8080/mcp/message"
+}
+```
+
+1. Install the ReVa **Ghidra extension** for your Ghidra version ([releases](https://github.com/cyberkaida/reverse-engineering-assistant/releases)), enable **ReVa Application Plugin** and **ReVa Plugin** in Ghidra per upstream README.
+2. Start Ghidra, open a project (and a binary if you want tools to return data).
+3. Confirm the MCP endpoint is up (default **8080**; change port in Ghidra ReVa settings if needed — then update the URL above).
+4. **Restart Cursor** (or reload MCP) so it picks up `mcp.json`.
+
+**Headless:** Upstream documents `mcp-reva` for newer releases; the PyPI tool `reverse-engineering-assistant` may ship `reva-server.exe` / `reva-chat.exe` instead — use whatever matches your installed version and set `GHIDRA_INSTALL_DIR` to your Ghidra root (e.g. `C:\\Program Files\\ghidra_12.0_PUBLIC`).
+
+## Static analysis in this repo
+
+`analyze_binary(..., ['ghidra'])` can still use **Ghidra’s headless analyzer** (`analyzeHeadless`) when Ghidra is installed, via `BinaryAnalyzer` in `analyzers.py`. That is batch/script style, not the old plugin HTTP bridge.
+
+## Headless and automation
+
+- **Batch / CI:** `support/analyzeHeadless` with `-preScript` / `-postScript`.
+- **ReVa headless:** preferred MCP path when Ghidra 12+ and ReVa support it.
+- **Alternatives:** PyGhidra, or other headless MCP stacks (e.g. community pyghidra-mcp projects) — separate from reversing-mcp.
 
 ## References
 
-- [Ghidra](https://ghidra-sre.org/) — official site
-- [GhidraMCP (LaurieWired)](https://github.com/LaurieWired/GhidraMCP) — plugin used by this server
-- [Ghidra Headless Analyzer](https://ghidradocs.com/11.1_PUBLIC/support/analyzeHeadlessREADME.html) — batch/CLI usage
-- [PyGhidra](https://pypi.org/project/pyghidra/) — Python 3 API (Ghidra 12+); option for headless scripting
+- [Ghidra](https://ghidra-sre.org/)
+- [ReVa](https://github.com/cyberkaida/reverse-engineering-assistant)
+- [Ghidra Headless Analyzer](https://ghidradocs.com/11.1_PUBLIC/support/analyzeHeadlessREADME.html)
+- [PyGhidra](https://pypi.org/project/pyghidra/)
+- [LaurieWired GhidraMCP](https://github.com/LaurieWired/GhidraMCP) — legacy GUI plugin pattern (removed from this server)

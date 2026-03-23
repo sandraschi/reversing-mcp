@@ -75,7 +75,9 @@ export default function HelpPage() {
             <CardContent className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-blue-800 font-medium">
-                  🔍 <strong>Note:</strong> Reversing MCP is built around Ghidra integration. While basic file analysis works without Ghidra, full reverse engineering capabilities require Ghidra setup.
+                  🔍 <strong>Note:</strong> This webapp focuses on static analysis (strings, entropy,
+                  PE). For decompilation and xrefs, add <strong>ReVa</strong> MCP in Cursor or
+                  Claude and use Ghidra there.
                 </p>
               </div>
               <div className="space-y-3">
@@ -102,9 +104,10 @@ export default function HelpPage() {
                 <div className="flex items-start gap-3">
                   <Badge variant="outline" className="mt-0.5">3</Badge>
                   <div>
-                    <h4 className="font-semibold">Setup Ghidra Integration</h4>
+                    <h4 className="font-semibold">Setup Ghidra (ReVa MCP)</h4>
                     <p className="text-sm text-muted-foreground">
-                      <strong>Required:</strong> Install Ghidra and the GhidraMCP plugin for decompilation and disassembly capabilities.
+                      <strong>For decompilation:</strong> Install Ghidra, add the ReVa extension,
+                      then register ReVa in your MCP client. This webapp does not proxy Ghidra MCP.
                     </p>
                   </div>
                 </div>
@@ -118,6 +121,9 @@ export default function HelpPage() {
                     </p>
                   </div>
                 </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  See the <Link href="/workflow" className="text-primary underline">Reversed app workflow</Link> flowchart for the full pipeline (loader, static, Ghidra, annotation, optional Frida).
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -244,9 +250,12 @@ export default function HelpPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <h4 className="font-semibold mb-2 text-orange-800">🐉 Ghidra is Core to Reversing MCP</h4>
+                <h4 className="font-semibold mb-2 text-orange-800">🐉 Ghidra via ReVa MCP</h4>
                 <p className="text-sm text-orange-800">
-                  <strong>This project is built around Ghidra integration.</strong> While basic file analysis (strings, entropy, PE parsing) works without Ghidra, true reverse engineering capabilities like decompilation and disassembly require Ghidra setup.
+                  <strong>Static analysis</strong> runs in this webapp and the core reversing-mcp
+                  server. <strong>Interactive Ghidra</strong> (decompile, xrefs, rename) is provided
+                  by the separate <strong>ReVa</strong> MCP server in your IDE — not the old
+                  LaurieWired HTTP bridge.
                 </p>
                 <p className="text-sm text-orange-800 mt-2">
                   <strong>Why Ghidra over IDA Pro?</strong> The NSA destroyed IDA Pro's monopoly in 2019. IDA Pro's $3,000+ pricing was somewhat understandable when it had no competition, but Ghidra provides 95%+ of IDA Pro's functionality for FREE. IDA Pro now requires torrent downloads of cracked versions (security risks, malware, legal issues).
@@ -257,10 +266,11 @@ export default function HelpPage() {
               </div>
 
               <div className="bg-muted p-4 rounded-lg">
-                <h4 className="font-semibold mb-2 text-orange-600">⚠️ Important Architecture Note</h4>
+                <h4 className="font-semibold mb-2 text-orange-600">⚠️ Architecture</h4>
                 <p className="text-sm">
-                  We use <strong>LaurieWired's GhidraMCP plugin</strong> (GhidraMCP.zip) directly.
-                  Our <code>bridge_mcp_ghidra.py</code> is a separate MCP server that connects to their plugin.
+                  The LaurieWired <code>bridge_mcp_ghidra.py</code> integration was removed. Use{' '}
+                  <strong>ReVa</strong> (<code>reverse-engineering-assistant</code>) for Ghidra MCP.
+                  See <code>docs/GHIDRA.md</code> in the repo.
                 </p>
               </div>
 
@@ -278,9 +288,10 @@ export default function HelpPage() {
                 <div className="flex items-start gap-3">
                   <Badge variant="outline">2</Badge>
                   <div>
-                    <h4 className="font-semibold">Install Plugin</h4>
+                    <h4 className="font-semibold">Install ReVa extension</h4>
                     <p className="text-sm text-muted-foreground">
-                      Use the included <code>GhidraMCP.zip</code> file in the repository root
+                      Download the release zip that matches your Ghidra version from the ReVa GitHub
+                      releases; install via File → Install Extensions.
                     </p>
                   </div>
                 </div>
@@ -288,9 +299,10 @@ export default function HelpPage() {
                 <div className="flex items-start gap-3">
                   <Badge variant="outline">3</Badge>
                   <div>
-                    <h4 className="font-semibold">Enable Plugin</h4>
+                    <h4 className="font-semibold">Add ReVa to your MCP client</h4>
                     <p className="text-sm text-muted-foreground">
-                      In Ghidra: File → Configure → Developer → Enable "GhidraMCP HTTP Server"
+                      Configure streamable HTTP or <code>mcp-reva</code> (Ghidra 12+) in Cursor or
+                      Claude Desktop.
                     </p>
                   </div>
                 </div>
@@ -298,9 +310,9 @@ export default function HelpPage() {
                 <div className="flex items-start gap-3">
                   <Badge variant="outline">4</Badge>
                   <div>
-                    <h4 className="font-semibold">Load Binary</h4>
+                    <h4 className="font-semibold">Load binary in Ghidra</h4>
                     <p className="text-sm text-muted-foreground">
-                      Open a binary file in Ghidra to enable decompilation tools
+                      Open your program in Ghidra, then use ReVa tools from the IDE.
                     </p>
                   </div>
                 </div>
@@ -330,13 +342,13 @@ export default function HelpPage() {
                 </div>
 
                 <div className="border-l-4 border-orange-500 pl-4">
-                  <h4 className="font-semibold text-orange-600">Ghidra Tools Not Available</h4>
+                  <h4 className="font-semibold text-orange-600">No decompilation in the browser</h4>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Ghidra analysis tools show as unavailable
+                    The webapp does not call Ghidra for decompilation.
                   </p>
                   <p className="text-sm">
-                    <strong>Solution:</strong> Install Ghidra, add the GhidraMCP.zip plugin, and load a binary file.
-                    <em>Note: Other tools like IDA Pro, radare2, Binwalk are not used in this implementation.</em>
+                    <strong>Solution:</strong> Install Ghidra + ReVa, add ReVa to your MCP client,
+                    and analyze from Cursor or Claude. Use this site for static metadata and strings.
                   </p>
                 </div>
 

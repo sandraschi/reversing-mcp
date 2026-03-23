@@ -51,30 +51,32 @@ export default function SettingsPage() {
   const [isLoadingLLM, setIsLoadingLLM] = useState(false)
   const [isUnloadingLLM, setIsUnloadingLLM] = useState(false)
   const [llmHealth, setLlmHealth] = useState<any>(null)
+  const [backendOk, setBackendOk] = useState<boolean | null>(null)
 
   const handleStartGhidra = async () => {
     setIsStartingGhidra(true)
     try {
-      // Call the start Ghidra endpoint
       const response = await fetch(`${API_BASE}/start_ghidra`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
       })
-
-      if (!response.ok) {
-        throw new Error(`Failed to start Ghidra: ${response.statusText}`)
+      const data = (await response.json().catch(() => ({}))) as {
+        message?: string
+        detail?: string
       }
-
-      // Wait a moment for Ghidra to start
+      if (!response.ok) {
+        throw new Error(data.detail || response.statusText)
+      }
+      alert(data.message || 'OK')
       setTimeout(async () => {
         await handleCheckStatus()
         setIsStartingGhidra(false)
-      }, 3000)
+      }, 1500)
     } catch (error) {
-      console.error('Failed to start Ghidra:', error)
+      console.error('Start Ghidra hint failed:', error)
       setIsStartingGhidra(false)
-      alert(`Failed to start Ghidra: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(error instanceof Error ? error.message : 'Unknown error')
     }
   }
 
@@ -216,6 +218,13 @@ export default function SettingsPage() {
     }
   }
 
+  // Backend health (API + MCP)
+  useEffect(() => {
+    fetch(`${API_BASE}/health`)
+      .then((r) => setBackendOk(r.ok))
+      .catch(() => setBackendOk(false))
+  }, [])
+
   // Initialize LLM status on component mount
   useEffect(() => {
     handleListProviders()
@@ -233,11 +242,33 @@ export default function SettingsPage() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Ghidra Setup & Status</h1>
+        <h1 className="text-3xl font-bold mb-2">Settings</h1>
         <p className="text-muted-foreground">
-          Setup Ghidra integration, manage plugins, and monitor analysis capabilities
+          Backend, Ghidra, and Ollama (LLM) configuration
         </p>
       </div>
+
+      {/* Backend connection */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Backend & MCP</CardTitle>
+          <CardDescription>
+            FastAPI backend (port 10750) and FastMCP 3.1 mounted at /mcp
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-4">
+          <span className="text-sm font-mono text-muted-foreground">{API_BASE}</span>
+          {backendOk === true && (
+            <Badge variant="default" className="bg-green-600">Connected</Badge>
+          )}
+          {backendOk === false && (
+            <Badge variant="destructive">Not reachable (run start-webapp.ps1)</Badge>
+          )}
+          {backendOk === null && (
+            <Badge variant="secondary">Checking...</Badge>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Status Overview */}
       <Card className="mb-8">
@@ -247,7 +278,7 @@ export default function SettingsPage() {
             System Status
           </CardTitle>
           <CardDescription>
-            Current status of MCP server and Ghidra integration
+            Current status of MCP server, Ghidra install, and ReVa (separate MCP)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -262,45 +293,41 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Tools Loaded</span>
-                  <Badge variant="secondary">25+ Ghidra Tools</Badge>
+                  <Badge variant="secondary">Static + Directmedia</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Version</span>
-                  <span className="text-sm text-muted-foreground">2.14.1</span>
+                  <span className="text-sm text-muted-foreground">0.4.0 / FastMCP 3.1</span>
                 </div>
               </div>
             </div>
 
             {/* Ghidra Status */}
             <div className="space-y-4">
-              <h4 className="font-medium">Ghidra Integration</h4>
+              <h4 className="font-medium">Ghidra</h4>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Ghidra MCP</span>
-                  {ghidraStatus?.available ? (
+                  <span className="text-sm">Ghidra install</span>
+                  {ghidraStatus?.installed ? (
                     <Badge variant="default">
                       <CheckCircle className="w-3 h-3 mr-1" />
-                      Available
+                      Detected
                     </Badge>
                   ) : (
-                    <Badge variant="destructive">
+                    <Badge variant="secondary">
                       <XCircle className="w-3 h-3 mr-1" />
-                      Unavailable
+                      Not found
                     </Badge>
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">HTTP Server</span>
-                  {ghidraStatus?.http_server_running ? (
-                    <Badge variant="default">Port {ghidraStatus.http_port || 8080}</Badge>
-                  ) : (
-                    <Badge variant="secondary">Not Running</Badge>
-                  )}
+                  <span className="text-sm">Ghidra MCP (ReVa)</span>
+                  <Badge variant="outline">Separate MCP server</Badge>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Plugin Version</span>
-                  <span className="text-sm text-muted-foreground">1.2</span>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Decompilation and xrefs run in Cursor or Claude via{' '}
+                  <strong>ReVa</strong> (reverse-engineering-assistant), not this webapp API.
+                </p>
               </div>
             </div>
           </div>
@@ -316,17 +343,13 @@ export default function SettingsPage() {
               Check Status
             </Button>
 
-            <Button
-              onClick={handleStartGhidra}
-              disabled={isStartingGhidra || ghidraStatus?.available}
-              variant="outline"
-            >
+            <Button onClick={handleStartGhidra} disabled={isStartingGhidra} variant="outline">
               {isStartingGhidra ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <Play className="w-4 h-4 mr-2" />
               )}
-              Start Ghidra
+              Ghidra / ReVa hint
             </Button>
           </div>
         </CardContent>
@@ -335,9 +358,9 @@ export default function SettingsPage() {
       {/* Ghidra Installation & Setup */}
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Ghidra Installation</CardTitle>
+          <CardTitle>Ghidra + ReVa MCP</CardTitle>
           <CardDescription>
-            Install and configure Ghidra for MCP integration
+            Install Ghidra locally; add ReVa in your MCP client for agentic analysis
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -373,26 +396,22 @@ export default function SettingsPage() {
                   <span className="text-xs font-medium text-blue-600">2</span>
                 </div>
                 <div>
-                  <h5 className="font-medium">Install MCP Plugin</h5>
+                  <h5 className="font-medium">Install ReVa in Ghidra</h5>
                   <p className="text-sm text-muted-foreground mb-2">
-                    Install the GhidraMCP plugin to enable HTTP server functionality.
+                    Install the ReVa extension zip that matches your Ghidra version (File → Install
+                    Extensions). Enable ReVa plugins in the project and Code Browser tool per ReVa
+                    docs.
                   </p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" disabled>
-                      <Download className="w-3 h-3 mr-1" />
-                      GhidraMCP.zip (Included)
-                    </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <a
-                        href="https://github.com/LaurieWired/GhidraMCP"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Github className="w-3 h-3 mr-1" />
-                        Plugin Source
-                      </a>
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <a
+                      href="https://github.com/cyberkaida/reverse-engineering-assistant/releases"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Github className="w-3 h-3 mr-1" />
+                      ReVa releases
+                    </a>
+                  </Button>
                 </div>
               </div>
 
@@ -401,9 +420,11 @@ export default function SettingsPage() {
                   <span className="text-xs font-medium text-blue-600">3</span>
                 </div>
                 <div>
-                  <h5 className="font-medium">Enable Plugin</h5>
+                  <h5 className="font-medium">Register ReVa in your MCP client</h5>
                   <p className="text-sm text-muted-foreground">
-                    In Ghidra: File → Configure → Developer → Enable GhidraMCP HTTP Server
+                    Add ReVa to Cursor or Claude Desktop (streamable HTTP or{' '}
+                    <code className="bg-muted px-1 rounded">mcp-reva</code> headless on Ghidra 12+).
+                    See <code className="bg-muted px-1 rounded">docs/GHIDRA.md</code> in the repo.
                   </p>
                 </div>
               </div>
@@ -413,48 +434,24 @@ export default function SettingsPage() {
                   <span className="text-xs font-medium text-blue-600">4</span>
                 </div>
                 <div>
-                  <h5 className="font-medium">Start Ghidra</h5>
+                  <h5 className="font-medium">Use this webapp for static analysis</h5>
                   <p className="text-sm text-muted-foreground">
-                    Launch Ghidra normally - the plugin will start the HTTP server automatically.
+                    Upload binaries here for strings, entropy, and PE metadata. Use ReVa from the
+                    IDE for decompilation and cross-references.
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Plugin Details */}
+          {/* ReVa reference */}
           <div className="border-t pt-6">
-            <h4 className="font-medium mb-4">Plugin Details</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Plugin Name:</span>
-                  <span className="text-sm font-mono">GhidraMCP</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Version:</span>
-                  <span className="text-sm">1.2</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">HTTP Port:</span>
-                  <span className="text-sm">8080</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Endpoints:</span>
-                  <span className="text-sm">25+ REST APIs</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Java Version:</span>
-                  <span className="text-sm">Compatible</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">License:</span>
-                  <span className="text-sm">Apache 2.0</span>
-                </div>
-              </div>
-            </div>
+            <h4 className="font-medium mb-4">ReVa MCP (not configured in this UI)</h4>
+            <p className="text-sm text-muted-foreground">
+              Host, port, and transport for ReVa are set in your MCP client config, not in this
+              webapp. This backend only exposes static analysis REST endpoints and mounts the core
+              reversing-mcp server at <code className="bg-muted px-1 rounded">/mcp</code>.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -854,8 +851,8 @@ export default function SettingsPage() {
                 { name: 'String Extraction', enabled: true },
                 { name: 'Entropy Analysis', enabled: true },
                 { name: 'PE Analysis', enabled: true },
-                { name: 'Ghidra Decompilation', enabled: true },
-                { name: 'Cross References', enabled: false },
+                { name: 'Headless Ghidra (analyze_binary)', enabled: false },
+                { name: 'ReVa MCP decompilation (IDE)', enabled: false },
               ].map((tool) => (
                 <div key={tool.name} className="flex items-center space-x-2">
                   <input
@@ -964,28 +961,9 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-sm font-medium">Ghidra Host</label>
-                  <p className="text-xs text-muted-foreground">Ghidra HTTP server address</p>
-                </div>
-                <input
-                  type="text"
-                  defaultValue="127.0.0.1"
-                  className="w-32 px-2 py-1 border rounded text-sm"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-sm font-medium">Ghidra Port</label>
-                  <p className="text-xs text-muted-foreground">Ghidra HTTP server port</p>
-                </div>
-                <input
-                  type="number"
-                  defaultValue={8080}
-                  className="w-20 px-2 py-1 border rounded text-sm"
-                />
+              <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+                ReVa / Ghidra MCP endpoints are configured in Cursor or Claude Desktop (
+                <code className="rounded bg-muted px-1">mcp.json</code> / desktop config), not here.
               </div>
             </div>
           </div>

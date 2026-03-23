@@ -238,5 +238,30 @@ jspm_packages/
 
 # MCP specific
 .mcp/
+
+# External repos cloned for reference — not submodules, not committed
+external/
+
+# Repo hygiene (generated / stale artifacts)
+archive/
+ruff_core.txt
+ruff_report.txt
+ruff_*.txt
+test_results.json
+test_results.txt
+headless_log.txt
+debug_proj.gpr
+debug_proj.lock
+debug_proj.lock~
+debug_proj.rep/
+GhidraMCP.zip
+
+# Local research outputs
+artifacts/
+
+# Editor / accidental backups (do not commit)
+**/*.md.bak
+.gitignore*.bak
+HELLO_GHIDRA.txt
 # Rust / Zed IDE — rust-analyzer may create target/ at repo root
 target/

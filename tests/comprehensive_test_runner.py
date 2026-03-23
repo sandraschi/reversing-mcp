@@ -301,7 +301,7 @@ class ComprehensiveTestRunner:
             for tool in all_results.get("prerequisites", {}).get("test_fixtures", {}).values()
         ):
             report_lines.append(
-                "[WARNING] Ghidra not detected - install GhidraMCP plugin for full functionality"
+                "[WARNING] Ghidra not detected - install Ghidra and ReVa MCP for decompilation workflows"
             )
 
         report_lines.append("")

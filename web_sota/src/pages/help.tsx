@@ -21,11 +21,12 @@ export function Help() {
                     </CardHeader>
                     <CardContent className="text-sm text-slate-400 space-y-4">
                         <p>This MCP server provides a standardized interface for Reverse Engineering operations. It facilitates binary analysis, system probing, and instrumentation.</p>
+                        <p>Backend: API runs on port 10750. Start it (e.g. <code className="bg-slate-800 px-1 rounded">start-webapp.ps1</code> or <code className="bg-slate-800 px-1 rounded">reversing-webapp</code> backend). Configure in Settings.</p>
                         <p>Key concepts:</p>
                         <ul className="list-disc list-inside space-y-1">
-                            <li>Multi-architecture disassembly</li>
-                            <li>SOTA aesthetics following the Alsergrund Blueprint</li>
-                            <li>FastMCP 2.14.4+ dual-transport bridge</li>
+                            <li>Analyze: upload a binary, run file/strings/entropy, PE, or Ghidra</li>
+                            <li>Ghidra: install Ghidra + ReVa; add ReVa MCP in your IDE for decompilation</li>
+                            <li>Chat: Ollama; select model in Settings</li>
                         </ul>
                     </CardContent>
                 </Card>

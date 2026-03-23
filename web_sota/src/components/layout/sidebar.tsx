@@ -10,7 +10,8 @@ import {
     HelpCircle,
     Wrench,
     Activity,
-    Grid
+    Grid,
+    Search
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,6 +24,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     const navItems = [
         { href: '/', label: 'Overview', icon: LayoutDashboard },
+        { href: '/analyze', label: 'Analyze', icon: Search },
         { href: '/tools', label: 'Tools', icon: Wrench },
         { href: '/status', label: 'Status', icon: Activity },
         { href: '/apps', label: 'App Hub', icon: Grid },

@@ -1,0 +1,4 @@
+# Vendor binary — keep locally for RE; do not commit
+*.exe
+*.dll
+!README.md
