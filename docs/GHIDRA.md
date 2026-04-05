@@ -37,14 +37,34 @@ If you have **two** trees, use the one that matches how you launch Ghidra and wh
 
 ```json
 "reva-assistant": {
+  "type": "http",
   "url": "http://127.0.0.1:8080/mcp/message"
 }
 ```
+
+Cursor follows the same rule as VS Code’s MCP config: **remote streamable-HTTP servers need `"type": "http"`**, not `url` alone. Without `type`, the client may never attach (shows as not starting / no tools).
 
 1. Install the ReVa **Ghidra extension** for your Ghidra version ([releases](https://github.com/cyberkaida/reverse-engineering-assistant/releases)), enable **ReVa Application Plugin** and **ReVa Plugin** in Ghidra per upstream README.
 2. Start Ghidra, open a project (and a binary if you want tools to return data).
 3. Confirm the MCP endpoint is up (default **8080**; change port in Ghidra ReVa settings if needed — then update the URL above).
 4. **Restart Cursor** (or reload MCP) so it picks up `mcp.json`.
+5. **Ghidra must be running** with ReVa listening (default port **8080**). If nothing is bound on that port, the MCP entry stays disconnected—start Ghidra, open a project, then retry or toggle the server in **Settings → MCP**.
+
+#### Troubleshooting: “reva-assistant” fails / Cursor never connects
+
+Installing the extension is not enough: ReVa must **start its HTTP MCP listener** (default **127.0.0.1:8080**). Cursor only connects to that URL; it does not start Ghidra.
+
+1. **Check the port (Windows PowerShell)** while Ghidra is open:
+
+   `Test-NetConnection -ComputerName 127.0.0.1 -Port 8080`
+
+   If **`TcpTestSucceeded` is `False`**, nothing is listening—Cursor will always fail until this is `True`.
+
+2. **Turn the MCP server on in Ghidra:** open **Tool Options** and find **ReVa** (often **Edit → Tool Options…**, search “ReVa” or “MCP”). Enable the **HTTP / MCP server** (upstream options use names like `server.enabled`; default port **8080**). The upstream README also mentions MCP port under settings from the **project** view—check both the **Project** window and **Code Browser** tool options if one tab does not show ReVa.
+
+3. **Restart Ghidra**, confirm step 1 succeeds, then reload MCP in Cursor.
+
+4. If you changed the port in ReVa settings, set Cursor’s `url` to `http://127.0.0.1:<that-port>/mcp/message` (path stays `/mcp/message`).
 
 **Headless:** Upstream documents `mcp-reva` for newer releases; the PyPI tool `reverse-engineering-assistant` may ship `reva-server.exe` / `reva-chat.exe` instead — use whatever matches your installed version and set `GHIDRA_INSTALL_DIR` to your Ghidra root (e.g. `C:\\Program Files\\ghidra_12.0_PUBLIC`).
 

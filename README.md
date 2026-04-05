@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-sandraschi/reversing--mcp-blue)](https://github.com/sandraschi/reversing-mcp)
 
-FastMCP 3.1 server for **static** binary analysis and Directmedia/DKI helpers. **ReVa’s MCP tools are not implemented here** — ReVa is a **separate** MCP server ([reverse-engineering-assistant](https://github.com/cyberkaida/reverse-engineering-assistant)); configure both servers in your IDE if you want static tools plus interactive Ghidra.
+FastMCP 3.1 server for **static** binary analysis and Directmedia/DKI helpers. **ReVas MCP tools are not implemented here**  ReVa is a **separate** MCP server ([reverse-engineering-assistant](https://github.com/cyberkaida/reverse-engineering-assistant)); configure both servers in your IDE if you want static tools plus interactive Ghidra.
 
 ## Primary mission
 
@@ -18,7 +18,7 @@ FastMCP 3.1 server for **static** binary analysis and Directmedia/DKI helpers. *
 
 ## Overview
 
-Python toolkit on **FastMCP 3.1+** with programmatic binary analysis and a **Compilation–Decompilation–Comparison (CDC)** test workflow for fixtures.
+Python toolkit on **FastMCP 3.1+** with programmatic binary analysis and a **CompilationDecompilationComparison (CDC)** test workflow for fixtures.
 
 **Features:**
 
@@ -51,19 +51,19 @@ Typical legitimate uses: security research, malware analysis, interoperability, 
 
 ```
 reversing-mcp/
-├── BinaryAnalyzer (analyzers.py)     # Multi-tool analysis engine
-├── directmedia_dki.py                # Heuristic DKI / library paths
-├── MCP Server (server.py)            # FastMCP 3.1+ interface
-├── LLM settings / API                # Provider configuration
-├── Web Interface (reversing-webapp/) # Next.js + FastAPI
-└── Test Suite (tests/)               # CDC and unit tests
+ BinaryAnalyzer (analyzers.py)     # Multi-tool analysis engine
+ directmedia_dki.py                # Heuristic DKI / library paths
+ MCP Server (server.py)            # FastMCP 3.1+ interface
+ LLM settings / API                # Provider configuration
+ Web Interface (reversing-webapp/) # Next.js + FastAPI
+ Test Suite (tests/)               # CDC and unit tests
 ```
 
 ### Ghidra integration
 
 | Layer | Where it lives |
 |-------|----------------|
-| **ReVa MCP tools** (decompile, xrefs, strings in Ghidra, …) | **[ReVa / reverse-engineering-assistant](https://github.com/cyberkaida/reverse-engineering-assistant)** — **not** in reversing-mcp. Add it as a **second** MCP server in your client. |
+| **ReVa MCP tools** (decompile, xrefs, strings in Ghidra, ) | **[ReVa / reverse-engineering-assistant](https://github.com/cyberkaida/reverse-engineering-assistant)**  **not** in reversing-mcp. Add it as a **second** MCP server in your client. |
 | **Headless Ghidra** (batch JSON) | This repo: `analyze_binary(..., ['ghidra'])` when `analyzeHeadless` is installed ([docs/GHIDRA.md](docs/GHIDRA.md)). |
 | **LaurieWired `ghidra_*` HTTP bridge** | Removed from this repo. |
 
@@ -79,7 +79,7 @@ Upload and analyze binaries, LLM dashboard, static analysis. Ghidra decompilatio
 
 ## CDC testing
 
-**Compilation–Decompilation–Comparison:** compile C/asm fixtures, run tools (e.g. Ghidra), compare output to source to spot gross information loss.
+**CompilationDecompilationComparison:** compile C/asm fixtures, run tools (e.g. Ghidra), compare output to source to spot gross information loss.
 
 **Fixtures include:** `hello_world.c`, `simple_math.c`, `data_structures.c`, `simple_asm.asm`, `classic_game.c` (game-loop style code).
 
@@ -87,9 +87,9 @@ Upload and analyze binaries, LLM dashboard, static analysis. Ghidra decompilatio
 
 Useful **source** references for non-trivial examples (clone separately if needed):
 
-- [awesome-dos](https://github.com/balintkissdev/awesome-dos) — Wolf3D, Doom, Keen, etc.
-- [DOS-Progs](https://github.com/Panda381/DOS-Progs) — assorted DOS sources
-- [Gist list](https://gist.github.com/lucasw/af65aa7314886764e650ccf561ee6291) — open DOS games
+- [-dos](https://github.com/balintkissdev/-dos)  Wolf3D, Doom, Keen, etc.
+- [DOS-Progs](https://github.com/Panda381/DOS-Progs)  assorted DOS sources
+- [Gist list](https://gist.github.com/lucasw/af65aa7314886764e650ccf561ee6291)  open DOS games
 
 ## Supported analysis (this repo)
 
@@ -97,8 +97,8 @@ Useful **source** references for non-trivial examples (clone separately if neede
 |------|--------|---------|
 | **Ghidra (interactive)** | **ReVa** MCP server (separate install) | Decompilation, xrefs, etc. in the IDE |
 | **Ghidra (headless)** | This repo: `analyze_binary(..., ['ghidra'])` | Scripts under `ghidra_scripts/` |
-| **radare2** | Not integrated | — |
-| **Binwalk** | Not integrated | — |
+| **radare2** | Not integrated |  |
+| **Binwalk** | Not integrated |  |
 | **strings / PE** | Used | Via `BinaryAnalyzer` |
 | **IDA Pro** | Not used | Ghidra is the supported free path for this project |
 
@@ -149,7 +149,7 @@ cd ..
 - **MCP only:** `python -m src.reversing_mcp.server`
 - **Tests:** `pytest` from repo root (see `tests/` for scope).
 
-**MCP tools (this server only):** e.g. `analyze_binary`, `extract_strings`, `get_hexdump`, `analyze_entropy`, `decompress_directmedia_library`, `digibib_research_snapshot`, LLM list/load/status. **Ghidra decompilation / xrefs** are **ReVa’s** tools on a **separate** MCP server — not registered by reversing-mcp.
+**MCP tools (this server only):** e.g. `analyze_binary`, `extract_strings`, `get_hexdump`, `analyze_entropy`, `decompress_directmedia_library`, `digibib_research_snapshot`, LLM list/load/status. **Ghidra decompilation / xrefs** are **ReVas** tools on a **separate** MCP server  not registered by reversing-mcp.
 
 ## Development status
 
@@ -163,6 +163,6 @@ Contributors and upstream projects including **ReVa**, **Ghidra**, **FastMCP**, 
 
 ### Third-party
 
-- [ReVa](https://github.com/cyberkaida/reverse-engineering-assistant) — Ghidra MCP
-- [Ghidra](https://ghidra-sre.org/) — Apache 2.0
-- [FastMCP](https://github.com/jlowin/fastmcp) — MCP framework
+- [ReVa](https://github.com/cyberkaida/reverse-engineering-assistant)  Ghidra MCP
+- [Ghidra](https://ghidra-sre.org/)  Apache 2.0
+- [FastMCP](https://github.com/jlowin/fastmcp)  MCP framework

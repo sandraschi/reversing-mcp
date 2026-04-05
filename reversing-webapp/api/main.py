@@ -27,11 +27,8 @@ from reversing_mcp.logging_config import get_logger
 
 logger = get_logger("reversing_api")
 
-# Ghidra MCP: use ReVa (reverse-engineering-assistant) in your MCP client — not this HTTP API.
-REVERSING_MCP_GHIDRA_NOTE = (
-    "Ghidra MCP is provided by ReVa; connect it in Cursor/Claude. "
-    "This API no longer proxies LaurieWired GhidraMCP. See docs/GHIDRA.md."
-)
+# Ghidra MCP: Bridge location
+GHIDRA_BRIDGE_URL = os.getenv("GHIDRA_BRIDGE_URL", "http://127.0.0.1:8089")
 
 # Global analyzer instance
 analyzer = BinaryAnalyzer()
@@ -89,10 +86,15 @@ class AnalysisRequest(BaseModel):
 
 class GhidraStatus(BaseModel):
     available: bool
-    installed: bool = False  # Ghidra binary found on disk
+    installed: bool = False
     version: str | None = None
-    http_server_running: bool = False
-    http_port: int | None = None
+    bridge_running: bool = False
+    bridge_url: str | None = None
+    connected_instance: str | None = None
+
+class GhidraConnectRequest(BaseModel):
+    instance_id: str  # host:port or pipe path
+    mode: str = "tcp"  # "tcp" or "uds"
 
 
 class AnalysisResponse(BaseModel):
@@ -116,7 +118,7 @@ async def root():
     return {
         "message": "Reversing MCP API Server",
         "version": "1.0.0",
-        "ghidra_mcp": REVERSING_MCP_GHIDRA_NOTE,
+        "ghidra_mcp": f"Connected to bridge at {GHIDRA_BRIDGE_URL}",
         "endpoints": [
             "/analyze/file",
             "/analyze/upload",
@@ -149,7 +151,7 @@ async def get_tools_status():
             "available": False,
             "installed": bool(ghidra_bin.get("available")),
             "version": ghidra_bin.get("version"),
-            "note": REVERSING_MCP_GHIDRA_NOTE,
+            "note": f"Bridge: {GHIDRA_BRIDGE_URL}",
         }
 
         return {
@@ -268,56 +270,103 @@ async def analyze_file_path(request: AnalysisRequest):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}")
 
 
-@app.post("/start_ghidra")
-async def start_ghidra():
-    """Legacy endpoint: launch Ghidra from the desktop; use ReVa MCP for agentic Ghidra."""
-    return {
-        "ok": True,
-        "message": (
-            "Start Ghidra from the desktop if you need the GUI. "
-            "For MCP decompilation and analysis, add ReVa to your MCP client (see docs/GHIDRA.md)."
-        ),
-    }
-
+# --- Ghidra MCP Bridge Proxy ---
+async def _ghidra_request(path: str, method: str = "GET", params: dict | None = None, data: dict | None = None) -> Any:
+    """Helper to proxy requests to the Ghidra MCP bridge."""
+    import httpx
+    url = f"{GHIDRA_BRIDGE_URL}{path}"
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            if method == "GET":
+                r = await client.get(url, params=params)
+            else:
+                r = await client.post(url, json=data)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            logger.error(f"Ghidra bridge error ({path}): {e}")
+            return None
 
 @app.get("/ghidra/status")
 async def get_ghidra_status():
-    """Ghidra binary detection only; MCP/plugin status lives in ReVa."""
+    """Check Ghidra installation and bridge health."""
     installed = False
     version = None
+    bridge_running = False
+    connected_instance = None
+    
     try:
         tools = analyzer.check_available_tools()
         g = tools.get("ghidra", {}) if tools else {}
         installed = bool(g.get("available"))
         version = g.get("version")
+        
+        # Check bridge
+        status = await _ghidra_request("/status")
+        if status:
+            bridge_running = True
+            connected_instance = status.get("connected_instance")
     except Exception:
         pass
 
     return GhidraStatus(
-        available=False,
+        available=bridge_running,
         installed=installed,
         version=version,
-        http_server_running=False,
-        http_port=None,
-    ).dict() | {"note": REVERSING_MCP_GHIDRA_NOTE}
+        bridge_running=bridge_running,
+        bridge_url=GHIDRA_BRIDGE_URL,
+        connected_instance=connected_instance
+    ).dict()
 
+@app.get("/ghidra/instances")
+async def get_ghidra_instances():
+    """List running Ghidra instances discovered by the bridge."""
+    instances = await _ghidra_request("/instances")
+    if instances is None:
+        raise HTTPException(status_code=503, detail="Ghidra bridge unavailable")
+    return instances
+
+@app.post("/ghidra/connect")
+async def connect_ghidra(request: GhidraConnectRequest):
+    """Connect bridge to a target Ghidra instance."""
+    result = await _ghidra_request("/connect", method="POST", data=request.dict())
+    if result is None:
+        raise HTTPException(status_code=502, detail="Failed to connect to Ghidra")
+    return result
 
 @app.get("/ghidra/functions")
 async def get_ghidra_functions():
-    """Deprecated: use ReVa MCP for Ghidra function lists."""
-    raise HTTPException(status_code=503, detail=REVERSING_MCP_GHIDRA_NOTE)
-
+    """Proxy function list from connected Ghidra instance."""
+    # The bridge dynamically registers tools, we call the native GhidraMCP endpoint
+    # Note: Port 8089 bridge directly exposes a REST API mirroring the MCP tools.
+    functions = await _ghidra_request("/functions")
+    if functions is None:
+        raise HTTPException(status_code=502, detail="Ghidra not connected or error fetching functions")
+    return functions
 
 @app.post("/ghidra/decompile")
 async def decompile_ghidra_function(function_name: str):
-    """Deprecated: use ReVa MCP for decompilation."""
-    raise HTTPException(status_code=503, detail=REVERSING_MCP_GHIDRA_NOTE)
-
+    """Proxy decompilation from connected Ghidra instance."""
+    result = await _ghidra_request("/decompile", method="POST", data={"function_name": function_name})
+    if result is None:
+        raise HTTPException(status_code=502, detail="Decompilation failed")
+    return result
 
 @app.post("/ghidra/disassemble")
 async def disassemble_ghidra_function(address: str):
-    """Deprecated: use ReVa MCP for disassembly."""
-    raise HTTPException(status_code=503, detail=REVERSING_MCP_GHIDRA_NOTE)
+    """Proxy disassembly from connected Ghidra instance."""
+    result = await _ghidra_request("/disassemble", method="POST", data={"address": address})
+    if result is None:
+        raise HTTPException(status_code=502, detail="Disassembly failed")
+    return result
+
+@app.post("/start_ghidra")
+async def start_ghidra():
+    """Launch Ghidra GUI (informational)."""
+    return {
+        "ok": True,
+        "message": "Start Ghidra from the desktop. The WebApp will connect via the MCP bridge."
+    }
 
 
 # --- Ollama (local LLM) helpers ---

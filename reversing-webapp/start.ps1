@@ -4,10 +4,12 @@
 $Root = $PSScriptRoot
 if (-not $Root) { $Root = Split-Path -Parent $MyInvocation.MyCommand.Path }
 
-if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+$PythonCmd = Get-Command python, py -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $PythonCmd) {
     Write-Host "Python not found. Install Python 3.8+ first." -ForegroundColor Red
     exit 1
 }
+$Python = $PythonCmd.Definition
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     Write-Host "Node.js not found. Install Node.js 18+ first." -ForegroundColor Red
     exit 1
@@ -18,16 +20,16 @@ Write-Host "Starting FastAPI backend on http://localhost:10750" -ForegroundColor
 $apiDir = Join-Path $Root "api"
 if (-not (Test-Path (Join-Path $apiDir "venv"))) {
     Push-Location $apiDir
-    python -m venv venv
+    & $Python -m venv venv
     Pop-Location
 }
 Start-Job -ScriptBlock {
-    param($path)
+    param($path, $pythonPath)
     $env:REVERSING_API_PORT = "10750"
     Set-Location $path
     & ".\venv\Scripts\Activate.ps1"
-    python main.py
-} -ArgumentList $apiDir -Name "ReversingAPI"
+    & $pythonPath main.py
+} -ArgumentList $apiDir, $Python -Name "ReversingAPI"
 
 # Frontend (10751)
 Write-Host "Starting Next.js frontend on http://localhost:10751" -ForegroundColor Green
