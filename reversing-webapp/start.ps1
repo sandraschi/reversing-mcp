@@ -1,3 +1,13 @@
+﻿Param([switch]$Headless)
+
+# --- SOTA Headless Standard ---
+if ($Headless -and ($Host.UI.RawUI.WindowTitle -notmatch 'Hidden')) {
+    Start-Process pwsh -ArgumentList '-NoProfile', '-File', $PSCommandPath, '-Headless' -WindowStyle Hidden
+    exit
+}
+$WindowStyle = if ($Headless) { 'Hidden' } else { 'Normal' }
+# ------------------------------
+
 # Start Reversing MCP WebApp (SOTA ports 10750 backend, 10751 frontend)
 # Use %~dp0 from start.bat so script dir = reversing-webapp when launched via symlink
 
@@ -47,3 +57,4 @@ Start-Job -ScriptBlock {
 Start-Sleep -Seconds 3
 Write-Host "Frontend: http://localhost:10751  Backend: http://localhost:10750/docs" -ForegroundColor Cyan
 Write-Host "To stop: Get-Job | Stop-Job; Get-Job | Remove-Job" -ForegroundColor Yellow
+

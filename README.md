@@ -1,10 +1,12 @@
 # Reversing MCP - Reverse Engineering Toolkit
 
+[![FastMCP Version](https://img.shields.io/badge/FastMCP-3.1.0-blue?style=flat-square&logo=python&logoColor=white)](https://github.com/sandraschi/fastmcp) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) [![Linted with Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat-square&logo=biome&logoColor=white)](https://biomejs.dev/) [![Built with Just](https://img.shields.io/badge/Built_with-Just-000000?style=flat-square&logo=gnu-bash&logoColor=white)](https://github.com/casey/just)
+
 [![FastMCP](https://img.shields.io/badge/FastMCP-2.13+-blue)](https://github.com/jlowin/fastmcp)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-sandraschi/reversing--mcp-blue)](https://github.com/sandraschi/reversing-mcp)
 
-FastMCP 3.1 server for **static** binary analysis and Directmedia/DKI helpers. **ReVas MCP tools are not implemented here**  ReVa is a **separate** MCP server ([reverse-engineering-assistant](https://github.com/cyberkaida/reverse-engineering-assistant)); configure both servers in your IDE if you want static tools plus interactive Ghidra.
+FastMCP 3.1.0 server for **static** binary analysis and Directmedia/DKI helpers. **ReVas MCP tools are not implemented here**  ReVa is a **separate** MCP server ([reverse-engineering-assistant](https://github.com/cyberkaida/reverse-engineering-assistant)); configure both servers in your IDE if you want static tools plus interactive Ghidra.
 
 ## Primary mission
 
@@ -18,7 +20,7 @@ FastMCP 3.1 server for **static** binary analysis and Directmedia/DKI helpers. *
 
 ## Overview
 
-Python toolkit on **FastMCP 3.1+** with programmatic binary analysis and a **CompilationDecompilationComparison (CDC)** test workflow for fixtures.
+Python toolkit on **FastMCP 3.1.0+** with programmatic binary analysis and a **CompilationDecompilationComparison (CDC)** test workflow for fixtures.
 
 **Features:**
 
@@ -53,7 +55,7 @@ Typical legitimate uses: security research, malware analysis, interoperability, 
 reversing-mcp/
  BinaryAnalyzer (analyzers.py)     # Multi-tool analysis engine
  directmedia_dki.py                # Heuristic DKI / library paths
- MCP Server (server.py)            # FastMCP 3.1+ interface
+ MCP Server (server.py)            # FastMCP 3.1.0+ interface
  LLM settings / API                # Provider configuration
  Web Interface (reversing-webapp/) # Next.js + FastAPI
  Test Suite (tests/)               # CDC and unit tests
@@ -166,3 +168,14 @@ Contributors and upstream projects including **ReVa**, **Ghidra**, **FastMCP**, 
 - [ReVa](https://github.com/cyberkaida/reverse-engineering-assistant)  Ghidra MCP
 - [Ghidra](https://ghidra-sre.org/)  Apache 2.0
 - [FastMCP](https://github.com/jlowin/fastmcp)  MCP framework
+
+
+## 🛡️ Industrial Quality Stack
+
+This project adheres to **SOTA 14.1** industrial standards for high-fidelity agentic orchestration:
+
+- **Python (Core)**: [Ruff](https://astral.sh/ruff) for linting and formatting. Zero-tolerance for `print` statements in core handlers (`T201`).
+- **Webapp (UI)**: [Biome](https://biomejs.dev/) for sub-millisecond linting. Strict `noConsoleLog` enforcement.
+- **Protocol Compliance**: Hardened `stdout/stderr` isolation to ensure crash-resistant JSON-RPC communication.
+- **Automation**: [Justfile](./justfile) recipes for all fleet operations (`just lint`, `just fix`, `just dev`).
+- **Security**: Automated audits via `bandit` and `safety`.
