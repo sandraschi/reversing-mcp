@@ -48,10 +48,27 @@ if (-not (Test-Path (Join-Path $Root "node_modules"))) {
     npm install
     Pop-Location
 }
+# Build once if no production bundle exists
+$buildId = Join-Path $Root ".next\BUILD_ID"
+if (-not (Test-Path $buildId)) {
+    Write-Host "Building frontend for production (one-time)..." -ForegroundColor Cyan
+    Push-Location $Root
+    npm run build
+    Pop-Location
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Build failed! Falling back to dev mode." -ForegroundColor Red
+        Start-Job -ScriptBlock {
+            param($path)
+            Set-Location $path
+            npm run dev
+        } -ArgumentList $Root -Name "ReversingFrontend"
+        exit
+    }
+}
 Start-Job -ScriptBlock {
     param($path)
     Set-Location $path
-    npm run dev
+    npm run start
 } -ArgumentList $Root -Name "ReversingFrontend"
 
 Start-Sleep -Seconds 3
