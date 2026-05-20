@@ -7,6 +7,9 @@
   <a href="https://github.com/PrefectHQ/fastmcp"><img src="https://img.shields.io/badge/FastMCP-3.2-7c5cfc?style=flat-square" alt="FastMCP"></a>
 </p>
 
+
+> 📖 **[Installation Guide](INSTALL.md)** — quick start, manual setup, and troubleshooting
+
 FastMCP 3.1.0 server for **static** binary analysis and Directmedia/DKI helpers. **ReVas MCP tools are not implemented here**  ReVa is a **separate** MCP server ([reverse-engineering-assistant](https://github.com/cyberkaida/reverse-engineering-assistant)); configure both servers in your IDE if you want static tools plus interactive Ghidra.
 
 ## Primary mission
