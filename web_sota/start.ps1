@@ -5,6 +5,7 @@
     [switch]$NoBrowser
 )
 
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
 $FleetStartPath = Join-Path $ProjectRoot "scripts\FleetStartMode.ps1"
 if (-not (Test-Path -LiteralPath $FleetStartPath)) {
     Write-Host "ERROR: Missing vendored launcher helper: $FleetStartPath" -ForegroundColor Red
@@ -18,7 +19,6 @@ $WindowStyle = $FleetStart.WindowStyle
 # Webapp Start - Standardized SOTA (Backend 10750, Frontend 10751)
 $BackendPort = 10750
 $FrontendPort = 10751
-$ProjectRoot = Split-Path -Parent $PSScriptRoot
 
 Stop-FleetPortSquatters -Ports @($BackendPort, $FrontendPort) -Label "reversing-mcp"
 
