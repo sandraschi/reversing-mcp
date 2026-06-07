@@ -35,6 +35,8 @@ if (-not (Test-Path -LiteralPath $FleetStartPath)) {
 . $FleetStartPath
 Stop-FleetPortSquatters -Ports @($BackendPort, $FrontendPort) -Label "reversing-mcp-legacy"
 
+if (-not (Assert-FleetPortsAvailable -Ports @($BackendPort, $FrontendPort) -Label "reversing-mcp-legacy")) { exit 1 }
+
 # Backend (10750)
 Write-Host "Starting FastAPI backend on http://localhost:10750" -ForegroundColor Green
 $apiDir = Join-Path $Root "api"
@@ -84,5 +86,6 @@ Start-Job -ScriptBlock {
 Start-Sleep -Seconds 3
 Write-Host "Frontend: http://localhost:10751  Backend: http://localhost:10750/docs" -ForegroundColor Cyan
 Write-Host "To stop: Get-Job | Stop-Job; Get-Job | Remove-Job" -ForegroundColor Yellow
+
 
 
