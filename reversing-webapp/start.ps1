@@ -25,6 +25,16 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+$BackendPort = 10750
+$FrontendPort = 10751
+$FleetStartPath = Join-Path $Root "scripts\FleetStartMode.ps1"
+if (-not (Test-Path -LiteralPath $FleetStartPath)) {
+    Write-Host "ERROR: Missing vendored launcher helper: $FleetStartPath" -ForegroundColor Red
+    exit 1
+}
+. $FleetStartPath
+Stop-FleetPortSquatters -Ports @($BackendPort, $FrontendPort) -Label "reversing-mcp-legacy"
+
 # Backend (10750)
 Write-Host "Starting FastAPI backend on http://localhost:10750" -ForegroundColor Green
 $apiDir = Join-Path $Root "api"
@@ -74,4 +84,5 @@ Start-Job -ScriptBlock {
 Start-Sleep -Seconds 3
 Write-Host "Frontend: http://localhost:10751  Backend: http://localhost:10750/docs" -ForegroundColor Cyan
 Write-Host "To stop: Get-Job | Stop-Job; Get-Job | Remove-Job" -ForegroundColor Yellow
+
 

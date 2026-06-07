@@ -1,26 +1,26 @@
-Param([switch]$Headless)
-$SkipFrontend = $Headless
+﻿param(
+    [switch]$Headless,
+    [switch]$BackendOnly,
+    [switch]$FrontendOnly,
+    [switch]$NoBrowser
+)
 
-# --- SOTA Headless Standard ---
-if ($Headless -and ($Host.UI.RawUI.WindowTitle -notmatch 'Hidden')) {
-    Start-Process pwsh -ArgumentList '-NoProfile', '-File', $PSCommandPath, '-Headless' -WindowStyle Hidden
-    exit
+$FleetStartPath = Join-Path $ProjectRoot "scripts\FleetStartMode.ps1"
+if (-not (Test-Path -LiteralPath $FleetStartPath)) {
+    Write-Host "ERROR: Missing vendored launcher helper: $FleetStartPath" -ForegroundColor Red
+    exit 1
 }
-$WindowStyle = if ($Headless) { 'Hidden' } else { 'Normal' }
-# ------------------------------
+. $FleetStartPath
+$FleetStart = Initialize-FleetStartMode @PSBoundParameters
+Enter-FleetHeadlessConsole -Headless:$Headless -BackendOnly:$BackendOnly
+$WindowStyle = $FleetStart.WindowStyle
 
 # Webapp Start - Standardized SOTA (Backend 10750, Frontend 10751)
 $BackendPort = 10750
 $FrontendPort = 10751
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
-# 1. Kill any process squatting on the ports
-Write-Host "Checking for port squatters on $BackendPort and $FrontendPort..." -ForegroundColor Yellow
-$pids = Get-NetTCPConnection -LocalPort $BackendPort, $FrontendPort -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -gt 4 } | Select-Object -ExpandProperty OwningProcess -Unique
-foreach ($p in $pids) {
-    Write-Host "Found squatter (PID: $p). Terminating..." -ForegroundColor Red
-    try { Stop-Process -Id $p -Force -ErrorAction Stop } catch { Write-Host "Warning: Could not terminate PID $p." -ForegroundColor Gray }
-}
+Stop-FleetPortSquatters -Ports @($BackendPort, $FrontendPort) -Label "reversing-mcp"
 
 # 2. Setup
 Set-Location $PSScriptRoot
@@ -41,5 +41,6 @@ Start-Process powershell -ArgumentList "-NoProfile", "-WindowStyle", "Hidden", "
 Write-Host "Browser will open automatically when Vite is ready." -ForegroundColor Gray
 if ($SkipFrontend) { return }
 npm run dev -- --port $FrontendPort --host
+
 
 
