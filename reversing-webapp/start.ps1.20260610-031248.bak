@@ -27,21 +27,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 
 $BackendPort = 10750
 $FrontendPort = 10751
-
-$portResolve = @{
-    Ports      = @($BackendPort, $FrontendPort)
-    Label      = "reversing-mcp"
-    AllowReuse = $ReuseIfRunning
-}
-if ($ReuseIfRunning) {
-    $portResolve.HealthChecks = @{
-        $BackendPort = "http://127.0.0.1:$BackendPort/health"
-        $FrontendPort = "http://127.0.0.1:$FrontendPort/"
-    }
-}
-$portState = Resolve-FleetPortConflict @portResolve
-if ($portState.Action -eq 'Blocked') { exit 1 }
-if ($portState.Reuse) { return }$FleetStartPath = Join-Path $Root "scripts\FleetStartMode.ps1"
+$FleetStartPath = Join-Path $Root "scripts\FleetStartMode.ps1"
 if (-not (Test-Path -LiteralPath $FleetStartPath)) {
     Write-Host "ERROR: Missing vendored launcher helper: $FleetStartPath" -ForegroundColor Red
     exit 1

@@ -1,9 +1,9 @@
-param(
+﻿param(
     [switch]$Headless,
     [switch]$BackendOnly,
     [switch]$FrontendOnly,
-    [switch]$NoBrowser,
-    [switch]$ReuseIfRunning)
+    [switch]$NoBrowser
+)
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $FleetStartPath = Join-Path $ProjectRoot "scripts\FleetStartMode.ps1"
@@ -14,27 +14,15 @@ if (-not (Test-Path -LiteralPath $FleetStartPath)) {
 . $FleetStartPath
 $FleetStart = Initialize-FleetStartMode @PSBoundParameters
 Enter-FleetHeadlessConsole -Headless:$Headless -BackendOnly:$BackendOnly
-
-$portResolve = @{
-    Ports      = @($BackendPort, $FrontendPort)
-    Label      = "reversing-mcp"
-    AllowReuse = $ReuseIfRunning
-}
-if ($ReuseIfRunning) {
-    $portResolve.HealthChecks = @{
-        $BackendPort = "http://127.0.0.1:$BackendPort/health"
-        $FrontendPort = "http://127.0.0.1:$FrontendPort/"
-    }
-}
-$portState = Resolve-FleetPortConflict @portResolve
-if ($portState.Action -eq 'Blocked') { exit 1 }
-if ($portState.Reuse) { return }$WindowStyle = $FleetStart.WindowStyle
+$WindowStyle = $FleetStart.WindowStyle
 
 # Webapp Start - Standardized SOTA (Backend 10750, Frontend 10751)
 $BackendPort = 10750
 $FrontendPort = 10751
 
+Stop-FleetPortSquatters -Ports @($BackendPort, $FrontendPort) -Label "reversing-mcp"
 
+if (-not (Assert-FleetPortsAvailable -Ports @($BackendPort, $FrontendPort) -Label "reversing-mcp")) { exit 1 }
 
 # 2. Setup
 Set-Location $PSScriptRoot
