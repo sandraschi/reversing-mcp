@@ -1,15 +1,33 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { getApiBase } from "@/common/api";
-import { Upload, Loader2, Search, CheckCircle, XCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { CheckCircle, Loader2, Search, Upload, XCircle } from "lucide-react";
+import { useState } from "react";
 
-const BINARY_EXTS = [".exe", ".dll", ".so", ".dylib", ".bin", ".com", ".sys", ".drv"];
+const BINARY_EXTS = [
+  ".exe",
+  ".dll",
+  ".so",
+  ".dylib",
+  ".bin",
+  ".com",
+  ".sys",
+  ".drv",
+];
 
 function isValidBinary(file: File): boolean {
   const name = file.name.toLowerCase();
-  return BINARY_EXTS.some((ext) => name.endsWith(ext)) || file.type === "application/octet-stream";
+  return (
+    BINARY_EXTS.some((ext) => name.endsWith(ext)) ||
+    file.type === "application/octet-stream"
+  );
 }
 
 function formatSize(bytes: number): string {
@@ -67,8 +85,12 @@ export function Analyze() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">Analyze Binary</h2>
-        <p className="text-slate-400">Upload an executable for reverse engineering analysis</p>
+        <h2 className="text-2xl font-bold tracking-tight text-white">
+          Analyze Binary
+        </h2>
+        <p className="text-slate-400">
+          Upload an executable for reverse engineering analysis
+        </p>
       </div>
 
       <Card className="border-slate-800 bg-slate-950/50">
@@ -124,7 +146,9 @@ export function Analyze() {
                   onChange={(e) => setBasic(e.target.checked)}
                   className="rounded border-slate-600"
                 />
-                <span className="text-sm text-slate-300">Basic (file, strings, entropy)</span>
+                <span className="text-sm text-slate-300">
+                  Basic (file, strings, entropy)
+                </span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -170,7 +194,9 @@ export function Analyze() {
         <Card className="border-red-900/50 bg-red-950/20">
           <CardContent className="pt-6 flex items-center gap-2 text-red-400">
             <XCircle className="h-5 w-5 shrink-0" />
-            <span>{error}. Ensure backend is running (e.g. start-webapp.ps1).</span>
+            <span>
+              {error}. Ensure backend is running (e.g. start-webapp.ps1).
+            </span>
           </CardContent>
         </Card>
       )}
@@ -183,7 +209,8 @@ export function Analyze() {
               Analysis result
             </CardTitle>
             <CardDescription className="text-slate-400">
-              {String(result.file_path)} — score {Number(result.analysis_score ?? 0).toFixed(0)}%
+              {String(result.file_path)} — score{" "}
+              {Number(result.analysis_score ?? 0).toFixed(0)}%
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -196,15 +223,21 @@ export function Analyze() {
               </div>
               <div>
                 <div className="text-slate-500">Strings</div>
-                <div className="text-slate-200">{Number(result.strings ?? 0)}</div>
+                <div className="text-slate-200">
+                  {Number(result.strings ?? 0)}
+                </div>
               </div>
               <div>
                 <div className="text-slate-500">Functions</div>
-                <div className="text-slate-200">{Number(result.functions ?? 0)}</div>
+                <div className="text-slate-200">
+                  {Number(result.functions ?? 0)}
+                </div>
               </div>
               <div>
                 <div className="text-slate-500">Language hint</div>
-                <div className="text-slate-200">{String(result.language_hint ?? "—")}</div>
+                <div className="text-slate-200">
+                  {String(result.language_hint ?? "—")}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -213,7 +246,11 @@ export function Analyze() {
 
       {!file && (
         <p className="text-sm text-slate-500">
-          Need help? See <a href="/help" className="text-blue-400 hover:underline">Help</a>.
+          Need help? See{" "}
+          <a href="/help" className="text-blue-400 hover:underline">
+            Help
+          </a>
+          .
         </p>
       )}
     </div>

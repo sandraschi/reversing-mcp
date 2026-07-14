@@ -3,7 +3,8 @@ const STORAGE_KEY = "reversing_api_base";
 
 function getEnvApiBase(): string | undefined {
   if (typeof import.meta === "undefined") return undefined;
-  const env = (import.meta as unknown as { env?: { VITE_API_URL?: string } }).env;
+  const env = (import.meta as unknown as { env?: { VITE_API_URL?: string } })
+    .env;
   return env?.VITE_API_URL;
 }
 
@@ -22,7 +23,8 @@ export function getApiBase(): string {
 }
 
 export function setApiBase(url: string): void {
-  if (typeof localStorage !== "undefined") localStorage.setItem(STORAGE_KEY, url);
+  if (typeof localStorage !== "undefined")
+    localStorage.setItem(STORAGE_KEY, url);
 }
 
 /** For components that need a stable ref; call getApiBase() when making requests. */

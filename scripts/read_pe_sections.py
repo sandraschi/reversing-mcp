@@ -31,7 +31,7 @@ def main():
         f.seek(pe_header_offset + 4 + 20 + opt_header_size)
 
         print("Sections:")
-        for i in range(num_sections):
+        for _i in range(num_sections):
             section_entry = f.read(40)
             name = section_entry[0:8].rstrip(b"\0").decode(errors="ignore")
             virtual_size, virtual_addr, raw_size, raw_ptr = struct.unpack(

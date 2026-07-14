@@ -164,7 +164,7 @@ class ReverseEngineeringTestFixture:
             print(f"Compilation error for {fixture_name}: {e}")
             return None
 
-    def analyze_binary(self, binary_path: Path, tools: list[str] = None) -> dict[str, Any]:
+    def analyze_binary(self, binary_path: Path, tools: list[str] | None = None) -> dict[str, Any]:
         """Analyze a binary using the reversing MCP analyzer"""
         if tools is None:
             tools = ["static", "strings", "entropy"]

@@ -1,0 +1,38 @@
+# reversing-mcp
+
+> FastMCP 3.4+ server for static binary analysis, reverse engineering, and Directmedia format tools. Ghidra headless integration.
+
+## Docs
+- [README](README.md): Main readme
+- [Changelog](CHANGELOG.md): Release history
+- [AGENTS.md](AGENTS.md): Agent context
+- [Install](INSTALL.md): Installation guide
+- [Ghidra Plugin](GHIDRA_PLUGIN_SETUP.md): Ghidra setup
+
+## Tools (13)
+- [Server](src/reversing_mcp/server.py): FastMCP server with all tools
+- [Analyzers](src/reversing_mcp/analyzers.py): Binary analysis, PE parsing, entropy, string
+- [Directmedia DKI](src/reversing_mcp/directmedia_dki.py): DKI decoder
+- [DigiBib Research](src/reversing_mcp/digibib_research.py): DigiBib snapshot builder
+- [Transport](src/reversing_mcp/transport.py): stdio/HTTP/SSE dual transport
+
+## Tools Listing
+| Tool | Description |
+|------|-------------|
+| `analyze_binary` | Full binary analysis: file type, strings, entropy, functions |
+| `extract_strings` | Extract ASCII/Unicode strings from file |
+| `get_hexdump` | Hex dump of file bytes at offset |
+| `analyze_entropy` | Shannon entropy analysis per block |
+| `find_functions` | Find functions using Ghidra/radare2 |
+| `get_file_info` | File metadata via `file` command |
+| `check_tools` | Check installed reversing tools |
+| `digibib_research_snapshot` | DigiBib research snapshot |
+| `analyze_pe_file` | PE file structure analysis |
+| `decode_dki_file` | Decode DKI file format |
+| `analyze_directmedia_file` | Directmedia format analysis |
+| `decompress_directmedia_library` | Decompress DM library archives |
+| `help` | Multi-level help system |
+
+## Config
+- [Pyproject](pyproject.toml): Python project config
+- [Glama](glama.json): AI registry metadata

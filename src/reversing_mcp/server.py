@@ -498,7 +498,7 @@ async def decompress_directmedia_library(
 
 
 @mcp.tool()
-async def help(level: str = "basic", topic: str = None) -> dict[str, Any]:
+async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]:
     """
     Get comprehensive help information about Reversing MCP tools and capabilities.
 
@@ -740,14 +740,35 @@ def main():
 # Mounts MCP at /mcp; add more routes here if needed.
 try:
     from fastapi import FastAPI as _FastAPI
+    from fastapi.middleware.cors import CORSMiddleware as _CORSMiddleware
 
     _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.4.0")
 
-    @_http_app.get("/health")
-    async def _health() -> dict[str, str]:
-        return {"status": "ok"}
+    _http_app.add_middleware(
+        _CORSMiddleware,
+        allow_origins=[
+            "http://localhost:10751",
+            "http://127.0.0.1:10751",
+            "tauri://localhost",
+            "http://tauri.localhost",
+            "https://tauri.localhost",
+        ],
+        allow_origin_regex=r"https?://(?:[a-zA-Z0-9-]+\.ts\.net|.*?\.tail-[a-f0-9]+\.ts\.net|tauri\.localhost|localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|100\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?$|^tauri://localhost$",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-    _http_app.mount("/mcp", mcp.http_app())
+    @_http_app.get("/health")
+    async def _health() -> dict:
+        tools = mcp._tool_manager.list_tools() if hasattr(mcp, "_tool_manager") else []
+        return {
+            "status": "ok",
+            "version": "0.4.0",
+            "tool_count": len(tools),
+        }
+
+    _http_app.mount("/mcp", mcp.http_app(path="/"))
     app = _http_app
 except ImportError:
     pass  # no app when fastapi not installed; uvicorn reversing_mcp.server:app will fail

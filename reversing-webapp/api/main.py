@@ -72,7 +72,7 @@ app.add_middleware(
 try:
     from reversing_mcp.server import mcp
 
-    app.mount("/mcp", mcp.http_app())
+    app.mount("/mcp", mcp.http_app(path="/"))
     logger.info("MCP mounted at /mcp (FastMCP 3.1)")
 except Exception as e:
     logger.warning("Could not mount MCP: %s", e)
@@ -294,13 +294,13 @@ async def get_ghidra_status():
     version = None
     bridge_running = False
     connected_instance = None
-    
+
     try:
         tools = analyzer.check_available_tools()
         g = tools.get("ghidra", {}) if tools else {}
         installed = bool(g.get("available"))
         version = g.get("version")
-        
+
         # Check bridge
         status = await _ghidra_request("/status")
         if status:

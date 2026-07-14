@@ -1,12 +1,22 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getApiBase } from "@/common/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Activity, CheckCircle, XCircle, Loader2, RefreshCw } from "lucide-react";
-import { getApiBase } from "@/common/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Activity,
+  CheckCircle,
+  Loader2,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 type ToolsStatus = Record<string, { available?: boolean; version?: string }>;
-type GhidraStatus = { installed?: boolean; http_server_running?: boolean; version?: string };
+type GhidraStatus = {
+  installed?: boolean;
+  http_server_running?: boolean;
+  version?: string;
+};
 
 export function Status() {
   const [tools, setTools] = useState<ToolsStatus | null>(null);
@@ -19,8 +29,12 @@ export function Status() {
     setError(null);
     const base = getApiBase();
     Promise.all([
-      fetch(`${base}/tools/status`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch(`${base}/ghidra/status`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`${base}/tools/status`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+      fetch(`${base}/ghidra/status`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
     ])
       .then(([toolsRes, ghidraRes]) => {
         setTools(toolsRes?.tools ?? null);
@@ -44,11 +58,23 @@ export function Status() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">System Status</h2>
-          <p className="text-slate-400">Tools and Ghidra from backend ({getApiBase()})</p>
+          <h2 className="text-2xl font-bold tracking-tight text-white">
+            System Status
+          </h2>
+          <p className="text-slate-400">
+            Tools and Ghidra from backend ({getApiBase()})
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchStatus} disabled={loading} className="border-slate-700">
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchStatus}
+          disabled={loading}
+          className="border-slate-700"
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+          />
           Refresh
         </Button>
       </div>
@@ -67,7 +93,10 @@ export function Status() {
           {tools ? (
             <div className="space-y-2">
               {Object.entries(tools).map(([name, info]) => (
-                <div key={name} className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
+                <div
+                  key={name}
+                  className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0"
+                >
                   <span className="font-mono text-slate-300">{name}</span>
                   {info?.available ? (
                     <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">
@@ -81,7 +110,9 @@ export function Status() {
               ))}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm">No tools data (backend down?)</p>
+            <p className="text-slate-500 text-sm">
+              No tools data (backend down?)
+            </p>
           )}
         </CardContent>
       </Card>
@@ -94,7 +125,9 @@ export function Status() {
           {ghidra !== null ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between py-2">
-                <span className="text-slate-300">Installed (binary on disk)</span>
+                <span className="text-slate-300">
+                  Installed (binary on disk)
+                </span>
                 {ghidra.installed ? (
                   <CheckCircle className="h-4 w-4 text-emerald-500" />
                 ) : (
@@ -110,11 +143,15 @@ export function Status() {
                 )}
               </div>
               {ghidra.version && (
-                <p className="text-xs text-slate-500 mt-2">Version: {ghidra.version}</p>
+                <p className="text-xs text-slate-500 mt-2">
+                  Version: {ghidra.version}
+                </p>
               )}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm">Could not load Ghidra status</p>
+            <p className="text-slate-500 text-sm">
+              Could not load Ghidra status
+            </p>
           )}
         </CardContent>
       </Card>

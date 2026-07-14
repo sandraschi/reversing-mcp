@@ -28,7 +28,7 @@ class ComprehensiveTestRunner:
         self.test_results = {}
         self.start_time = None
 
-    def run_command(self, cmd: list[str], cwd: Path = None, timeout: int = 300) -> dict[str, Any]:
+    def run_command(self, cmd: list[str], cwd: Path | None = None, timeout: int = 300) -> dict[str, Any]:
         """Run a command and return results"""
         try:
             result = subprocess.run(
@@ -283,11 +283,10 @@ class ComprehensiveTestRunner:
         report_lines.append("-" * 20)
 
         if (
-            all_results.get("prerequisites", {})
+            not all_results.get("prerequisites", {})
             .get("dependencies", {})
             .get("fastmcp", {})
             .get("available")
-            == False
         ):
             report_lines.append("[WARNING] Install FastMCP: pip install fastmcp")
 

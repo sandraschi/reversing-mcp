@@ -94,8 +94,8 @@ def test_ghidra_integration():
         "Für Directmedia": ["Perfekt geeignet", "Perfekt geeignet"],
     }
 
-    for feature, values in comparison.items():
-        ghidra_val, ida_val = values
+    for _feature, values in comparison.items():
+        _ghidra_val, _ida_val = values
         print("15")
 
 

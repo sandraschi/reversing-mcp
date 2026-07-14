@@ -4,14 +4,33 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
-### Added
+### Fixed
+- **Security**: `tauri.conf.json` bundled `.env` (API keys) instead of `.env.example` — fixed
+- **Port conflict**: `vite.config.ts` used port 10750 (same as backend) → changed to 10751
+- **Stale `.bak` files**: Removed 7 orphaned backup files from `src/`, `web_sota/`, `mcpb/`
 
-- `docs/DIGIBIB_DECOMPILE_PLAN.md` — phased Ghidra/ReVa plan for full `Digibib5.exe` reverse; empirical notes on `tree.dki` vs `text.dki`, index extensions, and public-repo gap.
+### Added
+- `.env.example` at repo root (was missing entirely)
+- `llms.txt` — LLM discovery index with all 13 tools listed and API reference
+- `CLAUDE.md` — Agent behavioral instructions with tool table and quick start
+- `.cursorrules` — Cursor IDE rules file
+- Updated `AGENTS.md` with full 13-tool table, architecture map, and linting rules
+
+## [Unreleased] — 2026-06-14
+
+### Added
+- Tauri native wrapper (native/ directory) with bundle.resources + std::process::Command
+- CUA-NSIS: just cua-nsis-test recipe, scripts/cua-smoke.py, scripts/cua-nsis-config.json
+- Tauri CORS: tauri://localhost origins for WebView API access
+- NSIS installer at dist/ and native/target/release/bundle/nsis/
 
 ### Changed
+- Frontend API calls use absolute http://127.0.0.1:{port} URLs in production build
+- CORS middleware includes allow_origin_regex for tauri.localhost
 
-- **ReVa vs reversing-mcp:** Docs and README now state explicitly that **ReVa MCP tools are not implemented in this repo**; ReVa is a **separate** server. **Digibib5.exe / DKI** framed as a **small/medium-app example and test case**, not a goal to decompile huge programs (e.g. Word).
-- `README.md` (primary mission) — points at the decompile plan; clarifies heuristic DKI vs EXE-led spec.
-- `README.md`, `ROADMAP.md`, `tests/README.md`, `tests/DEMO.md`, `reversing-webapp/README.md`, `ASSESSMENT.md` — tone: removed hype, emoji-heavy headers, and speculative “vision” lists; kept factual content.
-- `docs/DIRECTMEDIA_MISSION.md` — workflow updated; links plan; honest gap on packed `text.dki`.
-- `docs/DIRECTMEDIA_REVERSING_TOOLKIT.md` — volume layout notes, index extensions, cross-links.
+## [0.4.0] — 2026-02-19
+
+### Added
+- Directmedia DKI decoder module
+- DigiBib research snapshot for reversing
+- Enhanced entropy and hexdump analysis

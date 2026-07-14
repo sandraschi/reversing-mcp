@@ -12,7 +12,7 @@ def main():
 
     with open(path, "rb") as f:
         header = f.read(16)
-        magic, version, count, data_offset = struct.unpack("<IIII", header)
+        _magic, _version, _count, data_offset = struct.unpack("<IIII", header)
 
         # Determine end of Data Header (Start of First Chunk)
         # We can read Entry 0 Word 0

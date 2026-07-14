@@ -45,7 +45,7 @@ class BinaryAnalyzer(HeadlessScript):
                 analyzeAll(currentProgram)
                 self._log("analyzeAll() returned.")
 
-            monitor = ConsoleTaskMonitor()
+            ConsoleTaskMonitor()
 
             # Get program info
             self.results["analysis_info"] = {

@@ -43,7 +43,7 @@ def run_tests(args=None):
     sys.path.insert(0, str(project_root / "tests"))
 
     # Run pytest
-    cmd = [sys.executable, "-m", "pytest"] + args
+    cmd = [sys.executable, "-m", "pytest", *args]
     print(f"Running: {' '.join(cmd)}")
     return subprocess.call(cmd)
 
@@ -100,7 +100,7 @@ def main():
         print("Available test fixtures:")
         print("=" * 50)
         for name in fixture_manager.get_fixture_names():
-            config = fixture_manager.get_fixture_config(name)
+            fixture_manager.get_fixture_config(name)
             print("30")
         return 0
 

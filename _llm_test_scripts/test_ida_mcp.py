@@ -61,7 +61,7 @@ def test_directmedia_setup():
     # Strings extrahieren
     print("\n4. STRING-EXTRAKTION (erste 10 Strings):")
     strings = analyzer.extract_strings(setup_path, min_length=8)
-    for i, s in enumerate(strings[:10]):
+    for _i, _s in enumerate(strings[:10]):
         print("8")
 
     # Hexdump

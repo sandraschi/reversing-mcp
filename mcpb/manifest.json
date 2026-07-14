@@ -1,0 +1,38 @@
+{
+  "manifest_version": "0.2",
+  "name": "reversing-mcp",
+  "version": "0.4.0",
+  "description": "MCP server for static binary analysis and Directmedia tools (companion to ReVa for Ghidra MCP)",
+  "author": { "name": "sandraschi" },
+  "server": {
+    "type": "python",
+    "entry_point": "src/reversing_mcp/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run","--directory","${PWD}","python","-m","reversing_mcp"],
+      "env": {
+        "PYTHONPATH": "${PWD}/src",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  },
+  "tools": [
+    { "name": "analyze_binary", "description": "analyze_binary" },
+    { "name": "extract_strings", "description": "extract_strings" },
+    { "name": "get_hexdump", "description": "get_hexdump" },
+    { "name": "analyze_entropy", "description": "analyze_entropy" },
+    { "name": "find_functions", "description": "find_functions" },
+    { "name": "get_file_info", "description": "get_file_info" },
+    { "name": "check_tools", "description": "check_tools" },
+    { "name": "digibib_research_snapshot", "description": "digibib_research_snapshot" },
+    { "name": "analyze_pe_file", "description": "analyze_pe_file" },
+    { "name": "decode_dki_file", "description": "decode_dki_file" },
+    { "name": "analyze_directmedia_file", "description": "analyze_directmedia_file" },
+    { "name": "decompress_directmedia_library", "description": "decompress_directmedia_library" },
+    { "name": "help", "description": "help" },
+    { "name": "_health", "description": "_health" },
+    { "name": "main_stdio", "description": "main(stdio)" },
+    { "name": "main_http", "description": "main(http)" },
+    { "name": "main_sse", "description": "main(sse)" }
+  ]
+}

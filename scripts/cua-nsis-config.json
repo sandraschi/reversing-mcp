@@ -1,0 +1,14 @@
+{
+  "product_name": "Reversing MCP",
+  "install_dir": "%LOCALAPPDATA%\\Reversing MCP",
+  "operator_exe": "reversing-mcp-native.exe",
+  "backend_process_names": ["reversing-mcp-native", "reversing-mcp-backend"],
+  "backend_port": 10750,
+  "health_path": "/api/v1/health",
+  "diagnostics_path": "/api/v1/diagnostics",
+  "feature_smoke_path": "/api/v1/system/info",
+  "window_title_re": "Reversing MCP",
+  "nsis_glob": "native/target/release/bundle/nsis/Reversing MCP_*_x64-setup.exe",
+  "bridge_ok_text": "REST bridge reachable",
+  "uninstall_registry_filter": "*Reversing MCP*"
+}
