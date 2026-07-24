@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from typing import Annotated
+
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
@@ -32,6 +34,12 @@ directmedia_available = True
 
 # Initialize MCP server
 mcp = FastMCP("ReversingMCP", version="0.4.0")
+
+_READ_ONLY = {"readonly": True}
+_MUTATING = {}
+_DESTRUCTIVE = {}
+
+SKILLS_DIR = Path(__file__).parent / "skills"
 
 
 class AnalysisResult(BaseModel):
@@ -59,15 +67,20 @@ class StringResult(BaseModel):
 analyzer = BinaryAnalyzer()
 
 
-@mcp.tool()
-async def analyze_binary(file_path: str, tools: list[str] | None = None) -> dict[str, Any]:
+@mcp.tool(annotations=_READ_ONLY)
+async def analyze_binary(
+    file_path: Annotated[str, Field(description="Path to the binary file to analyze")],
+    tools: Annotated[list[str] | None, Field(description="Tools to use (ida, ghidra, r2, binwalk, static). If None, uses all available.")] = None,
+) -> dict[str, Any]:
     """
-    Analyze a binary file with multiple reverse engineering tools
+    Analyze a binary file with multiple reverse engineering tools.
 
-    Args:
-        file_path: Path to the binary file to analyze
-        tools: List of tools to use (ida, ghidra, r2, binwalk, static)
-               If None, uses all available tools
+    ## Return Format
+    {"file_path": str, "file_size": int, "tools_used": [str], "results": {tool: result}}
+
+    ## Examples
+    analyze_binary("file.exe", ["static", "strings"])
+    analyze_binary("firmware.bin")
     """
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}"}
@@ -85,17 +98,21 @@ async def analyze_binary(file_path: str, tools: list[str] | None = None) -> dict
         return {"error": f"Analysis failed: {e!s}"}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def extract_strings(
-    file_path: str, min_length: int = 4, encodings: list[str] | None = None
+    file_path: Annotated[str, Field(description="Path to the binary file")],
+    min_length: Annotated[int, Field(description="Minimum string length to extract")] = 4,
+    encodings: Annotated[list[str] | None, Field(description="Encodings to try (ascii, utf-8, utf-16le, latin-1)")] = None,
 ) -> list[dict[str, Any]]:
     """
-    Extract strings from a binary file
+    Extract strings from a binary file.
 
-    Args:
-        file_path: Path to the binary file
-        min_length: Minimum string length to extract
-        encodings: List of encodings to try (ascii, utf-8, utf-16le, latin-1)
+    ## Return Format
+    [{"offset": int, "string": str, "encoding": str, "length": int}]
+
+    ## Examples
+    extract_strings("file.exe", min_length=8)
+    extract_strings("file.bin", encodings=["ascii", "utf-16le"])
     """
     if not os.path.exists(file_path):
         return [{"error": f"File not found: {file_path}"}]
@@ -111,15 +128,21 @@ async def extract_strings(
         return [{"error": f"String extraction failed: {e!s}"}]
 
 
-@mcp.tool()
-async def get_hexdump(file_path: str, offset: int = 0, length: int = 256) -> dict[str, Any]:
+@mcp.tool(annotations=_READ_ONLY)
+async def get_hexdump(
+    file_path: Annotated[str, Field(description="Path to the binary file")],
+    offset: Annotated[int, Field(description="Starting offset in bytes")] = 0,
+    length: Annotated[int, Field(description="Number of bytes to dump")] = 256,
+) -> dict[str, Any]:
     """
-    Get hexadecimal dump of a binary file
+    Get hexadecimal dump of a binary file.
 
-    Args:
-        file_path: Path to the binary file
-        offset: Starting offset in bytes
-        length: Number of bytes to dump
+    ## Return Format
+    {"file_path": str, "offset": int, "length": int, "hexdump": str}
+
+    ## Examples
+    get_hexdump("file.exe", offset=0, length=512)
+    get_hexdump("firmware.bin", offset=1024)
     """
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}"}
@@ -132,14 +155,20 @@ async def get_hexdump(file_path: str, offset: int = 0, length: int = 256) -> dic
         return {"error": f"Hexdump failed: {e!s}"}
 
 
-@mcp.tool()
-async def analyze_entropy(file_path: str, block_size: int = 256) -> dict[str, Any]:
+@mcp.tool(annotations=_READ_ONLY)
+async def analyze_entropy(
+    file_path: Annotated[str, Field(description="Path to the binary file")],
+    block_size: Annotated[int, Field(description="Block size for entropy calculation")] = 256,
+) -> dict[str, Any]:
     """
-    Analyze entropy of a binary file (detects compressed/encrypted sections)
+    Analyze entropy of a binary file (detects compressed/encrypted sections).
 
-    Args:
-        file_path: Path to the binary file
-        block_size: Block size for entropy calculation
+    ## Return Format
+    {"file_path": str, "block_size": int, "overall_entropy": float, "entropy_map": [...], "compressed_regions": [...], "random_regions": [...]}
+
+    ## Examples
+    analyze_entropy("file.exe")
+    analyze_entropy("packed.bin", block_size=512)
     """
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}"}
@@ -159,14 +188,20 @@ async def analyze_entropy(file_path: str, block_size: int = 256) -> dict[str, An
         return {"error": f"Entropy analysis failed: {e!s}"}
 
 
-@mcp.tool()
-async def find_functions(file_path: str, tool: str = "auto") -> dict[str, Any]:
+@mcp.tool(annotations=_READ_ONLY)
+async def find_functions(
+    file_path: Annotated[str, Field(description="Path to the binary file")],
+    tool: Annotated[str, Field(description="Tool to use (ida, ghidra, r2, auto)")] = "auto",
+) -> dict[str, Any]:
     """
-    Find functions in a binary file
+    Find functions in a binary file.
 
-    Args:
-        file_path: Path to the binary file
-        tool: Tool to use (ida, ghidra, r2, auto)
+    ## Return Format
+    {"file_path": str, "tool_used": str, "functions": [...]}
+
+    ## Examples
+    find_functions("file.exe")
+    find_functions("file.exe", tool="ghidra")
     """
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}"}
@@ -179,13 +214,18 @@ async def find_functions(file_path: str, tool: str = "auto") -> dict[str, Any]:
         return {"error": f"Function analysis failed: {e!s}"}
 
 
-@mcp.tool()
-async def get_file_info(file_path: str) -> dict[str, Any]:
+@mcp.tool(annotations=_READ_ONLY)
+async def get_file_info(
+    file_path: Annotated[str, Field(description="Path to the file to analyze")],
+) -> dict[str, Any]:
     """
-    Get basic information about a file
+    Get basic information about a file.
 
-    Args:
-        file_path: Path to the file to analyze
+    ## Return Format
+    {"path": str, "size": int, "modified": float, "type": str, "permissions": str, "readable": bool, "writable": bool, "executable": bool}
+
+    ## Examples
+    get_file_info("file.exe")
     """
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}"}
@@ -207,10 +247,34 @@ async def get_file_info(file_path: str) -> dict[str, Any]:
         return {"error": f"File info failed: {e!s}"}
 
 
-@mcp.tool()
+@mcp.resource("config://tools")
+def _tools_resource() -> dict[str, Any]:
+    """List available RE tools as a config resource."""
+    return {"tools": analyzer.check_available_tools()}
+
+
+@mcp.prompt()
+def reversing_help(topic: str = "overview") -> str:
+    """Get reversing guidance for a specific topic."""
+    topics = {
+        "pe": "PE files: check DOS header at offset 0, NT headers at offset 0x3C. Use analyze_pe_file().",
+        "strings": "Strings: extract_strings() with min_length=8 filters noise. Check utf-16le for wide strings.",
+        "entropy": "Entropy: analyze_entropy(). Values > 7.5 suggest compression/encryption; < 5 is plain text/code.",
+        "dki": "DKI decode: decode_dki_file() for single files, decompress_directmedia_library() for batch.",
+    }
+    return topics.get(topic, "Use check_tools() then analyze_binary() for a full overview.")
+
+
+@mcp.tool(annotations=_READ_ONLY)
 async def check_tools() -> dict[str, Any]:
     """
-    Check which reverse engineering tools are available on the system
+    Check which reverse engineering tools are available on the system.
+
+    ## Return Format
+    {"tools": {name: {available: bool, version: str, path: str}}, "summary": {"total": int, "available": int, "recommended": [str], "premium": [str]}, "notes": {...}}
+
+    ## Examples
+    check_tools()
     """
     try:
         available_tools = analyzer.check_available_tools()
@@ -284,13 +348,18 @@ async def digibib_research_snapshot(exe_path: str | None = None) -> dict[str, An
         return {"success": False, "error": f"Snapshot failed: {e!s}", "exe_path": str(resolved)}
 
 
-@mcp.tool()
-async def analyze_pe_file(file_path: str) -> dict[str, Any]:
+@mcp.tool(annotations=_READ_ONLY)
+async def analyze_pe_file(
+    file_path: Annotated[str, Field(description="Path to the PE file")],
+) -> dict[str, Any]:
     """
-    Analyze a Windows PE (Portable Executable) file
+    Analyze a Windows PE (Portable Executable) file.
 
-    Args:
-        file_path: Path to the PE file
+    ## Return Format
+    {"file_path": str, "pe_info": {...}}
+
+    ## Examples
+    analyze_pe_file("file.exe")
     """
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}"}
@@ -303,19 +372,21 @@ async def analyze_pe_file(file_path: str) -> dict[str, Any]:
         return {"error": f"PE analysis failed: {e!s}"}
 
 
-@mcp.tool()
-async def decode_dki_file(file_path: str) -> dict[str, Any]:
+@mcp.tool(annotations=_READ_ONLY)
+async def decode_dki_file(
+    file_path: Annotated[str, Field(description="Path to a .DKI (e.g. volume Data/TEXT.DKI)")],
+) -> dict[str, Any]:
     """
     DECODE_DKI_FILE — Decompress a Directmedia .DKI using built-in zlib/gzip autodetection.
 
     PORTMANTEAU PATTERN RATIONALE: Explicit decode report (strategy, preview, attempts) without
     also writing sidecar .txt files.
 
-    Args:
-        file_path: Path to a .DKI (e.g. volume Data/TEXT.DKI)
+    ## Return Format
+    {"success": bool, "strategy_used": str, "encoding_guess": str, "text_preview": str, "attempts": [...]} or {"success": False, "error": str}
 
-    Returns:
-        success, strategy_used, encoding_guess, text_preview, attempts, uncompressed_bytes, or error.
+    ## Examples
+    decode_dki_file("C:/DB001/Data/TEXT.DKI")
     """
     if not os.path.exists(file_path):
         return {"success": False, "error": f"File not found: {file_path}"}
@@ -323,16 +394,21 @@ async def decode_dki_file(file_path: str) -> dict[str, Any]:
     return result_to_mcp_dict(file_path, r)
 
 
-@mcp.tool()
-async def analyze_directmedia_file(file_path: str) -> dict[str, Any]:
+@mcp.tool(annotations=_MUTATING)
+async def analyze_directmedia_file(
+    file_path: Annotated[str, Field(description="Path to the .DKI file to analyze")],
+) -> dict[str, Any]:
     """
-    Analyze a Directmedia .DKI file and extract text content
+    Analyze a Directmedia .DKI file and extract text content.
 
     Uses the in-repo heuristic decoder (zlib/gzip / header skip). Writes *_extracted.txt
     next to the .DKI on success.
 
-    Args:
-        file_path: Path to the .DKI file to analyze
+    ## Return Format
+    {"file_path": str, "analysis": {...}, "extraction_summary": {...}, "sample_content": [str], "output_file": str, "extraction_status": str} or {"error": str}
+
+    ## Examples
+    analyze_directmedia_file("C:/DB001/Data/TEXT.DKI")
     """
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}"}
@@ -412,17 +488,20 @@ async def analyze_directmedia_file(file_path: str) -> dict[str, Any]:
         return {"error": f"Directmedia analysis failed: {e!s}"}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_MUTATING)
 async def decompress_directmedia_library(
-    library_path: str | None = None, volume_filter: str | None = None
+    library_path: Annotated[str | None, Field(description="Path to Directmedia library directory (DB* folders). If omitted, uses env DIGITALE_BIBLIOTHEK_ROOT.")] = None,
+    volume_filter: Annotated[str | None, Field(description="Filter for volume names (e.g. DB002 or *philo*)")] = None,
 ) -> dict[str, Any]:
     """
-    Batch decompress all Directmedia volumes in a library
+    Batch decompress all Directmedia volumes in a library.
 
-    Args:
-        library_path: Path to the Directmedia library directory (DB* folders). If omitted,
-            uses env DIGITALE_BIBLIOTHEK_ROOT, then the default L:\\Multimedia Files\\... tree.
-        volume_filter: Optional filter for volume names (e.g., "DB002" or "*philo*")
+    ## Return Format
+    {"library_path": str, "volumes_processed": int, "total_volumes_found": int, "total_text_extracted": int, "results": [...], "batch_status": str} or {"error": str}
+
+    ## Examples
+    decompress_directmedia_library()
+    decompress_directmedia_library(volume_filter="DB002")
     """
     if not directmedia_available:
         return {"error": "Directmedia decoder unavailable"}
@@ -812,6 +891,21 @@ try:
     async def _shutdown():
         import os
         os._exit(0)
+
+    @_http_app.get("/api/skills")
+    async def _list_skills():
+        skills_dir = SKILLS_DIR
+        if skills_dir.exists():
+            names = [d.name for d in skills_dir.iterdir() if d.is_dir()]
+            return {"skills": names}
+        return {"skills": []}
+
+    @_http_app.get("/api/skills/{name}")
+    async def _get_skill(name: str):
+        skill_path = SKILLS_DIR / name / "SKILL.md"
+        if skill_path.exists():
+            return {"name": name, "content": skill_path.read_text(encoding="utf-8")}
+        return {"error": "Skill not found"}
 
     _http_app.mount("/mcp", mcp.http_app(path="/"))
     app = _http_app

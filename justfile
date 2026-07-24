@@ -1,6 +1,20 @@
 set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
 import 'scripts/just/fleet.just'
 
+# ── Core ─────────────────────────────────────────────────────────────────────
+
+# Serve the MCP server (stdio mode)
+serve:
+    uv run python -m reversing_mcp.server
+
+# Run tests
+test:
+    uv run pytest tests/ -q
+
+# Pack MCPB bundle
+mcpb-pack:
+    pwsh -NoProfile -File scripts/mcpb-pack.ps1
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 # Open the interactive recipe dashboard in the browser
