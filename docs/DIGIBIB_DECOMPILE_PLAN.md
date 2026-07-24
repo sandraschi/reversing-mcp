@@ -6,7 +6,7 @@
 
 The in-repo zlib-style **heuristic** (`directmedia_dki.py`) is **not** a substitute for EXE-led analysis on large **`text.dki`** volumes (see empirical notes below).
 
-**Related:** [DIRECTMEDIA_MISSION.md](DIRECTMEDIA_MISSION.md) · [DIRECTMEDIA_REVERSING_TOOLKIT.md](DIRECTMEDIA_REVERSING_TOOLKIT.md)
+**Related:** [DIRECTMEDIA_MISSION.md](DIRECTMEDIA_MISSION.md) · [DIRECTMEDIA_REVERSING_TOOLKIT.md](DIRECTMEDIA_REVERSING_TOOLKIT.md) · [DIGIBIB_REVERSING_GUIDE.md](DIGIBIB_REVERSING_GUIDE.md) (dynamic tracing + offset-table extraction)
 
 ---
 
