@@ -37,13 +37,35 @@ After processing a Delphi PE, IDR produces:
 
 ## 2. Installation
 
-```
-git clone https://github.com/crypto2011/IDR.git
+### Auto-install (recommended)
+
+```powershell
+just install-idr
 ```
 
-Windows only (the tool hooks into Delphi's PE structure directly). No installer — run `IDR.exe` from the build output.
+Downloads `Idr.exe` (3.4 MB) from the GitHub release to `%LOCALAPPDATA%\IDR\` and adds it to your user `PATH`.
 
-**Note:** The last release was 2021. It still works for Delphi 2–7 (Win9x to XP era) which is the likely range for Digibib5.exe. Delphi 2005+ may have partial support.
+If you don't have `just`:
+```powershell
+.\scripts\Install-IDR.ps1
+```
+
+### Manual
+
+1. Download `Idr.exe` from [the releases page](https://github.com/crypto2011/IDR/releases/tag/27_01_2019)
+2. Place it anywhere on your `PATH`
+3. Run `Idr.exe`
+
+**Note:** The last release was January 2019. It still works for Delphi 2–7 (Win9x to XP era) which is the likely range for Digibib5.exe. Delphi 2005+ may have partial support.
+
+### Post-install check
+
+```powershell
+# Verify it's on PATH
+Idr.exe --help
+# Or just launch
+Idr.exe
+```
 
 ---
 

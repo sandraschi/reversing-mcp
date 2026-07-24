@@ -8,6 +8,7 @@ uv run python -m reversing_mcp.server    # Start stdio MCP
 uv run python -m reversing_mcp.server --http --port 10750  # HTTP mode
 uv run pytest tests/ -q                  # Test
 uv run ruff check src/ tests/            # Lint
+just install-idr                         # Install IDR (Delphi reconstructor)
 ```
 
 ## Ports

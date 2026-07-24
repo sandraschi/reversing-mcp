@@ -15,6 +15,10 @@ test:
 mcpb-pack:
     pwsh -NoProfile -File scripts/mcpb-pack.ps1
 
+# Install IDR (Interactive Delphi Reconstructor)
+install-idr:
+    pwsh -NoProfile -File scripts/Install-IDR.ps1
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 # Open the interactive recipe dashboard in the browser
