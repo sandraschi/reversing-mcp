@@ -66,13 +66,25 @@ class BinaryAnalyzer:
         return tools
 
     def _check_ida(self, tool_info: dict[str, Any]):
-        """Check for IDA Pro installation"""
+        """Check for IDA Pro installation. Prefer ida64.exe for headless."""
         ida_paths = [
+            Path(r"C:\Program Files\IDA Pro 8.3\ida64.exe"),
             Path(r"C:\Program Files\IDA Pro 8.3\ida.exe"),
+            Path(r"C:\Program Files\IDA Pro 8.2\ida64.exe"),
             Path(r"C:\Program Files\IDA Pro 8.2\ida.exe"),
+            Path(r"C:\Program Files\IDA Pro 8.1\ida64.exe"),
             Path(r"C:\Program Files\IDA Pro 8.1\ida.exe"),
             Path(r"C:\Program Files (x86)\IDA Pro\ida.exe"),
         ]
+        # Also check IDA_DIR env var
+        ida_dir = os.environ.get("IDA_DIR")
+        if ida_dir:
+            base = Path(ida_dir)
+            for candidate in ("ida64.exe", "ida.exe", "idaq64.exe", "idaq.exe"):
+                p = base / candidate
+                if p.exists():
+                    ida_paths.insert(0, p)
+                    break
         for path in ida_paths:
             if path.exists():
                 tool_info["available"] = True
@@ -338,14 +350,57 @@ class BinaryAnalyzer:
             return {"error": str(e), "success": False}
 
     def _analyze_with_ida(self, file_path: str) -> dict[str, Any]:
-        """Analyze with IDA Pro (placeholder - would need IDA scripting)"""
-        # This would require IDA Pro Python scripting
-        # For now, just return that IDA is available
-        return {
-            "available": True,
-            "note": "IDA Pro analysis requires custom scripting",
-            "recommendation": "Use IDA Pro GUI or create IDC/Python script",
-        }
+        """Analyze with IDA Pro headless mode.
+
+        Runs ida64.exe with -A -S to execute analyze_binary.py and dump
+        functions, imports, segments as JSON.  Falls back gracefully when
+        the script path or IDA binary is wrong.
+        """
+        if not self.tools_cache or not self.tools_cache["ida"]["available"]:
+            return {"error": "IDA Pro not available", "available": False}
+
+        ida_exe = Path(self.tools_cache["ida"]["path"])
+        script_path = Path(__file__).parent.parent.parent / "ida_scripts" / "analyze_binary.py"
+
+        if not script_path.exists():
+            return {"error": f"IDA script not found: {script_path}", "available": False}
+
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                output_json = Path(tmp) / "ida_result.json"
+                # ida64.exe -A -S"<script> <output>" "<binary>"
+                cmd = [
+                    str(ida_exe),
+                    "-A",
+                    f"-S\"{script_path} {output_json}\"",
+                    f"\"{file_path}\"",
+                ]
+                logger.info("Running IDA headless: %s", " ".join(str(c) for c in cmd))
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=300, check=False
+                )
+
+                if result.returncode not in (0, 1):
+                    # IDA returns non-zero for some scripted exits; check output
+                    pass
+
+                if output_json.exists():
+                    data = json.loads(output_json.read_text(encoding="utf-8"))
+                    return {"success": True, "analysis": data}
+                else:
+                    return {
+                        "success": False,
+                        "error": "IDA script ran but produced no output",
+                        "stderr_tail": result.stderr[-2000:] if result.stderr else "",
+                    }
+
+        except subprocess.TimeoutExpired:
+            return {"error": "IDA headless analysis timed out (300s)", "success": False}
+        except (subprocess.SubprocessError, OSError) as e:
+            return {"error": f"IDA subprocess error: {e}", "success": False}
+        except Exception:
+            logger.exception("Unexpected error in IDA headless analysis")
+            return {"error": "Internal error in IDA analysis", "success": False}
 
     def _analyze_with_ghidra(self, file_path: str) -> dict[str, Any]:
         """Analyze with Ghidra using headless mode"""
@@ -733,8 +788,14 @@ class BinaryAnalyzer:
             return [{"error": "Internal error in r2 analysis"}]
 
     def _find_functions_ida(self, file_path: str) -> list[dict[str, Any]]:
-        """Find functions using IDA Pro (placeholder)"""
-        return [{"note": "IDA Pro function analysis requires IDA scripting setup"}]
+        """Find functions using IDA Pro headless mode."""
+        result = self._analyze_with_ida(file_path)
+        if result.get("success") and "analysis" in result:
+            funcs = result["analysis"].get("functions", [])
+            for f in funcs:
+                f["tool"] = "ida"
+            return funcs
+        return [{"error": result.get("error", "IDA function analysis failed")}]
 
     def _find_functions_ghidra(self, file_path: str, auto_analyze: bool = True) -> list[dict[str, Any]]:
         """Find functions using Ghidra headless analysis"""

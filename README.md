@@ -30,12 +30,13 @@ just test              # run tests
 | **Directmedia / DKI** | `decode_dki_file`, `analyze_directmedia_file`, `decompress_directmedia_library`, `digibib_research_snapshot` | [Reversing guide](docs/DIGIBIB_REVERSING_GUIDE.md) · [Mission](docs/DIRECTMEDIA_MISSION.md) · [Toolkit](docs/DIRECTMEDIA_REVERSING_TOOLKIT.md) · [Decompile plan](docs/DIGIBIB_DECOMPILE_PLAN.md) |
 | **System** | `check_tools`, `shutdown` | — |
 
-## Ghidra integration — two paths
+## Ghidra / IDA integration
 
 | Path | When | Setup |
 |------|------|-------|
 | **Interactive** (ReVa MCP) | You want decompile, xrefs, rename in Ghidra via MCP | [Detailed Ghidra guide](docs/GHIDRA.md) |
 | **Headless** (`analyzeHeadless`) | Batch/script analysis from `analyze_binary` | Install Ghidra, set `GHIDRA_INSTALL_DIR` |
+| **IDA Pro headless** | Higher-quality decompilation if you have IDA | [IDA integration guide](docs/IDA.md) |
 
 ## Web UI
 
