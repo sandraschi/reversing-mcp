@@ -35,6 +35,15 @@ All registered in `server.py`, implementations in `analyzers.py`, `directmedia_d
 | `decompress_directmedia_library` | DM library extraction |
 | `help` | Multi-level help system |
 
+## Documentation Map
+- `README.md` — short starter (links to sub-docs below)
+- `INSTALL.md` — quick start + manual setup + troubleshooting
+- `docs/GHIDRA.md` — **detailed Ghidra guide** (ReVa setup, headless, CLI reference, troubleshooting)
+- `docs/DIRECTMEDIA_MISSION.md` — Directmedia / Digibib5 mission scope
+- `docs/DIRECTMEDIA_REVERSING_TOOLKIT.md` — CLI/MCP reversing toolkit
+- `docs/DIGIBIB_DECOMPILE_PLAN.md` — phased EXE reverse plan
+- `llms-full.txt` — full LLM tool reference
+
 ## Architecture
 ```
 server.py (FastMCP 3.4+)
