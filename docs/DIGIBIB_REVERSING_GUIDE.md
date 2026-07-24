@@ -161,7 +161,7 @@ Before deep analysis, confirm the runtime:
 | `? MFC` | MFC/C++ | Ghidra/ReVa |
 
 **If it's Delphi:**
-- **IDR (Interactive Delphi Reconstructor)** is **free** and recovers forms, RTTI, event handlers — vastly better than Ghidra for Delphi. Run the EXE through IDR first, export map, load into Ghidra.
+- **IDR (Interactive Delphi Reconstructor)** is **free** and recovers forms, RTTI, event handlers — vastly better than Ghidra for Delphi. Run the EXE through IDR first, export map, load into Ghidra. See the **[detailed IDR guide](IDR.md)** for full workflow, Ghidra integration, and Delphi internals.
 - **IDA Pro** handles Delphi well but is **expensive** ($2k+) — we do not have it. The fleet path is Ghidra + IDR.
 
 ### Check for DRM
@@ -176,7 +176,7 @@ Look for `CD-ROM` strings, `RegQueryValue`, `Crypt*` imports. If DRM-wrapped, th
 |------|------|----------|
 | **Ghidra** | Free | Static analysis, decompiler, headless batch |
 | **ReVa** | Free | Ghidra MCP bridge (interactive) |
-| **IDR** | Free | Delphi reconstruction (forms, RTTI) |
+| **IDR** | Free | Delphi reconstruction (forms, RTTI) — [detailed guide](IDR.md) |
 | **Process Monitor** | Free (Sysinternals) | File I/O trace |
 | **API Monitor** | Free | API call + buffer capture |
 | **Frida** | Free | Surgical hooking, automation |
@@ -194,3 +194,4 @@ Look for `CD-ROM` strings, `RegQueryValue`, `Crypt*` imports. If DRM-wrapped, th
 | [DIRECTMEDIA_REVERSING_TOOLKIT.md](DIRECTMEDIA_REVERSING_TOOLKIT.md) | CLI/MCP commands for DigiBib |
 | [status.md](status.md) | Current reversing progress (Ghidra function names, addresses) |
 | [GHIDRA.md](GHIDRA.md) | Ghidra/ReVa setup guide |
+| [IDR.md](IDR.md) | Delphi reconstruction with IDR — full workflow, Ghidra integration, internals |

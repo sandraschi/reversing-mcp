@@ -42,6 +42,7 @@ All registered in `server.py`, implementations in `analyzers.py`, `directmedia_d
 - `docs/DIRECTMEDIA_MISSION.md` — Directmedia / Digibib5 mission scope
 - `docs/DIRECTMEDIA_REVERSING_TOOLKIT.md` — CLI/MCP reversing toolkit
 - `docs/DIGIBIB_REVERSING_GUIDE.md` — **DigiBib reversing guide** (dynamic tracing, Frida, procmon, Delphi detection, offset-table extraction)
+- `docs/IDR.md` — **IDR Delphi reconstructor** guide (install, workflow, Ghidra map import, Delphi internals)
 - `docs/DIGIBIB_DECOMPILE_PLAN.md` — phased EXE reverse plan
 - `llms-full.txt` — full LLM tool reference
 
