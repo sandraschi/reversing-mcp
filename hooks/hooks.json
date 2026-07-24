@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "text",
+        "text": "## Session Context (Reversing MCP)\n\nYou have access to a static binary analysis server with 13 tools for RE work and Directmedia format reversing.\n\n**Before starting work:**\n1. Check available tools: check_tools()\n2. Analyze a binary: analyze_binary('file.exe', ['static', 'pe', 'strings'])\n\n**At end of work:**\n- Use digibib_research_snapshot() for DigiBib/Directmedia static analysis prelude"
+      }]
+    }]
+  }
+}

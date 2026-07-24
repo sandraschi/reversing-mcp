@@ -272,3 +272,9 @@ native/gen/
 native/binaries/
 
 _dashboard/
+
+# Assessment / audit reports
+reports/
+
+# Editor backup files
+*.bak

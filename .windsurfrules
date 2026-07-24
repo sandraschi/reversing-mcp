@@ -1,0 +1,30 @@
+# reversing-mcp — Windsurf Rules
+
+## Commands
+```powershell
+uv run python -m reversing_mcp.server    # Start server
+uv run pytest tests/ -q                  # Run tests
+uv run ruff check src/ tests/            # Lint
+```
+
+## Architecture
+FastMCP 3.4+ server with 13 tools for static binary analysis (Ghidra, radare2, binwalk) and Directmedia format reversing. Backend on 10750, frontend on 10751.
+
+## Tool Discovery
+All tools are in `server.py` with `@mcp.tool()` decorators. Use `check_tools()` for full listing.
+
+## Code Standards
+- Ruff Python linting (line length 120)
+- No `print()` in prod code; use `logger`
+- No bare `except:` without logging
+
+## Session Context (Reversing MCP)
+
+You have access to a static binary analysis server with 13 tools for RE work and Directmedia format reversing.
+
+**Before starting work:**
+1. Check available tools: check_tools()
+2. Analyze a binary: analyze_binary('file.exe', ['static', 'pe', 'strings'])
+
+**At end of work:**
+- Use digibib_research_snapshot() for DigiBib/Directmedia static analysis prelude

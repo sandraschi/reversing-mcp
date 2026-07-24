@@ -107,11 +107,7 @@ class BinaryAnalyzer:
                         break
                     # Allow base to be repo root with ghidra_*_PUBLIC child
                     for child in base.iterdir():
-                        if (
-                            child.is_dir()
-                            and "ghidra" in child.name.lower()
-                            and "PUBLIC" in child.name
-                        ):
+                        if child.is_dir() and "ghidra" in child.name.lower() and "PUBLIC" in child.name:
                             run_bat = child / "ghidraRun.bat"
                             if run_bat.exists():
                                 ghidra_paths.append(run_bat)
@@ -202,9 +198,7 @@ class BinaryAnalyzer:
     def _check_r2(self, tool_info: dict[str, Any]):
         """Check for radare2"""
         try:
-            result = subprocess.run(
-                ["r2", "-v"], check=False, capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(["r2", "-v"], check=False, capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 tool_info["available"] = True
                 tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
@@ -214,9 +208,7 @@ class BinaryAnalyzer:
     def _check_binwalk(self, tool_info: dict[str, Any]):
         """Check for binwalk"""
         try:
-            result = subprocess.run(
-                ["binwalk", "--version"], check=False, capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(["binwalk", "--version"], check=False, capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 tool_info["available"] = True
                 tool_info["version"] = result.stdout.strip()
@@ -226,9 +218,7 @@ class BinaryAnalyzer:
     def _check_strings(self, tool_info: dict[str, Any]):
         """Check for GNU strings"""
         try:
-            result = subprocess.run(
-                ["strings", "--version"], check=False, capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(["strings", "--version"], check=False, capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 tool_info["available"] = True
                 tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
@@ -238,9 +228,7 @@ class BinaryAnalyzer:
     def _check_file(self, tool_info: dict[str, Any]):
         """Check for file command"""
         try:
-            result = subprocess.run(
-                ["file", "--version"], check=False, capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(["file", "--version"], check=False, capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 tool_info["available"] = True
                 tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
@@ -260,8 +248,7 @@ class BinaryAnalyzer:
                 "is_file": p.is_file(),
                 "is_dir": p.is_dir(),
                 "is_readable": os.access(file_path, os.R_OK),
-                "is_executable": os.access(file_path, os.X_OK)
-                or p.suffix.lower() in [".exe", ".com", ".bin"],
+                "is_executable": os.access(file_path, os.X_OK) or p.suffix.lower() in [".exe", ".com", ".bin"],
                 "extension": p.suffix.lower(),
                 "type": self.detect_file_type(file_path),
             }
@@ -317,15 +304,9 @@ class BinaryAnalyzer:
         """Analyze with file command"""
         try:
             exe = shutil.which("file") or "file"
-            result = subprocess.run(
-                [exe, file_path], check=False, capture_output=True, text=True, timeout=10
-            )
+            result = subprocess.run([exe, file_path], check=False, capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
-                file_type = (
-                    result.stdout.strip().split(": ", 1)[1]
-                    if ": " in result.stdout
-                    else result.stdout.strip()
-                )
+                file_type = result.stdout.strip().split(": ", 1)[1] if ": " in result.stdout else result.stdout.strip()
                 return {"file_type": file_type, "success": True}
             return {"error": "file command failed", "success": False}
         except Exception as e:
@@ -395,9 +376,7 @@ class BinaryAnalyzer:
 
             # Locate our analysis script if not provided
             if script_path is None:
-                script_path = (
-                    Path(__file__).parent.parent.parent / "ghidra_scripts" / "analyze_binary.py"
-                )
+                script_path = Path(__file__).parent.parent.parent / "ghidra_scripts" / "analyze_binary.py"
 
             script_path = Path(script_path)
             if not script_path.exists():
@@ -447,9 +426,7 @@ class BinaryAnalyzer:
                     file_path,
                     auto_analyze,
                 )
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=900, check=False
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=900, check=False)
 
                 if result.returncode != 0:
                     logger.error("Ghidra headless failed: %s", result.stderr)
@@ -515,9 +492,7 @@ class BinaryAnalyzer:
         if not self.tools_cache.get("ghidra", {}).get("available"):
             return {"error": "Ghidra not available", "success": False}
 
-        script_path = (
-            Path(__file__).parent.parent.parent / "ghidra_scripts" / "decompile_function.py"
-        )
+        script_path = Path(__file__).parent.parent.parent / "ghidra_scripts" / "decompile_function.py"
 
         # We need auto_analyze=True because decompilation depends on it
         result = self._analyze_with_ghidra_headless(
@@ -713,9 +688,7 @@ class BinaryAnalyzer:
 
         return entropy
 
-    def find_functions(
-        self, file_path: str, tool: str = "auto", auto_analyze: bool = True
-    ) -> list[dict[str, Any]]:
+    def find_functions(self, file_path: str, tool: str = "auto", auto_analyze: bool = True) -> list[dict[str, Any]]:
         """Find functions in binary"""
 
         if tool == "r2" or tool == "auto":
@@ -748,9 +721,7 @@ class BinaryAnalyzer:
                                 addr = int(parts[0], 16)
                                 size = int(parts[1], 16)
                                 name = " ".join(parts[2:])
-                                functions.append(
-                                    {"address": addr, "size": size, "name": name, "tool": "r2"}
-                                )
+                                functions.append({"address": addr, "size": size, "name": name, "tool": "r2"})
                             except ValueError:
                                 continue
                 return functions
@@ -765,9 +736,7 @@ class BinaryAnalyzer:
         """Find functions using IDA Pro (placeholder)"""
         return [{"note": "IDA Pro function analysis requires IDA scripting setup"}]
 
-    def _find_functions_ghidra(
-        self, file_path: str, auto_analyze: bool = True
-    ) -> list[dict[str, Any]]:
+    def _find_functions_ghidra(self, file_path: str, auto_analyze: bool = True) -> list[dict[str, Any]]:
         """Find functions using Ghidra headless analysis"""
         try:
             # Ensure Ghidra is available
@@ -775,9 +744,7 @@ class BinaryAnalyzer:
                 return [{"error": "Ghidra not available"}]
 
             # Run Ghidra analysis and extract functions from results
-            analysis_result = self._analyze_with_ghidra_headless(
-                file_path, auto_analyze=auto_analyze
-            )
+            analysis_result = self._analyze_with_ghidra_headless(file_path, auto_analyze=auto_analyze)
 
             if analysis_result.get("success") and "analysis" in analysis_result:
                 functions_data = analysis_result["analysis"].get("functions", [])
@@ -804,15 +771,9 @@ class BinaryAnalyzer:
     def detect_file_type(self, file_path: str) -> str:
         """Detect file type"""
         try:
-            result = subprocess.run(
-                ["file", file_path], check=False, capture_output=True, text=True, timeout=10
-            )
+            result = subprocess.run(["file", file_path], check=False, capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
-                return (
-                    result.stdout.split(": ", 1)[1].strip()
-                    if ": " in result.stdout
-                    else result.stdout.strip()
-                )
+                return result.stdout.split(": ", 1)[1].strip() if ": " in result.stdout else result.stdout.strip()
             # Fallback: check extension
             ext = Path(file_path).suffix.lower()
             if ext == ".exe":

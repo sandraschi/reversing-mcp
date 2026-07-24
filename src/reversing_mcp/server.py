@@ -714,6 +714,21 @@ async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]
     return help_content
 
 
+@mcp.tool()
+async def shutdown(confirm: bool = False) -> dict:
+    """
+    Gracefully shut down the Reversing MCP server.
+
+    Requires confirm=True to prevent accidental termination.
+    """
+    if not confirm:
+        return {"success": False, "message": "Shutdown requires confirm=True"}
+    import os
+    import threading
+    threading.Thread(target=lambda: os._exit(0), daemon=True).start()
+    return {"success": True, "message": "Server shutting down"}
+
+
 def main():
     """Main entry point"""
     import argparse
@@ -741,6 +756,7 @@ def main():
 try:
     from fastapi import FastAPI as _FastAPI
     from fastapi.middleware.cors import CORSMiddleware as _CORSMiddleware
+    import platform
 
     _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.4.0")
 
@@ -749,6 +765,8 @@ try:
         allow_origins=[
             "http://localhost:10751",
             "http://127.0.0.1:10751",
+            "http://localhost:10750",
+            "http://127.0.0.1:10750",
             "tauri://localhost",
             "http://tauri.localhost",
             "https://tauri.localhost",
@@ -759,6 +777,8 @@ try:
         allow_headers=["*"],
     )
 
+    _start_time = __import__("time").time()
+
     @_http_app.get("/health")
     async def _health() -> dict:
         tools = mcp._tool_manager.list_tools() if hasattr(mcp, "_tool_manager") else []
@@ -768,10 +788,35 @@ try:
             "tool_count": len(tools),
         }
 
+    @_http_app.get("/api/v1/diagnostics")
+    async def _diagnostics() -> dict:
+        tools = mcp._tool_manager.list_tools() if hasattr(mcp, "_tool_manager") else []
+        uptime = int(__import__("time").time() - _start_time)
+        return {
+            "status": "ok",
+            "server": "ReversingMCP",
+            "version": "0.4.0",
+            "uptime_seconds": uptime,
+            "tool_count": len(tools),
+            "tools": [{"name": t.name} for t in tools],
+            "system": {
+                "platform": platform.system(),
+                "windows": platform.system() == "Windows",
+                "python": platform.python_version(),
+            },
+            "errors": [],
+        }
+
+    @_http_app.post("/api/shutdown")
+    async def _shutdown():
+        import os
+        os._exit(0)
+
     _http_app.mount("/mcp", mcp.http_app(path="/"))
     app = _http_app
 except ImportError:
     pass  # no app when fastapi not installed; uvicorn reversing_mcp.server:app will fail
+
 
 if __name__ == "__main__":
     main()

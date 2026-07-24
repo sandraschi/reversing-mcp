@@ -1,0 +1,6 @@
+{
+  "name": "reversing-mcp",
+  "version": "0.4.0",
+  "description": "Static binary analysis and Directmedia format reversing MCP server",
+  "hooks": "../hooks/hooks.json"
+}

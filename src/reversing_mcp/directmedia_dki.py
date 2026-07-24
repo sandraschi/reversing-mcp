@@ -252,9 +252,7 @@ def legacy_extract_for_server(path: Path) -> dict[str, Any]:
 
 
 # Default library roots (DBxxx volumes). Override with env DIGITALE_BIBLIOTHEK_ROOT.
-DEFAULT_DIGITALE_LIBRARY_ROOTS: tuple[Path, ...] = (
-    Path(r"L:\Multimedia Files\Written Word\Digitale Bibliothek"),
-)
+DEFAULT_DIGITALE_LIBRARY_ROOTS: tuple[Path, ...] = (Path(r"L:\Multimedia Files\Written Word\Digitale Bibliothek"),)
 
 
 def resolve_digitale_library_root(explicit: str | None) -> tuple[Path | None, list[str]]:

@@ -4,7 +4,8 @@
     "version": "0.1.0",
     "identifier": "ai.fleet.reversing-mcp",
     "build": {
-        "frontendDist": "../web_sota/dist"},
+        "frontendDist": "../web_sota/dist"
+    },
     "app": {
         "windows": [
             {
@@ -21,9 +22,9 @@
     },
     "bundle": {
         "active": true,
-        "targets": ["msi", "nsis"],
+        "targets": ["nsis"],
         "icon": ["icons/icon.png", "icons/icon.ico"],
-"resources": [
+        "resources": [
             "resources/reversing-mcp-backend.exe",
             "resources/.env.example"
         ],
@@ -33,17 +34,8 @@
             },
             "nsis": {
                 "installerHooks": "./windows/hooks.nsh",
-                "installMode": "currentUser",
+                "installMode": "currentUser"
             }
-        }
-        "windows": {
-            "webviewInstallMode": {
-                "type": "skip"
-            },
-            "nsis": {
-                "installerHooks": "./windows/hooks.nsh",
-                "installMode": "currentUser",
-}
         }
     },
     "plugins": {}
