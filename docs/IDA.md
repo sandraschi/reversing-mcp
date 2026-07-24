@@ -2,7 +2,7 @@
 
 [IDA Pro](https://hex-rays.com/ida-pro/) is a commercial disassembler and decompiler. This guide covers headless integration with reversing-mcp.
 
-**Cost:** ~$2k+ for the Pro edition (decompiler). A free version (IDA Free) exists but has no decompiler and no scripting — headless mode requires the paid Pro edition.
+**Cost:** Subscription-only (no perpetual licenses). The edition you need depends on whether you want scripting/headless mode, and how many architectures you need.
 
 ---
 
@@ -108,9 +108,23 @@ Scripts use **IDAPython** (Python 3, bundled with IDA 8.x). They run inside IDA'
 - [IDAPython docs](https://www.hex-rays.com/products/ida/support/idapython_docs/)
 - [IDA command-line flags](https://hex-rays.com/products/ida/support/idadoc/index.shtml)
 
+## Edition comparison (2026 pricing)
+
+| Edition | Price/yr | Scripting? | Headless? | Architectures | Decompiler | Use case |
+|---------|----------|-----------|-----------|--------------|------------|----------|
+| **IDA Free** | Free | ❌ No API/SDK | ❌ | x86/x64 only | Cloud x86/x64 | Evaluating UI — **useless for automation** |
+| **IDA Home** | €365 | ✅ IDAPython + C++ SDK | ✅ | **1** of PC/ARM/MIPS/PPC/RISC-V | Cloud (2 of 1 family) | Hobbyist, non-commercial only |
+| **IDA Pro Essential** | €1,099 | ✅ | ✅ | All 60+ | Cloud (2 of 1 family) | Cheapest commercial with headless |
+| **IDA Pro Expert 2** | €2,999 | ✅ | ✅ | All 60+ | **Local** (2 of your choice) | Serious RE — local decompilers |
+| **IDA Pro Ultimate** | €8,599 | ✅ | ✅ | All 60+ | All local | Everything |
+
+**Key takeaway:** IDA Home (€365/yr) is the cheapest option that can run our headless scripts, but only supports **one** CPU architecture and is **non-commercial**. If all you need is x86 analysis for DigiBib5.exe (a 32-bit PE), IDA Home with x86/x64 decompiler covers it. Still €365/yr vs Ghidra being free for the same x86 job.
+
+**IDA Free is useless for our integration** — no `-S` scripting flag, no IDAPython, no C++ SDK. It can't run `ida_scripts/analyze_binary.py`. It exists purely as a GUI demo.
+
 ### Alternatives (free)
 
 If you don't have IDA Pro, the free alternatives are:
-- **Ghidra** — full decompiler, multi-arch — [guide](GHIDRA.md)
+- **Ghidra** — full decompiler, multi-arch, local (not cloud) — [guide](GHIDRA.md)
 - **IDR** — Delphi-only, but free — [guide](IDR.md)
 - **radare2 / rizin** — no decompiler, but powerful analysis
