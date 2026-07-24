@@ -754,9 +754,10 @@ def main():
 # ASGI app for uvicorn (e.g. web_sota: uvicorn reversing_mcp.server:app)
 # Mounts MCP at /mcp; add more routes here if needed.
 try:
+    import platform
+
     from fastapi import FastAPI as _FastAPI
     from fastapi.middleware.cors import CORSMiddleware as _CORSMiddleware
-    import platform
 
     _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.4.0")
 
