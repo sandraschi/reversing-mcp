@@ -892,6 +892,39 @@ try:
         import os
         os._exit(0)
 
+    @_http_app.get("/api/v1/digibib/find")
+    async def _digibib_find():
+        """Find Digibib5.exe in known locations."""
+        from .digibib_research import resolve_digibib_exe
+        resolved, tried = resolve_digibib_exe(None)
+        return {"found": resolved is not None, "path": str(resolved) if resolved else None, "paths_searched": tried}
+
+    @_http_app.get("/api/v1/digibib/snapshot")
+    async def _digibib_snapshot(exe_path: str | None = None):
+        """Run DigiBib research snapshot."""
+        from .digibib_research import resolve_digibib_exe, build_research_snapshot
+        resolved, tried = resolve_digibib_exe(exe_path)
+        if resolved is None:
+            return {"success": False, "error": "Digibib5.exe not found", "paths_searched": tried}
+        return build_research_snapshot(analyzer, resolved)
+
+    @_http_app.get("/api/v1/digibib/decode-dki")
+    async def _digibib_decode_dki(path: str):
+        """Decode a DKI file using the heuristic decoder."""
+        r = decode_dki_path(Path(path))
+        return result_to_mcp_dict(path, r)
+
+    @_http_app.get("/api/v1/digibib/directmedia-strings")
+    async def _digibib_directmedia_strings(exe_path: str | None = None):
+        """Extract strings matching Directmedia keywords from Digibib5.exe."""
+        from .digibib_research import resolve_digibib_exe, filter_directmedia_strings
+        resolved, tried = resolve_digibib_exe(exe_path)
+        if resolved is None:
+            return {"success": False, "error": "Digibib5.exe not found", "paths_searched": tried}
+        strings = analyzer.extract_strings(str(resolved), min_length=5)
+        hits = filter_directmedia_strings(strings)
+        return {"success": True, "hits": hits[:200], "total": len(hits)}
+
     @_http_app.get("/api/skills")
     async def _list_skills():
         skills_dir = SKILLS_DIR
