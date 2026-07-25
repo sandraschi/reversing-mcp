@@ -1,7 +1,7 @@
 # 🐉 Ghidra Plugin Setup for Reversing MCP
 
 **OBSOLETE (2026-03-23):** This repo no longer uses LaurieWired + `bridge_mcp_ghidra.py`.
-Use **ReVa** per `docs/GHIDRA.md`. Kept for historical context only.
+Use **ReVa** per the [detailed Ghidra guide](docs/GHIDRA.md). Kept for historical context only.
 
 ## 🔍 **Architecture: Clear Separation**
 
