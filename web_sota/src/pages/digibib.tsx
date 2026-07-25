@@ -415,6 +415,54 @@ export function DigiBib() {
         </CardContent>
       </Card>
 
+      {/* Classic targets */}
+      <Card className="border-slate-800 bg-slate-950/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white text-lg">
+            <FileSearch className="h-5 w-5 text-purple-500" />
+            Other Classic Reversing Targets
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid md:grid-cols-2 gap-3 text-sm">
+          <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+            <p className="text-white font-medium mb-1">Turbo Pascal 7.0 (DOS)</p>
+            <p className="text-slate-400 text-xs mb-2">Borland's classic IDE — also Delphi ancestor, also uses RTTI/VMT. Good second target after DigiBib.</p>
+            <div className="flex gap-2 text-xs text-slate-500">
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">DOS MZ</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">16-bit</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Borland</Badge>
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+            <p className="text-white font-medium mb-1">Windows Notepad (notepad.exe)</p>
+            <p className="text-slate-400 text-xs mb-2">Simple, every Windows has it. Good for learning PE structure, import table, message loop pattern.</p>
+            <div className="flex gap-2 text-xs text-slate-500">
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Win32 PE</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">MSVC</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Ships with OS</Badge>
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+            <p className="text-white font-medium mb-1">Windows Minesweeper (winmine.exe)</p>
+            <p className="text-slate-400 text-xs mb-2">Classic Windows game. Interesting for game RE: random seeding, board logic, WinAPI GDI drawing.</p>
+            <div className="flex gap-2 text-xs text-slate-500">
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Win32 PE</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Game logic</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">GDI</Badge>
+            </div>
+          </div>
+          <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+            <p className="text-white font-medium mb-1">Windows Calculator (calc.exe)</p>
+            <p className="text-slate-400 text-xs mb-2">Simple math, UI controls, input parsing. Good for tracing arithmetic operations in the decompiler.</p>
+            <div className="flex gap-2 text-xs text-slate-500">
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Win32 PE</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Arithmetic</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Win32 controls</Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Next steps */}
       <Card className="border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950">
         <CardHeader>
