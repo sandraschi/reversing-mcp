@@ -6,12 +6,14 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronRight,
+  Download,
   ExternalLink,
   FileSearch,
   Globe,
   Loader2,
   Search,
   Sigma,
+  Terminal,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -23,6 +25,8 @@ export function DigiBib() {
   const [findResult, setFindResult] = useState<Record<string, unknown> | null>(null);
   const [snapResult, setSnapResult] = useState<SnapData | null>(null);
   const [stringsResult, setStringsResult] = useState<Record<string, unknown> | null>(null);
+  const [idrStatus, setIdrStatus] = useState<Record<string, unknown> | null>(null);
+  const [idrChecked, setIdrChecked] = useState(false);
   const [dkiPath, setDkiPath] = useState("");
   const [dkiResult, setDkiResult] = useState<Record<string, unknown> | null>(null);
 
@@ -47,6 +51,21 @@ export function DigiBib() {
     }
   }
 
+  async function checkIdr() {
+    setLoading(5);
+    setError(null);
+    try {
+      const r = await fetch(`${base}/api/v1/digibib/check-idr`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      setIdrStatus(await r.json());
+      setIdrChecked(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Check failed");
+    } finally {
+      setLoading(null);
+    }
+  }
+
   async function decodeDki() {
     if (!dkiPath.trim()) return;
     setLoading(4);
@@ -65,9 +84,10 @@ export function DigiBib() {
   const steps = [
     { id: 0, label: "Find Binary", done: findResult?.found },
     { id: 1, label: "Snapshot", done: snapResult?.success },
-    { id: 2, label: "Strings", done: stringsResult?.success },
-    { id: 3, label: "Entropy", done: snapResult?.success },
-    { id: 4, label: "DKI Decode", done: dkiResult?.success },
+    { id: 2, label: "IDR Symbols", done: idrStatus?.installed },
+    { id: 3, label: "Strings", done: stringsResult?.success },
+    { id: 4, label: "Entropy", done: snapResult?.success },
+    { id: 5, label: "DKI Decode", done: dkiResult?.success },
   ];
 
   const snap = (snapResult?.file_info as SnapData) || null;
@@ -191,12 +211,79 @@ export function DigiBib() {
         </CardContent>
       </Card>
 
-      {/* Step 2 */}
+      {/* Step 2 — IDR */}
+      <Card className="border-slate-800 bg-slate-950/50 border-amber-800/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white text-lg">
+            <Terminal className="h-5 w-5 text-amber-500" />
+            Step 2 — IDR: Recover Delphi Symbols
+            {idrStatus?.installed ? <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">Installed</Badge> : null}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-slate-300">
+            Digibib5.exe is likely a Delphi binary. <strong>IDR (Interactive Delphi Reconstructor)</strong>{" "}
+            recovers class names, method names, form layouts, and event handlers — turning{" "}
+            <code className="text-amber-400">FUN_00613458</code> into{" "}
+            <code className="text-emerald-400">TTextReader_ReadLn</code>.
+          </p>
+
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={checkIdr} disabled={loading === 5} size="sm" variant="outline" className="border-slate-700">
+              {loading === 5 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Terminal className="h-4 w-4 mr-2" />}
+              Check if installed
+            </Button>
+            {!idrStatus?.installed && (
+              <a href="https://github.com/crypto2011/IDR/releases/tag/27_01_2019"
+                target="_blank" rel="noreferrer">
+                <Button size="sm" className="bg-amber-700 hover:bg-amber-600 text-white">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download IDR
+                </Button>
+              </a>
+            )}
+          </div>
+
+          {idrChecked && idrStatus?.installed && (
+            <div className="text-sm text-emerald-400">Installed at {String(idrStatus.path)}</div>
+          )}
+          {idrChecked && !idrStatus?.installed && (
+            <div className="text-sm text-slate-400">
+              Not found. Run <code className="text-amber-400">just install-idr</code> or download from{" "}
+              <a href="https://github.com/crypto2011/IDR/releases" className="text-blue-400 hover:underline" target="_blank" rel="noreferrer">GitHub</a>.
+            </div>
+          )}
+
+          <div className="border border-slate-700 rounded-lg p-3 bg-slate-900/50 text-sm space-y-2">
+            <p className="text-slate-200 font-medium">Workflow:</p>
+            <ol className="text-slate-400 space-y-1.5 text-sm list-decimal list-inside">
+              <li>Launch IDR: <code className="text-amber-400">Idr.exe</code></li>
+              <li><strong>File → Open</strong> → select Digibib5.exe</li>
+              <li>Browse the <strong>Classes</strong> tree for names containing{" "}
+                <code className="text-emerald-400">Reader</code>, <code className="text-emerald-400">DKI</code>,{" "}
+                <code className="text-emerald-400">Stream</code>, <code className="text-emerald-400">Decode</code></li>
+              <li>Check <strong>Forms</strong> tab for the main window — the "Open Volume" button's{" "}
+                <code className="text-emerald-400">OnClick</code> handler is your entry point</li>
+              <li><strong>File → Export → Map file</strong> → save <code>Digibib5.map</code></li>
+              <li>In Ghidra: <strong>File → Load → Map File</strong> → select the .map → symbols applied</li>
+            </ol>
+          </div>
+
+          <div className="text-xs text-slate-500">
+            <a href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/IDR.md"
+              className="text-blue-400 hover:underline" target="_blank" rel="noreferrer">
+              Full IDR guide <ExternalLink className="h-3 w-3 inline" />
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 3 — Strings */}
       <Card className="border-slate-800 bg-slate-950/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white text-lg">
             <Globe className="h-5 w-5 text-blue-500" />
-            Step 2 — Directmedia Keyword Strings
+            Step 3 — Directmedia Keyword Strings
             {stringsResult?.success ? (
               <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">
                 {String((stringsResult.hits as unknown[])?.length || 0)} hits
@@ -236,7 +323,7 @@ export function DigiBib() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white text-lg">
             <Sigma className="h-5 w-5 text-purple-500" />
-            Step 3 — Entropy Analysis
+            Step 4 — Entropy Analysis
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -269,12 +356,12 @@ export function DigiBib() {
         </CardContent>
       </Card>
 
-      {/* Step 4 */}
+      {/* Step 5 */}
       <Card className="border-slate-800 bg-slate-950/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white text-lg">
             <BookOpen className="h-5 w-5 text-blue-500" />
-            Step 4 — DKI Decode
+            Step 5 — DKI Decode
             {dkiResult?.success ? <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">Decoded</Badge> : null}
           </CardTitle>
         </CardHeader>

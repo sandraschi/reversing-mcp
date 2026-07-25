@@ -908,6 +908,23 @@ try:
             return {"success": False, "error": "Digibib5.exe not found", "paths_searched": tried}
         return build_research_snapshot(analyzer, resolved)
 
+    @_http_app.get("/api/v1/digibib/check-idr")
+    async def _digibib_check_idr():
+        """Check if IDR (Interactive Delphi Reconstructor) is installed."""
+        import shutil
+        idr_path = shutil.which("Idr.exe") or shutil.which("IDR.exe")
+        alt_paths = [
+            Path(os.environ.get("LOCALAPPDATA", "")) / "IDR" / "Idr.exe",
+            Path(r"C:\Tools\IDR\Idr.exe"),
+            Path(r"C:\Program Files\IDR\Idr.exe"),
+        ]
+        if idr_path:
+            return {"installed": True, "path": idr_path, "version": "27_01_2019"}
+        for p in alt_paths:
+            if p.exists():
+                return {"installed": True, "path": str(p), "version": "27_01_2019"}
+        return {"installed": False, "install_hint": "Run: just install-idr"}
+
     @_http_app.get("/api/v1/digibib/decode-dki")
     async def _digibib_decode_dki(path: str):
         """Decode a DKI file using the heuristic decoder."""
