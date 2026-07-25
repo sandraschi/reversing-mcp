@@ -469,11 +469,11 @@ export function DigiBib() {
           <CardTitle className="text-white text-lg">Next Steps</CardTitle>
         </CardHeader>
         <CardContent className="grid md:grid-cols-3 gap-4 text-sm">
-          <a href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/GHIDRA.md"
+          <a href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/REVA.md"
             target="_blank" rel="noreferrer"
             className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:bg-slate-800/50 transition-colors">
-            <p className="text-blue-400 font-medium mb-1">Ghidra + ReVa <ExternalLink className="h-3 w-3 inline" /></p>
-            <p className="text-slate-400 text-xs">Interactive decompilation and xrefs in Ghidra via ReVa MCP</p>
+            <p className="text-blue-400 font-medium mb-1">ReVa MCP Setup <ExternalLink className="h-3 w-3 inline" /></p>
+            <p className="text-slate-400 text-xs">Ghidra MCP server — decompile, xrefs, rename via MCP</p>
           </a>
           <a href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/IDR.md"
             target="_blank" rel="noreferrer"

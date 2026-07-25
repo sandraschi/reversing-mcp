@@ -269,3 +269,4 @@ This matters when Ghidra's decompiler shows a function taking a `char*` paramete
 - [Delphi RTTI internals (Hallvard's Blog)](https://hallvards.blogspot.com/) — authoritative reference on Borland RTTI structure
 - [Ghidra Delphi loader](https://github.com/astrelsky/Ghidra-Delphi-Importer) — alternative: Ghidra plugin for Delphi (less mature than IDR)
 - [DigiBib reversing guide](DIGIBIB_REVERSING_GUIDE.md) — how IDR fits into the overall DigiBib reverse workflow
+- [ReVa MCP guide](REVA.md) — Ghidra MCP server for decompilation after IDR symbols are loaded

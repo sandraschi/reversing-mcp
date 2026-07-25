@@ -34,7 +34,7 @@ just test              # run tests
 
 | Path | When | Setup |
 |------|------|-------|
-| **Interactive** (ReVa MCP) | You want decompile, xrefs, rename in Ghidra via MCP | [Detailed Ghidra guide](docs/GHIDRA.md) |
+| **Interactive** (ReVa MCP) | You want decompile, xrefs, rename in Ghidra via MCP | [ReVa MCP guide](docs/REVA.md) |
 | **Headless** (`analyzeHeadless`) | Batch/script analysis from `analyze_binary` | Install Ghidra, set `GHIDRA_INSTALL_DIR` |
 | **IDA Pro headless** | Higher-quality decompilation if you have IDA | [IDA integration guide](docs/IDA.md) |
 

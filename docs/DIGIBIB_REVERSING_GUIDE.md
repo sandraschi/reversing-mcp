@@ -193,5 +193,6 @@ Look for `CD-ROM` strings, `RegQueryValue`, `Crypt*` imports. If DRM-wrapped, th
 | [DIRECTMEDIA_MISSION.md](DIRECTMEDIA_MISSION.md) | Mission scope and toolchain role |
 | [DIRECTMEDIA_REVERSING_TOOLKIT.md](DIRECTMEDIA_REVERSING_TOOLKIT.md) | CLI/MCP commands for DigiBib |
 | [status.md](status.md) | Current reversing progress (Ghidra function names, addresses) |
-| [GHIDRA.md](GHIDRA.md) | Ghidra/ReVa setup guide |
+| [GHIDRA.md](GHIDRA.md) | Ghidra headless (analyzeHeadless) setup |
+| [REVA.md](REVA.md) | ReVa MCP — interactive Ghidra decompilation over MCP |
 | [IDR.md](IDR.md) | Delphi reconstruction with IDR — full workflow, Ghidra integration, internals |
