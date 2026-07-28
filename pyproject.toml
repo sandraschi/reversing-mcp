@@ -14,13 +14,12 @@ dependencies = [
     "pydantic>=2.0.0",
     "httpx>=0.27.0",
     "psutil>=5.8.0",
-    "ruff>=0.15.2",
     "prefab-ui>=0.14.0",
 ]
 
 [project.optional-dependencies]
 test = ["pytest>=8.0", "pytest-asyncio", "httpx"]
-dev = ["ruff>=0.9.0", "mypy"]
+dev = ["ruff>=0.16.0,<0.17", "mypy"]
 # Headless Ghidra from Python (DecompInterface, import/analyze). Requires a local Ghidra install;
 # set GHIDRA_INSTALL_DIR if not using the default path in scripts/decompile_pe_pyghidra.py.
 ghidra = [
