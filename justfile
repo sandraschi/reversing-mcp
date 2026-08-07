@@ -1,7 +1,7 @@
-set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 import 'scripts/just/fleet.just'
 
-# ── Core ─────────────────────────────────────────────────────────────────────
+# --- Core ---
 
 # Serve the MCP server (stdio mode)
 serve:
@@ -11,21 +11,17 @@ serve:
 test:
     uv run pytest tests/ -q
 
-# Pack MCPB bundle
-mcpb-pack:
-    pwsh -NoProfile -File scripts/mcpb-pack.ps1
-
 # Install IDR (Interactive Delphi Reconstructor)
 install-idr:
-    pwsh -NoProfile -File scripts/Install-IDR.ps1
+    powershell.exe -NoProfile -File scripts/Install-IDR.ps1
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
+# --- Dashboard ---
 
 # Open the interactive recipe dashboard in the browser
 default:
     @just --list
 
-# ── Quality ───────────────────────────────────────────────────────────────────
+# --- Quality ---
 
 # Execute Ruff SOTA v13.1 linting
 lint:
@@ -42,7 +38,7 @@ fix:
     Set-Location '{{justfile_directory()}}\web_sota'
     npx @biomejs/biome check --write .
 
-# ── Hardening ─────────────────────────────────────────────────────────────────
+# --- Hardening ---
 
 # Execute Bandit security audit
 check-sec:
@@ -54,7 +50,7 @@ audit-deps:
 	Set-Location '{{justfile_directory()}}'
 	uv run safety check
 
-# ── Tauri NSIS ─────────────────────────────────────────────────────────────────
+# --- Tauri NSIS ---
 
 # Build the Tauri NSIS desktop installer (full pipeline: frontend -> Rust -> NSIS)
 build-native:
@@ -65,6 +61,9 @@ build-native:
 	Set-Location '{{justfile_directory()}}\native'
 	npx @tauri-apps/cli build --bundles nsis
 
-# Run the CUA smoke test against the installed NSIS app
-cua-nsis-test:
-	C:\Windows\py.exe scripts/cua-smoke.py
+
+# Bootstrap: install dev deps + pre-commit hook
+bootstrap:
+    uv sync --group dev
+    uv run pre-commit install
+    Write-Host "Pre-commit hooks installed." -ForegroundColor Green

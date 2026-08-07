@@ -45,9 +45,7 @@ def test_legacy_extract_success(tmp_path: Path) -> None:
     p.write_bytes(zlib.compress(plain))
     leg = legacy_extract_for_server(p)
     assert leg["success"]
-    assert leg["extracted_sections"][0]["records"][0]["text_content"].startswith(
-        "Hello Directmedia"
-    )
+    assert leg["extracted_sections"][0]["records"][0]["text_content"].startswith("Hello Directmedia")
 
 
 def test_decode_dki_path_missing(tmp_path: Path) -> None:

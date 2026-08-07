@@ -372,13 +372,11 @@ class BinaryAnalyzer:
                 cmd = [
                     str(ida_exe),
                     "-A",
-                    f"-S\"{script_path} {output_json}\"",
-                    f"\"{file_path}\"",
+                    f'-S"{script_path} {output_json}"',
+                    f'"{file_path}"',
                 ]
                 logger.info("Running IDA headless: %s", " ".join(str(c) for c in cmd))
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=300, check=False
-                )
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, check=False)
 
                 if result.returncode not in (0, 1):
                     # IDA returns non-zero for some scripted exits; check output

@@ -230,9 +230,7 @@ class ComprehensiveTestRunner:
             )
 
         except Exception as e:
-            results["benchmarks"].append(
-                {"test": "Performance testing", "error": str(e), "status": "failed"}
-            )
+            results["benchmarks"].append({"test": "Performance testing", "error": str(e), "status": "failed"})
 
         return results
 
@@ -282,12 +280,7 @@ class ComprehensiveTestRunner:
         report_lines.append("[RECOMMENDATIONS]")
         report_lines.append("-" * 20)
 
-        if (
-            not all_results.get("prerequisites", {})
-            .get("dependencies", {})
-            .get("fastmcp", {})
-            .get("available")
-        ):
+        if not all_results.get("prerequisites", {}).get("dependencies", {}).get("fastmcp", {}).get("available"):
             report_lines.append("[WARNING] Install FastMCP: pip install fastmcp")
 
         if len(all_results.get("binary_fixtures", {}).get("fixtures_tested", [])) < 5:
@@ -321,9 +314,7 @@ class ComprehensiveTestRunner:
                             lines.append(f"{status_icon} {item}: {status}")
                         elif "exists" in status:
                             status_icon = "[OK]" if status["exists"] else "[MISSING]"
-                            size_info = (
-                                f" ({status.get('size', 0)} bytes)" if "size" in status else ""
-                            )
+                            size_info = f" ({status.get('size', 0)} bytes)" if "size" in status else ""
                             lines.append(f"{status_icon} {item}: {status['exists']}{size_info}")
 
     def _report_test_results(self, lines: list[str], results: dict[str, Any], title: str):
@@ -434,15 +425,9 @@ def main():
     parser.add_argument("--coverage", action="store_true", help="Run with coverage reporting")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--unit-only", action="store_true", help="Run only unit tests")
-    parser.add_argument(
-        "--integration-only", action="store_true", help="Run only integration tests"
-    )
-    parser.add_argument(
-        "--fixtures-only", action="store_true", help="Run only binary fixture tests"
-    )
-    parser.add_argument(
-        "--performance-only", action="store_true", help="Run only performance tests"
-    )
+    parser.add_argument("--integration-only", action="store_true", help="Run only integration tests")
+    parser.add_argument("--fixtures-only", action="store_true", help="Run only binary fixture tests")
+    parser.add_argument("--performance-only", action="store_true", help="Run only performance tests")
 
     args = parser.parse_args()
 

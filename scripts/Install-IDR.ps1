@@ -37,5 +37,5 @@ if ($userPath -notlike "*$InstallDir*") {
     Write-Host "Added $InstallDir to user PATH (persistent)" -ForegroundColor Green
 }
 
-Write-Host "IDR ready — run 'Idr.exe' to launch" -ForegroundColor Green
+Write-Host "IDR ready - run 'Idr.exe' to launch" -ForegroundColor Green
 Write-Host "Or use with Ghidra: export .map from IDR, import into Ghidra per docs/IDR.md" -ForegroundColor Cyan

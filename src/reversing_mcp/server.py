@@ -9,9 +9,7 @@ CURSOR_HANDOFF.md in this repository.
 
 import os
 from pathlib import Path
-from typing import Any
-
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
@@ -70,7 +68,10 @@ analyzer = BinaryAnalyzer()
 @mcp.tool(annotations=_READ_ONLY)
 async def analyze_binary(
     file_path: Annotated[str, Field(description="Path to the binary file to analyze")],
-    tools: Annotated[list[str] | None, Field(description="Tools to use (ida, ghidra, r2, binwalk, static). If None, uses all available.")] = None,
+    tools: Annotated[
+        list[str] | None,
+        Field(description="Tools to use (ida, ghidra, r2, binwalk, static). If None, uses all available."),
+    ] = None,
 ) -> dict[str, Any]:
     """
     Analyze a binary file with multiple reverse engineering tools.
@@ -102,7 +103,9 @@ async def analyze_binary(
 async def extract_strings(
     file_path: Annotated[str, Field(description="Path to the binary file")],
     min_length: Annotated[int, Field(description="Minimum string length to extract")] = 4,
-    encodings: Annotated[list[str] | None, Field(description="Encodings to try (ascii, utf-8, utf-16le, latin-1)")] = None,
+    encodings: Annotated[
+        list[str] | None, Field(description="Encodings to try (ascii, utf-8, utf-16le, latin-1)")
+    ] = None,
 ) -> list[dict[str, Any]]:
     """
     Extract strings from a binary file.
@@ -490,7 +493,12 @@ async def analyze_directmedia_file(
 
 @mcp.tool(annotations=_MUTATING)
 async def decompress_directmedia_library(
-    library_path: Annotated[str | None, Field(description="Path to Directmedia library directory (DB* folders). If omitted, uses env DIGITALE_BIBLIOTHEK_ROOT.")] = None,
+    library_path: Annotated[
+        str | None,
+        Field(
+            description="Path to Directmedia library directory (DB* folders). If omitted, uses env DIGITALE_BIBLIOTHEK_ROOT."
+        ),
+    ] = None,
     volume_filter: Annotated[str | None, Field(description="Filter for volume names (e.g. DB002 or *philo*)")] = None,
 ) -> dict[str, Any]:
     """
@@ -543,9 +551,7 @@ async def decompress_directmedia_library(
                 try:
                     result = legacy_extract_for_server(text_dki)
                     if not result.get("success"):
-                        results.append(
-                            {"volume": volume_dir.name, "error": result.get("error", "decode failed")}
-                        )
+                        results.append({"volume": volume_dir.name, "error": result.get("error", "decode failed")})
                         continue
 
                     volume_result = {
@@ -804,6 +810,7 @@ async def shutdown(confirm: bool = False) -> dict:
         return {"success": False, "message": "Shutdown requires confirm=True"}
     import os
     import threading
+
     threading.Thread(target=lambda: os._exit(0), daemon=True).start()
     return {"success": True, "message": "Server shutting down"}
 
@@ -812,9 +819,7 @@ def main():
     """Main entry point"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Reversing MCP Server - Free RE Tools + Directmedia Decompression"
-    )
+    parser = argparse.ArgumentParser(description="Reversing MCP Server - Free RE Tools + Directmedia Decompression")
     parser.add_argument("--log-level", default="INFO", help="Logging level")
 
     args = parser.parse_args()
@@ -890,19 +895,22 @@ try:
     @_http_app.post("/api/shutdown")
     async def _shutdown():
         import os
+
         os._exit(0)
 
     @_http_app.get("/api/v1/digibib/find")
     async def _digibib_find():
         """Find Digibib5.exe in known locations."""
         from .digibib_research import resolve_digibib_exe
+
         resolved, tried = resolve_digibib_exe(None)
         return {"found": resolved is not None, "path": str(resolved) if resolved else None, "paths_searched": tried}
 
     @_http_app.get("/api/v1/digibib/snapshot")
     async def _digibib_snapshot(exe_path: str | None = None):
         """Run DigiBib research snapshot."""
-        from .digibib_research import resolve_digibib_exe, build_research_snapshot
+        from .digibib_research import build_research_snapshot, resolve_digibib_exe
+
         resolved, tried = resolve_digibib_exe(exe_path)
         if resolved is None:
             return {"success": False, "error": "Digibib5.exe not found", "paths_searched": tried}
@@ -912,6 +920,7 @@ try:
     async def _digibib_check_idr():
         """Check if IDR (Interactive Delphi Reconstructor) is installed."""
         import shutil
+
         idr_path = shutil.which("Idr.exe") or shutil.which("IDR.exe")
         alt_paths = [
             Path(os.environ.get("LOCALAPPDATA", "")) / "IDR" / "Idr.exe",
@@ -934,7 +943,8 @@ try:
     @_http_app.get("/api/v1/digibib/directmedia-strings")
     async def _digibib_directmedia_strings(exe_path: str | None = None):
         """Extract strings matching Directmedia keywords from Digibib5.exe."""
-        from .digibib_research import resolve_digibib_exe, filter_directmedia_strings
+        from .digibib_research import filter_directmedia_strings, resolve_digibib_exe
+
         resolved, tried = resolve_digibib_exe(exe_path)
         if resolved is None:
             return {"success": False, "error": "Digibib5.exe not found", "paths_searched": tried}

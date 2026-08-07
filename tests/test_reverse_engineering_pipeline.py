@@ -94,11 +94,7 @@ class ReverseEngineeringTestFixture:
             # Compile
             if fixture_config["language"] == "asm":
                 # First assemble
-                assemble_cmd = (
-                    [fixture_config["compiler"]]
-                    + fixture_config["compile_args"]
-                    + [str(source_path)]
-                )
+                assemble_cmd = [fixture_config["compiler"]] + fixture_config["compile_args"] + [str(source_path)]
                 assemble_cmd[-1] = str(object_file)  # Replace output arg
                 print(f"Assembling: {' '.join(assemble_cmd)}")
                 result = subprocess.run(
@@ -114,9 +110,7 @@ class ReverseEngineeringTestFixture:
                     return None
 
                 # Then link
-                link_cmd = (
-                    [fixture_config["linker"]] + fixture_config["link_args"] + [str(object_file)]
-                )
+                link_cmd = [fixture_config["linker"]] + fixture_config["link_args"] + [str(object_file)]
                 link_cmd[-1] = str(binary_file)  # Replace output arg
                 print(f"Linking: {' '.join(link_cmd)}")
                 result = subprocess.run(
@@ -132,11 +126,7 @@ class ReverseEngineeringTestFixture:
                     return None
             else:
                 # C compilation
-                compile_cmd = (
-                    [fixture_config["compiler"]]
-                    + fixture_config["compile_args"]
-                    + [str(source_path)]
-                )
+                compile_cmd = [fixture_config["compiler"]] + fixture_config["compile_args"] + [str(source_path)]
                 compile_cmd[-1] = str(binary_file)  # Replace output arg
                 print(f"Compiling: {' '.join(compile_cmd)}")
                 result = subprocess.run(
@@ -171,9 +161,7 @@ class ReverseEngineeringTestFixture:
 
         return self.analyzer.analyze_file(str(binary_path), tools)
 
-    def validate_analysis(
-        self, analysis_result: dict[str, Any], fixture_name: str
-    ) -> dict[str, Any]:
+    def validate_analysis(self, analysis_result: dict[str, Any], fixture_name: str) -> dict[str, Any]:
         """Validate that analysis results contain expected information"""
         fixture_config = self.get_fixture_config(fixture_name)
         validation_results = {
@@ -205,9 +193,7 @@ class ReverseEngineeringTestFixture:
             if file_info.get("is_executable", False):
                 # For PE files, check if we can find function-like structures
                 # This is a simplified check
-                validation_results["functions_found"] = len(
-                    fixture_config.get("expected_functions", [])
-                )
+                validation_results["functions_found"] = len(fixture_config.get("expected_functions", []))
 
         # Check for suspicious patterns (MALWARE DETECTION)
         suspicious_patterns = fixture_config.get("suspicious_patterns", [])
@@ -223,86 +209,50 @@ class ReverseEngineeringTestFixture:
             string_content = " ".join(found_strings).lower()
 
             for pattern in suspicious_patterns:
-                if pattern == "network_connections" and (
-                    "connect" in string_content or "socket" in string_content
-                ):
-                    validation_results["suspicious_patterns_detected"].append(
-                        "🔗 Network connections detected"
-                    )
-                elif pattern == "suspicious_domains" and (
-                    "blofeld.org" in string_content or "evil." in string_content
-                ):
+                if pattern == "network_connections" and ("connect" in string_content or "socket" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🔗 Network connections detected")
+                elif pattern == "suspicious_domains" and ("blofeld.org" in string_content or "evil." in string_content):
                     validation_results["suspicious_patterns_detected"].append(
                         "🌐 Suspicious domain connections detected"
                     )
-                elif pattern == "downloads" and (
-                    "download" in string_content or "url" in string_content
-                ):
+                elif pattern == "downloads" and ("download" in string_content or "url" in string_content):
                     validation_results["suspicious_patterns_detected"].append(
                         "📥 Suspicious download operations detected"
                     )
                 elif pattern == "filesystem_manipulation" and (
                     "system32" in string_content or "hidden" in string_content
                 ):
-                    validation_results["suspicious_patterns_detected"].append(
-                        "📁 File system manipulation detected"
-                    )
-                elif pattern == "registry_access" and (
-                    "registry" in string_content or "hkey" in string_content
-                ):
-                    validation_results["suspicious_patterns_detected"].append(
-                        "🗝️ Registry access detected"
-                    )
+                    validation_results["suspicious_patterns_detected"].append("📁 File system manipulation detected")
+                elif pattern == "registry_access" and ("registry" in string_content or "hkey" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🗝️ Registry access detected")
                 elif pattern == "process_injection" and (
                     "inject" in string_content or "virtualalloc" in string_content
                 ):
                     validation_results["suspicious_patterns_detected"].append(
                         "💉 Process injection techniques detected"
                     )
-                elif pattern == "anti_debugging" and (
-                    "debugger" in string_content or "timing" in string_content
-                ):
-                    validation_results["suspicious_patterns_detected"].append(
-                        "🛡️ Anti-debugging techniques detected"
-                    )
+                elif pattern == "anti_debugging" and ("debugger" in string_content or "timing" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🛡️ Anti-debugging techniques detected")
                 elif pattern == "string_obfuscation" and (
                     "reconstruct" in string_content or "decrypt" in string_content
                 ):
-                    validation_results["suspicious_patterns_detected"].append(
-                        "🔤 String obfuscation detected"
-                    )
-                elif pattern == "shellcode_generation" and (
-                    "shellcode" in string_content or "nop" in string_content
-                ):
-                    validation_results["suspicious_patterns_detected"].append(
-                        "💣 Shellcode generation detected"
-                    )
-                elif pattern == "packer_signatures" and (
-                    "upx" in string_content or "packer" in string_content
-                ):
-                    validation_results["suspicious_patterns_detected"].append(
-                        "📦 Packer signatures detected"
-                    )
-                elif pattern == "runtime_unpacking" and (
-                    "decompress" in string_content or "unpack" in string_content
-                ):
-                    validation_results["suspicious_patterns_detected"].append(
-                        "🔓 Runtime unpacking detected"
-                    )
+                    validation_results["suspicious_patterns_detected"].append("🔤 String obfuscation detected")
+                elif pattern == "shellcode_generation" and ("shellcode" in string_content or "nop" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("💣 Shellcode generation detected")
+                elif pattern == "packer_signatures" and ("upx" in string_content or "packer" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("📦 Packer signatures detected")
+                elif pattern == "runtime_unpacking" and ("decompress" in string_content or "unpack" in string_content):
+                    validation_results["suspicious_patterns_detected"].append("🔓 Runtime unpacking detected")
 
             if validation_results["suspicious_patterns_detected"]:
                 validation_results["malware_alerts"].append("")
                 validation_results["malware_alerts"].append("⚠️  SUSPICIOUS BEHAVIOR DETECTED:")
-                validation_results["malware_alerts"].extend(
-                    validation_results["suspicious_patterns_detected"]
-                )
+                validation_results["malware_alerts"].extend(validation_results["suspicious_patterns_detected"])
                 validation_results["malware_alerts"].append("")
                 validation_results["malware_alerts"].append(
                     "This binary exhibits characteristics commonly associated with malware!"
                 )
-                validation_results["malware_alerts"].append(
-                    "🛡️ Recommend further analysis with professional tools."
-                )
+                validation_results["malware_alerts"].append("🛡️ Recommend further analysis with professional tools.")
 
         # Calculate success rate
         total_expected = len(fixture_config.get("expected_strings", []))
@@ -310,9 +260,7 @@ class ReverseEngineeringTestFixture:
             string_match_rate = validation_results["strings_found"] / total_expected
             if string_match_rate < 0.5:  # Require at least 50% string match
                 validation_results["success"] = False
-                validation_results["issues"].append(
-                    f"Low string match rate: {string_match_rate:.2f}"
-                )
+                validation_results["issues"].append(f"Low string match rate: {string_match_rate:.2f}")
 
         return validation_results
 
