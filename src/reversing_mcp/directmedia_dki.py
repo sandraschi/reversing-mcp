@@ -1,5 +1,5 @@
 """
-Directmedia / Digitale Bibliothek — .DKI decoder (in-repo).
+Directmedia / Digitale Bibliothek - .DKI decoder (in-repo).
 
 Digibib5.exe embeds zlib inflate; TEXT.DKI blobs are commonly zlib-wrapped, sometimes after a
 short header. This module autodetects zlib/gzip/raw-deflate placements without external packages.

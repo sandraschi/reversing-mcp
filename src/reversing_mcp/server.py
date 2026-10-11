@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Reversing MCP Server — static binary analysis and Directmedia tools.
+Reversing MCP Server - static binary analysis and Directmedia tools.
 
 For interactive Ghidra analysis over MCP, run the ReVa (reverse-engineering-assistant)
 server separately and connect it in your MCP client. See docs/GHIDRA.md and
@@ -318,7 +318,7 @@ async def check_tools() -> dict[str, Any]:
 @mcp.tool()
 async def digibib_research_snapshot(exe_path: str | None = None) -> dict[str, Any]:
     """
-    DIGIBIB_RESEARCH_SNAPSHOT — Static research bundle for Digibib5.exe / Directmedia viewer work.
+    DIGIBIB_RESEARCH_SNAPSHOT - Static research bundle for Digibib5.exe / Directmedia viewer work.
 
     PORTMANTEAU PATTERN RATIONALE: Single entry point for the Digitale Bibliothek 5 mission:
     file metadata, PE summary, entropy, and keyword-filtered strings (DKI, decompress, …)
@@ -380,7 +380,7 @@ async def decode_dki_file(
     file_path: Annotated[str, Field(description="Path to a .DKI (e.g. volume Data/TEXT.DKI)")],
 ) -> dict[str, Any]:
     """
-    DECODE_DKI_FILE — Decompress a Directmedia .DKI using built-in zlib/gzip autodetection.
+    DECODE_DKI_FILE - Decompress a Directmedia .DKI using built-in zlib/gzip autodetection.
 
     PORTMANTEAU PATTERN RATIONALE: Explicit decode report (strategy, preview, attempts) without
     also writing sidecar .txt files.

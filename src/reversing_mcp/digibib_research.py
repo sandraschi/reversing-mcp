@@ -1,5 +1,5 @@
 """
-Digibib5.exe / Directmedia (DKI) — static research helpers.
+Digibib5.exe / Directmedia (DKI) - static research helpers.
 
 Produces a structured snapshot for agents and humans before ReVa/Ghidra interactive work.
 """
@@ -137,9 +137,9 @@ def build_research_snapshot(analyzer: BinaryAnalyzer, exe_path: str | Path) -> d
             "See docs/DIRECTMEDIA_REVERSING_TOOLKIT.md for viewer milestones.",
         ],
         "viewer_roadmap": [
-            "M1 — Freeze static snapshot (this tool + JSON export) as baseline.",
-            "M2 — Document DKI read path: functions that open .dki / TEXT.DKI and first bytes read.",
-            "M3 — Built-in DKI decode: decode_dki_file / analyze_directmedia_file (zlib heuristics); extend if format differs.",
-            "M4 — Modern viewer: stream text/HTML from decoded DKI; validate against original app.",
+            "M1 - Freeze static snapshot (this tool + JSON export) as baseline.",
+            "M2 - Document DKI read path: functions that open .dki / TEXT.DKI and first bytes read.",
+            "M3 - Built-in DKI decode: decode_dki_file / analyze_directmedia_file (zlib heuristics); extend if format differs.",
+            "M4 - Modern viewer: stream text/HTML from decoded DKI; validate against original app.",
         ],
     }
