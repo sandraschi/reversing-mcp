@@ -17,6 +17,8 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastmcp import FastMCP
+from prefab_ui.app import PrefabApp
+from prefab_ui.components import Badge, Card, CardContent, CardHeader, CardTitle, Text
 from pydantic import BaseModel, Field
 
 from . import rea_bridge
@@ -349,6 +351,38 @@ async def check_tools() -> dict[str, Any]:
     except Exception as e:
         logger.exception("Error checking tools")
         return {"error": f"Tool check failed: {e!s}"}
+
+
+@mcp.tool(app=True, annotations={"readOnlyHint": True, "openWorldHint": False})
+async def show_tools_card() -> PrefabApp:
+    """
+    SHOW_TOOLS_CARD - Engine inventory as an in-chat Prefab card.
+
+    Fleet Prefab pattern (cf. arxiv-mcp depot cards): status-class tools render
+    inline instead of returning raw dicts. check_tools() remains the
+    machine-readable twin.
+
+    ## Return Format
+    PrefabApp card rendered inline in the conversation (title + per-engine badges).
+
+    ## Examples
+    `show_tools_card()` -> PrefabApp with available/missing engine badges.
+    """
+    tools = analyzer.check_available_tools()
+    # css_class is a declared Component field (populate_by_name); pyright
+    # misresolves the pydantic alias init - verified at runtime. See below.
+    with Card(css_class="max-w-xl") as view:  # pyright: ignore[reportCallIssue]
+        with CardHeader():
+            CardTitle("Reversing engines")
+        with CardContent():
+            for key, info in tools.items():
+                ok = bool(info.get("available"))
+                Badge("available" if ok else "missing", variant="secondary")
+                Text(f"{info.get('name', key)}", css_class="text-sm mt-2")
+                detail = info.get("version") or info.get("path") or ""
+                if detail:
+                    Text(str(detail)[:120], css_class="text-xs text-muted-foreground break-all")
+    return PrefabApp(view=view, title="Reversing engines")
 
 
 @mcp.tool(annotations=_READ_ONLY)

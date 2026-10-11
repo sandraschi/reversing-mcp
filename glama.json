@@ -6,7 +6,7 @@
   "type": "mcp_server",
   "status": "beta",
   "framework": "FastMCP 3.4+",
-  "tools": 15,
+  "tools": 16,
   "version": "0.4.0",
   "transport": ["stdio"],
   "keywords": [

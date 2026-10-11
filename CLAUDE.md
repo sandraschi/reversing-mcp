@@ -14,7 +14,7 @@ uv run pytest tests/ -q                  # Test
 ## Architecture
 - FastMCP 3.4+ server wrapping Ghidra headless decompilation + radare2 + binwalk
 - Dual transport: stdio (Claude Desktop default) and HTTP (--http flag)
-- 15 tools (14 analysis/system + help); REA sidecar via `rea_investigate`
+- 16 tools (14 analysis/system + help + Prefab card); REA sidecar via `rea_investigate`
 - Single FastAPI backend (`uvicorn reversing_mcp.server:app` on :10750) serves REST + /mcp mount; Vite webapp at `web_sota/`
 - Tauri native wrapper at `native/`
 
