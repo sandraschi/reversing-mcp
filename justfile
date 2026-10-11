@@ -15,6 +15,21 @@ test:
 install-idr:
     powershell.exe -NoProfile -File scripts/Install-IDR.ps1
 
+# --- REA sidecar (agent-driven RE: JS/Electron/.NET/APK/firmware + native) ---
+
+# Register REA with your agents (backs up configs, then restart the agent)
+setup-rea:
+    npx rea-agents setup
+
+# Check REA version + available native providers
+check-rea:
+    npx -y rea-agents@latest --version
+    npx -y rea-agents@latest providers --json
+
+# Refresh REA registrations (npm-global users: `rea update` instead)
+update-rea:
+    npx rea-agents@latest setup
+
 # --- Dashboard ---
 
 # Open the interactive recipe dashboard in the browser

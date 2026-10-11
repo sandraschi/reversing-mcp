@@ -127,6 +127,47 @@ Native provider selection, snapshots, import/export, and exit statuses: upstream
 
 ---
 
+## 5b. In-repo bridge (Tier 2): `rea_investigate`
+
+You don't need the REA MCP registered to use REA through reversing-mcp. The
+`rea_investigate` tool shells out to the `rea` CLI (global install preferred,
+`npx -y rea-agents@latest` fallback) with an allowlisted kind:
+
+| `kind` | Runs | Needs |
+|--------|------|-------|
+| `auto` (default) | dirs/`.asar` -> JS graph; files -> native overview | target |
+| `javascript` | `analyze-javascript-application` | app dir or `.asar` |
+| `native_overview` | `analyze` | binary |
+| `native_search` / `native_trace` | `search` / `trace` | binary + `query` |
+| `native_function` | `function` | binary + `symbol` |
+| `native_decompile` / `native_xrefs` | `decompile` / `xrefs` | binary + `address` |
+| `providers` / `capabilities` | inventory, no target | nothing |
+| `doctor` | readiness diagnostic | optional `provider` |
+
+```python
+rea_investigate("D:/apps/notes")                                            # auto -> javascript
+rea_investigate("prog.exe", kind="native_overview", provider="ghidra")      # native via Ghidra
+rea_investigate("prog.exe", kind="native_search", query="decrypt")          # no provider = auto-select
+rea_investigate(None, kind="providers")                                     # what engines exist here?
+```
+
+Behavior to know:
+
+* `check_tools()` reports REA under `tools.rea` (version, path, node version) plus a
+  `notes.rea_sidecar` pointer. No `rea`/`npx` on PATH -> tools still work, REA ones
+  degrade to "run `just setup-rea`" instead of crashing.
+* Native kinds accept `provider` (`hopper`, `ghidra`, `ida`); omit it for auto-select.
+  `snapshot_path` passes `--snapshot` through for cached repeat queries.
+* Outputs over 512 KB are **not parsed** (a real Electron evidence file can be 300+ MB).
+  You get `stdout_preview` (20k chars) + `stdout_bytes` + a hint to re-run with
+  `snapshot_path` and project a summary view. Exit 0 with warnings still counts as success.
+* `timeout_s` defaults to 180s, clamps to 10-900s. Ghidra first-import on big binaries
+  wants the high end (`REA_GHIDRA_STARTUP_TIMEOUT_MS` still applies provider-side).
+* `just check-rea` = version + providers from the terminal; `just setup-rea` registers
+  agents; `just update-rea` refreshes registrations (frequent upstream fixes).
+
+---
+
 ## 6. Three-server workflow
 
 Typical session (Digibib/Electron example):
