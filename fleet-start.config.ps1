@@ -8,8 +8,8 @@
     WebRoot      = 'web_sota'
     Backend = @{
         Kind          = 'uvicorn'
-        UvicornTarget = 'main:app'
-        WorkDir       = 'reversing-webapp\api'
+        UvicornTarget = 'reversing_mcp.server:app'
+        WorkDir       = '.'
         PythonPath    = 'src'
         SyncExtras    = @('dev')
         SyncOnStart  = $true

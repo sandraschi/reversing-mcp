@@ -32,13 +32,13 @@ export function Help() {
             <p>
               Backend: API runs on port 10750. Start it (e.g.{" "}
               <code className="bg-slate-800 px-1 rounded">
-                start-webapp.ps1
+                .\start.ps1
               </code>{" "}
               or{" "}
               <code className="bg-slate-800 px-1 rounded">
-                reversing-webapp
+                .\start.bat
               </code>{" "}
-              backend). Configure in Settings.
+              at the repo root). Configure in Settings.
             </p>
             <p>Key concepts:</p>
             <ul className="list-disc list-inside space-y-1">

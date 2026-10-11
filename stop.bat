@@ -1,5 +1,5 @@
 @echo off
 REM Stop reversing-mcp fleet ports
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0reversing-webapp\stop.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0web_sota\stop.ps1"
 if errorlevel 1 pause
 

@@ -21,11 +21,12 @@ Get-NetTCPConnection -LocalPort $BackendPort -ErrorAction SilentlyContinue |
 Get-NetTCPConnection -LocalPort $FrontendPort -ErrorAction SilentlyContinue |
     ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
 
-# Start backend
+# Start backend (single FastAPI app: REST + /mcp mount, on the backend port)
 $BackendJob = Start-Job -Name "backend" -ScriptBlock {
     param($Root, $Port)
     Set-Location $Root
-    uv run -m reversing_mcp
+    $env:PYTHONPATH = "$Root\src"
+    uv run uvicorn reversing_mcp.server:app --host 127.0.0.1 --port $Port
 } -ArgumentList $ScriptRoot, $BackendPort
 
 # Readiness poll
