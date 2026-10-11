@@ -160,7 +160,7 @@ export function Settings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="settings-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Configuration
@@ -168,7 +168,10 @@ export function Settings() {
         <p className="text-slate-400">Backend API and connection</p>
       </div>
 
-      <Card className="border-slate-800 bg-slate-950/50">
+      <Card
+        className="border-slate-800 bg-slate-950/50"
+        data-testid="settings-bridge"
+      >
         <CardHeader>
           <CardTitle className="text-white">API Bridge</CardTitle>
           <CardDescription className="text-slate-400">

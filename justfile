@@ -40,15 +40,19 @@ default:
 
 # Execute Ruff SOTA v13.1 linting
 lint:
-    Set-Location '{{justfile_directory()}}'; uv run ruff check .; Set-Location '{{justfile_directory()}}\web_sota'; npx @biomejs/biome ci .
+    Set-Location '{{justfile_directory()}}'; uv run ruff check .; Set-Location '{{justfile_directory()}}\web_sota'; npx @biomejs/biome ci src
 
 # Execute Ruff SOTA v13.1 fix and formatting
 fix:
-    Set-Location '{{justfile_directory()}}'; uv run ruff check . --fix --unsafe-fixes; uv run ruff format .; Set-Location '{{justfile_directory()}}\web_sota'; npx @biomejs/biome check --write .
+    Set-Location '{{justfile_directory()}}'; uv run ruff check . --fix --unsafe-fixes; uv run ruff format .; Set-Location '{{justfile_directory()}}\web_sota'; npx @biomejs/biome check --write src
 
 # Alias for fix (fleet gate name)
 fmt:
     just fix
+
+# Full local gate (CI runs the same; private repos keep Actions disabled per fleet standard)
+ci:
+    Set-Location '{{justfile_directory()}}'; uv run ruff check src/ tests/; uv run ruff format --check src/ tests/; uv run pyright src/; uv run pytest tests/ -q; Set-Location '{{justfile_directory()}}\web_sota'; npx tsc --noEmit; npx @biomejs/biome ci src
 
 # Browser end-to-end: CUA webapp walk (stack start + nav walk in browser)
 e2e:
