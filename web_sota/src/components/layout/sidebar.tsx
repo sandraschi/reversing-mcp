@@ -1,4 +1,3 @@
-import { cn } from "@/common/utils";
 import {
   Activity,
   BookOpen,
@@ -16,6 +15,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/common/utils";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -33,7 +33,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: "/tools", label: "Tools", icon: Wrench },
     { href: "/skills", label: "Skills", icon: Cpu },
     { href: "/status", label: "Status", icon: Activity },
-    { href: "/apps", label: "App Hub", icon: Grid },
+    { href: "/apps", label: "Server", icon: Grid },
     { href: "/chat", label: "AI Command", icon: Bot },
     { href: "/help", label: "Help", icon: HelpCircle },
     { href: "/settings", label: "Settings", icon: Settings },
@@ -93,6 +93,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       <div className="border-t border-slate-800 p-2">
         <button
+          type="button"
           onClick={onToggle}
           className="flex w-full items-center justify-center rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
         >

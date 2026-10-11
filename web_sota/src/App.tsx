@@ -1,5 +1,11 @@
+import {
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+} from "react-router-dom";
 import { AppLayout } from "@/components/layout/app-layout";
-import Logging from "@/pages/Logging";
+import { useZoom } from "@/hooks/useZoom";
 import { Analyze } from "@/pages/analyze";
 import { Apps } from "@/pages/apps";
 import { Chat } from "@/pages/chat";
@@ -7,18 +13,14 @@ import { Dashboard } from "@/pages/dashboard";
 import { DigiBib } from "@/pages/digibib";
 import { Help } from "@/pages/help";
 import { Inbox } from "@/pages/inbox";
+import Logging from "@/pages/Logging";
 import { Settings } from "@/pages/settings";
 import { Skills } from "@/pages/skills";
 import { Status } from "@/pages/status";
 import { Tools } from "@/pages/tools";
-import {
-  Navigate,
-  Route,
-  BrowserRouter as Router,
-  Routes,
-} from "react-router-dom";
 
 function App() {
+  const { zoom, reset } = useZoom();
   return (
     <Router>
       <AppLayout>
@@ -37,6 +39,14 @@ function App() {
           <Route path="/logs" element={<Logging />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <button
+          type="button"
+          onClick={reset}
+          title="Reset zoom (Ctrl+0). Ctrl+Scroll zooms."
+          className="fixed bottom-2 right-2 z-50 rounded bg-slate-900/90 border border-slate-800 px-2 py-0.5 text-sm text-slate-400 hover:text-slate-200"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
       </AppLayout>
     </Router>
   );

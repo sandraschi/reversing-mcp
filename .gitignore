@@ -74,7 +74,8 @@ yarn-debug.log*
 yarn-error.log*
 .npm/
 .yarn/
-package-lock.json
+# NOTE: web_sota/package-lock.json is intentionally COMMITTED (npm ci in CI).
+# (Fleet bun-standard repos ignore it; this webapp is npm-based.)
 yarn.lock
 
 # Build outputs
