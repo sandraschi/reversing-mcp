@@ -29,7 +29,11 @@ interface LlmState extends Selection {
   models: string[];
   detected: boolean | null;
   select: (provider: string, model: string) => void;
-  applyDiscovery: (models: string[], running: string[], detected: boolean) => void;
+  applyDiscovery: (
+    models: string[],
+    running: string[],
+    detected: boolean,
+  ) => void;
 }
 
 function broadcast(sel: Selection) {

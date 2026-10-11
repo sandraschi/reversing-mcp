@@ -1,6 +1,6 @@
+import { useEffect, useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useEffect, useState } from "react";
 
 export function Skills() {
   const [names, setNames] = useState<string[]>([]);
@@ -52,9 +52,7 @@ export function Skills() {
   return (
     <div className="space-y-6" data-testid="skills-page">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">
-          Skills
-        </h2>
+        <h2 className="text-2xl font-bold tracking-tight text-white">Skills</h2>
         <p className="text-slate-400">
           Agent skill preprompts served by the backend
         </p>
@@ -93,8 +91,8 @@ export function Skills() {
         <div className="flex flex-wrap gap-2" data-testid="skills-list">
           {names.map((n) => (
             <button
-              key={n}
               type="button"
+              key={n}
               onClick={() => setSelected(n)}
               className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${
                 n === selected

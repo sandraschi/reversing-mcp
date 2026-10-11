@@ -438,9 +438,9 @@ export function Chat() {
             {EXAMPLE_PROMPTS.map((g) =>
               g.items.map((p, i) => (
                 <button
+                  type="button"
                   // biome-ignore lint/suspicious/noArrayIndexKey: static pill list, never reordered
                   key={`${g.group}-${i}`}
-                  type="button"
                   onClick={() => setInput(p)}
                   className="text-sm bg-slate-800 hover:bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 transition-colors"
                 >

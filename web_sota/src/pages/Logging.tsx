@@ -1,5 +1,5 @@
-import { API_BASE } from "@/lib/api";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getApiBase } from "@/common/api";
 
 type LogEntry = {
   id: string;
@@ -7,7 +7,7 @@ type LogEntry = {
   level: string;
   kind: string;
   detail: string;
-  meta: Record<string, any>;
+  meta: Record<string, unknown>;
 };
 
 const LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR"];
@@ -27,7 +27,7 @@ export default function Logging() {
   const [level, setLevel] = useState("");
   const [kind, setKind] = useState("");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("desc");
+  const [sort] = useState("desc");
   const [tail, setTail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showClear, setShowClear] = useState(false);
@@ -49,7 +49,7 @@ export default function Logging() {
       if (search) params.set("search", search);
       if (opts.after_id) params.set("after_id", opts.after_id);
       try {
-        const r = await fetch(`${API_BASE}/api/logs?${params}`);
+        const r = await fetch(`${base}/api/logs?${params}`);
         const d = await r.json();
         if (opts.tail && opts.after_id) {
           setEntries((prev) => [...prev, ...d.entries].slice(-200));
@@ -85,6 +85,7 @@ export default function Logging() {
     return () => clearInterval(iv);
   }, [tail, fetchLogs]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll-to-bottom must re-run on new entries; ref reads are intentional
   useEffect(() => {
     if (tail && !userScrolled && endRef.current) {
       endRef.current.scrollIntoView({ behavior: "smooth" });
@@ -105,12 +106,13 @@ export default function Logging() {
   };
 
   const handleExport = async (fmt: string) => {
+    const base = getApiBase();
     const params = new URLSearchParams();
     params.set("format", fmt);
     if (level) params.set("level", level);
     if (kind) params.set("kind", kind);
     if (search) params.set("search", search);
-    const r = await fetch(`${API_BASE}/api/logs/export?${params}`);
+    const r = await fetch(`${base}/api/logs/export?${params}`);
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -121,11 +123,20 @@ export default function Logging() {
   };
 
   const handleClear = async () => {
-    await fetch(`${API_BASE}/api/logs`, { method: "DELETE" });
+    await fetch(`${getApiBase()}/api/logs`, { method: "DELETE" });
     setShowClear(false);
     setEntries([]);
     setTotal(0);
   };
+
+  useEffect(() => {
+    if (!showClear) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowClear(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showClear]);
 
   const totalPages = Math.ceil(total / limit);
   const currentPage = Math.floor(offset / limit) + 1;
@@ -189,6 +200,7 @@ export default function Logging() {
         </select>
 
         <button
+          type="button"
           className={`h-8 rounded px-3 text-xs font-medium ${tail ? "bg-emerald-600 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"}`}
           onClick={() => setTail(!tail)}
         >
@@ -196,12 +208,14 @@ export default function Logging() {
         </button>
 
         <button
+          type="button"
           className="h-8 rounded border border-slate-700 px-3 text-xs text-slate-400 hover:bg-slate-800"
           onClick={() => handleExport("json")}
         >
           JSON
         </button>
         <button
+          type="button"
           className="h-8 rounded border border-slate-700 px-3 text-xs text-slate-400 hover:bg-slate-800"
           onClick={() => handleExport("csv")}
         >
@@ -209,6 +223,7 @@ export default function Logging() {
         </button>
 
         <button
+          type="button"
           className="h-8 rounded border border-red-800 px-3 text-xs text-red-400 hover:bg-red-950/30"
           onClick={() => setShowClear(true)}
         >
@@ -250,6 +265,7 @@ export default function Logging() {
 
       <div className="flex items-center justify-between text-xs text-slate-500">
         <button
+          type="button"
           className="px-3 py-1 rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-30"
           disabled={offset <= 0}
           onClick={() => setOffset(Math.max(0, offset - limit))}
@@ -260,6 +276,7 @@ export default function Logging() {
           Page {currentPage} of {totalPages || 1}
         </span>
         <button
+          type="button"
           className="px-3 py-1 rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-30"
           disabled={offset + limit >= total}
           onClick={() => setOffset(offset + limit)}
@@ -269,13 +286,12 @@ export default function Logging() {
       </div>
 
       {showClear && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-          onClick={() => setShowClear(false)}
-        >
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div
             className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-sm"
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm clear logs"
           >
             <h3 className="text-lg font-bold text-slate-200 mb-2">
               Clear all logs?
@@ -285,12 +301,14 @@ export default function Logging() {
             </p>
             <div className="flex gap-3 justify-end">
               <button
+                type="button"
                 className="px-4 py-2 rounded border border-slate-700 text-slate-400 text-sm hover:bg-slate-800"
                 onClick={() => setShowClear(false)}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 className="px-4 py-2 rounded bg-red-700 text-white text-sm hover:bg-red-600"
                 onClick={handleClear}
               >

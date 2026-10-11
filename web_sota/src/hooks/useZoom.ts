@@ -25,8 +25,11 @@ export function useZoom() {
 
   useEffect(() => {
     try {
-      (document.documentElement.style as CSSStyleDeclaration & { zoom?: string }).zoom =
-        String(zoom);
+      (
+        document.documentElement.style as CSSStyleDeclaration & {
+          zoom?: string;
+        }
+      ).zoom = String(zoom);
       localStorage.setItem(LS_KEY, String(zoom));
     } catch {
       /* non-DOM */

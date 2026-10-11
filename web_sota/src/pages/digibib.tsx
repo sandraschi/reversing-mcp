@@ -1,7 +1,3 @@
-import { getApiBase } from "@/common/api";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BookOpen,
   CheckCircle2,
@@ -16,19 +12,32 @@ import {
   Terminal,
 } from "lucide-react";
 import { useState } from "react";
+import { getApiBase } from "@/common/api";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type SnapData = Record<string, unknown>;
 
 export function DigiBib() {
   const [loading, setLoading] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [findResult, setFindResult] = useState<Record<string, unknown> | null>(null);
+  const [findResult, setFindResult] = useState<Record<string, unknown> | null>(
+    null,
+  );
   const [snapResult, setSnapResult] = useState<SnapData | null>(null);
-  const [stringsResult, setStringsResult] = useState<Record<string, unknown> | null>(null);
-  const [idrStatus, setIdrStatus] = useState<Record<string, unknown> | null>(null);
+  const [stringsResult, setStringsResult] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [idrStatus, setIdrStatus] = useState<Record<string, unknown> | null>(
+    null,
+  );
   const [idrChecked, setIdrChecked] = useState(false);
   const [dkiPath, setDkiPath] = useState("");
-  const [dkiResult, setDkiResult] = useState<Record<string, unknown> | null>(null);
+  const [dkiResult, setDkiResult] = useState<Record<string, unknown> | null>(
+    null,
+  );
 
   const base = getApiBase();
 
@@ -71,7 +80,9 @@ export function DigiBib() {
     setLoading(4);
     setError(null);
     try {
-      const r = await fetch(`${base}/api/v1/digibib/decode-dki?path=${encodeURIComponent(dkiPath)}`);
+      const r = await fetch(
+        `${base}/api/v1/digibib/decode-dki?path=${encodeURIComponent(dkiPath)}`,
+      );
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setDkiResult(await r.json());
     } catch (e) {
@@ -100,18 +111,26 @@ export function DigiBib() {
         <div className="flex items-center gap-3 mb-3">
           <BookOpen className="h-8 w-8 text-amber-500" />
           <div>
-            <h2 className="text-2xl font-bold text-white">DigiBib Reversing Lab</h2>
+            <h2 className="text-2xl font-bold text-white">
+              DigiBib Reversing Lab
+            </h2>
             <p className="text-slate-400 text-sm">
-              Walk through the Digibib5.exe / Directmedia reversing workflow step by step
+              Walk through the Digibib5.exe / Directmedia reversing workflow
+              step by step
             </p>
           </div>
         </div>
         <p className="text-slate-400 text-sm leading-relaxed max-w-3xl">
-          <strong className="text-slate-200">Digitale Bibliothek</strong> was a 1990s German e-book
-          platform by Directmedia Publishing. This lab walks through reversing Digibib5.exe and its
-          proprietary .DKI container format. See the{" "}
-          <a href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/DIGIBIB_REVERSING_GUIDE.md"
-            className="text-blue-400 hover:underline" target="_blank" rel="noreferrer">
+          <strong className="text-slate-200">Digitale Bibliothek</strong> was a
+          1990s German e-book platform by Directmedia Publishing. This lab walks
+          through reversing Digibib5.exe and its proprietary .DKI container
+          format. See the{" "}
+          <a
+            href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/DIGIBIB_REVERSING_GUIDE.md"
+            className="text-blue-400 hover:underline"
+            target="_blank"
+            rel="noreferrer"
+          >
             full reversing guide <ExternalLink className="h-3 w-3 inline" />
           </a>{" "}
           for detailed methodology.
@@ -122,21 +141,29 @@ export function DigiBib() {
       <div className="flex items-center gap-2 overflow-x-auto pb-2">
         {steps.map((s) => (
           <div key={s.id} className="flex items-center gap-1 shrink-0">
-            <Badge variant={s.done ? "default" : "outline"}
-              className={s.done
-                ? "bg-emerald-900/50 text-emerald-400 border-emerald-700"
-                : "border-slate-700 text-slate-500"}>
+            <Badge
+              variant={s.done ? "default" : "outline"}
+              className={
+                s.done
+                  ? "bg-emerald-900/50 text-emerald-400 border-emerald-700"
+                  : "border-slate-700 text-slate-500"
+              }
+            >
               {s.done ? <CheckCircle2 className="h-3 w-3 mr-1" /> : null}
               {s.label}
             </Badge>
-            {s.id < steps.length - 1 && <ChevronRight className="h-4 w-4 text-slate-600" />}
+            {s.id < steps.length - 1 && (
+              <ChevronRight className="h-4 w-4 text-slate-600" />
+            )}
           </div>
         ))}
       </div>
 
       {error && (
         <Card className="border-red-900/50 bg-red-950/20">
-          <CardContent className="pt-6 text-red-400 text-sm">{error}</CardContent>
+          <CardContent className="pt-6 text-red-400 text-sm">
+            {error}
+          </CardContent>
         </Card>
       )}
 
@@ -146,23 +173,44 @@ export function DigiBib() {
           <CardTitle className="flex items-center gap-2 text-white text-lg">
             <FileSearch className="h-5 w-5 text-blue-500" />
             Step 0 — Find Digibib5.exe
-            {findResult?.found ? <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">Found</Badge> : null}
+            {findResult?.found ? (
+              <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">
+                Found
+              </Badge>
+            ) : null}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-slate-400">Scan known paths (fixtures, Program Files) for Digibib5.exe.</p>
-          <Button onClick={() => runStep(0, "/api/v1/digibib/find")} disabled={loading === 0} size="sm">
-            {loading === 0 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileSearch className="h-4 w-4 mr-2" />}
+          <p className="text-sm text-slate-400">
+            Scan known paths (fixtures, Program Files) for Digibib5.exe.
+          </p>
+          <Button
+            onClick={() => runStep(0, "/api/v1/digibib/find")}
+            disabled={loading === 0}
+            size="sm"
+          >
+            {loading === 0 ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <FileSearch className="h-4 w-4 mr-2" />
+            )}
             Scan for binary
           </Button>
           {findResult && (
             <div className="text-sm space-y-1">
-              <p className={findResult.found ? "text-emerald-400" : "text-red-400"}>
-                {findResult.found ? `Found at ${findResult.path}` : "Not found in standard paths"}
+              <p
+                className={
+                  findResult.found ? "text-emerald-400" : "text-red-400"
+                }
+              >
+                {findResult.found
+                  ? `Found at ${findResult.path}`
+                  : "Not found in standard paths"}
               </p>
               {!findResult.found && (
                 <p className="text-slate-500 text-xs">
-                  Searched: {(findResult.paths_searched as string[])?.join(", ") || "—"}
+                  Searched:{" "}
+                  {(findResult.paths_searched as string[])?.join(", ") || "—"}
                 </p>
               )}
             </div>
@@ -176,32 +224,55 @@ export function DigiBib() {
           <CardTitle className="flex items-center gap-2 text-white text-lg">
             <Search className="h-5 w-5 text-blue-500" />
             Step 1 — Research Snapshot
-            {snapResult?.success ? <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">Done</Badge> : null}
+            {snapResult?.success ? (
+              <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">
+                Done
+              </Badge>
+            ) : null}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-slate-400">Full static analysis: PE summary, entropy, keyword strings, tool availability.</p>
-          <Button onClick={() => runStep(1, "/api/v1/digibib/snapshot")} disabled={loading === 1 || !findResult?.found} size="sm">
-            {loading === 1 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+          <p className="text-sm text-slate-400">
+            Full static analysis: PE summary, entropy, keyword strings, tool
+            availability.
+          </p>
+          <Button
+            onClick={() => runStep(1, "/api/v1/digibib/snapshot")}
+            disabled={loading === 1 || !findResult?.found}
+            size="sm"
+          >
+            {loading === 1 ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4 mr-2" />
+            )}
             Run snapshot
           </Button>
           {snapResult?.success && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-2">
               <div>
                 <p className="text-slate-500 text-xs">File size</p>
-                <p className="text-white font-mono">{Number(snap?.size || 0).toLocaleString()} bytes</p>
+                <p className="text-white font-mono">
+                  {Number(snap?.size || 0).toLocaleString()} bytes
+                </p>
               </div>
               <div>
                 <p className="text-slate-500 text-xs">Type</p>
-                <p className="text-white font-mono">{(snap?.type as string) || "—"}</p>
+                <p className="text-white font-mono">
+                  {(snap?.type as string) || "—"}
+                </p>
               </div>
               <div>
                 <p className="text-slate-500 text-xs">DM string hits</p>
-                <p className="text-white font-mono">{String(snapResult.directmedia_string_hits_total || 0)}</p>
+                <p className="text-white font-mono">
+                  {String(snapResult.directmedia_string_hits_total || 0)}
+                </p>
               </div>
               <div>
                 <p className="text-slate-500 text-xs">Overall entropy</p>
-                <p className="text-white font-mono">{String(ent?.overall || "—")}</p>
+                <p className="text-white font-mono">
+                  {String(ent?.overall || "—")}
+                </p>
               </div>
             </div>
           )}
@@ -217,26 +288,47 @@ export function DigiBib() {
           <CardTitle className="flex items-center gap-2 text-white text-lg">
             <Terminal className="h-5 w-5 text-amber-500" />
             Step 2 — IDR: Recover Delphi Symbols
-            {idrStatus?.installed ? <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">Installed</Badge> : null}
+            {idrStatus?.installed ? (
+              <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">
+                Installed
+              </Badge>
+            ) : null}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-slate-300">
-            Digibib5.exe is likely a Delphi binary. <strong>IDR (Interactive Delphi Reconstructor)</strong>{" "}
-            recovers class names, method names, form layouts, and event handlers — turning{" "}
-            <code className="text-amber-400">FUN_00613458</code> into{" "}
+            Digibib5.exe is likely a Delphi binary.{" "}
+            <strong>IDR (Interactive Delphi Reconstructor)</strong> recovers
+            class names, method names, form layouts, and event handlers —
+            turning <code className="text-amber-400">FUN_00613458</code> into{" "}
             <code className="text-emerald-400">TTextReader_ReadLn</code>.
           </p>
 
           <div className="flex gap-2 flex-wrap">
-            <Button onClick={checkIdr} disabled={loading === 5} size="sm" variant="outline" className="border-slate-700">
-              {loading === 5 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Terminal className="h-4 w-4 mr-2" />}
+            <Button
+              onClick={checkIdr}
+              disabled={loading === 5}
+              size="sm"
+              variant="outline"
+              className="border-slate-700"
+            >
+              {loading === 5 ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Terminal className="h-4 w-4 mr-2" />
+              )}
               Check if installed
             </Button>
             {!idrStatus?.installed && (
-              <a href="https://github.com/crypto2011/IDR/releases/tag/27_01_2019"
-                target="_blank" rel="noreferrer">
-                <Button size="sm" className="bg-amber-700 hover:bg-amber-600 text-white">
+              <a
+                href="https://github.com/crypto2011/IDR/releases/tag/27_01_2019"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Button
+                  size="sm"
+                  className="bg-amber-700 hover:bg-amber-600 text-white"
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Download IDR
                 </Button>
@@ -245,33 +337,67 @@ export function DigiBib() {
           </div>
 
           {idrChecked && idrStatus?.installed && (
-            <div className="text-sm text-emerald-400">Installed at {String(idrStatus.path)}</div>
+            <div className="text-sm text-emerald-400">
+              Installed at {String(idrStatus.path)}
+            </div>
           )}
           {idrChecked && !idrStatus?.installed && (
             <div className="text-sm text-slate-400">
-              Not found. Run <code className="text-amber-400">just install-idr</code> or download from{" "}
-              <a href="https://github.com/crypto2011/IDR/releases" className="text-blue-400 hover:underline" target="_blank" rel="noreferrer">GitHub</a>.
+              Not found. Run{" "}
+              <code className="text-amber-400">just install-idr</code> or
+              download from{" "}
+              <a
+                href="https://github.com/crypto2011/IDR/releases"
+                className="text-blue-400 hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitHub
+              </a>
+              .
             </div>
           )}
 
           <div className="border border-slate-700 rounded-lg p-3 bg-slate-900/50 text-sm space-y-2">
             <p className="text-slate-200 font-medium">Workflow:</p>
             <ol className="text-slate-400 space-y-1.5 text-sm list-decimal list-inside">
-              <li>Launch IDR: <code className="text-amber-400">Idr.exe</code></li>
-              <li><strong>File → Open</strong> → select Digibib5.exe</li>
-              <li>Browse the <strong>Classes</strong> tree for names containing{" "}
-                <code className="text-emerald-400">Reader</code>, <code className="text-emerald-400">DKI</code>,{" "}
-                <code className="text-emerald-400">Stream</code>, <code className="text-emerald-400">Decode</code></li>
-              <li>Check <strong>Forms</strong> tab for the main window — the "Open Volume" button's{" "}
-                <code className="text-emerald-400">OnClick</code> handler is your entry point</li>
-              <li><strong>File → Export → Map file</strong> → save <code>Digibib5.map</code></li>
-              <li>In Ghidra: <strong>File → Load → Map File</strong> → select the .map → symbols applied</li>
+              <li>
+                Launch IDR: <code className="text-amber-400">Idr.exe</code>
+              </li>
+              <li>
+                <strong>File → Open</strong> → select Digibib5.exe
+              </li>
+              <li>
+                Browse the <strong>Classes</strong> tree for names containing{" "}
+                <code className="text-emerald-400">Reader</code>,{" "}
+                <code className="text-emerald-400">DKI</code>,{" "}
+                <code className="text-emerald-400">Stream</code>,{" "}
+                <code className="text-emerald-400">Decode</code>
+              </li>
+              <li>
+                Check <strong>Forms</strong> tab for the main window — the "Open
+                Volume" button's{" "}
+                <code className="text-emerald-400">OnClick</code> handler is
+                your entry point
+              </li>
+              <li>
+                <strong>File → Export → Map file</strong> → save{" "}
+                <code>Digibib5.map</code>
+              </li>
+              <li>
+                In Ghidra: <strong>File → Load → Map File</strong> → select the
+                .map → symbols applied
+              </li>
             </ol>
           </div>
 
           <div className="text-xs text-slate-500">
-            <a href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/IDR.md"
-              className="text-blue-400 hover:underline" target="_blank" rel="noreferrer">
+            <a
+              href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/IDR.md"
+              className="text-blue-400 hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
               Full IDR guide <ExternalLink className="h-3 w-3 inline" />
             </a>
           </div>
@@ -293,25 +419,46 @@ export function DigiBib() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-slate-400">
-            Strings matching DKI, decompress, inflate, ReadFile and other keywords. Xref anchors for Ghidra/ReVa.
+            Strings matching DKI, decompress, inflate, ReadFile and other
+            keywords. Xref anchors for Ghidra/ReVa.
           </p>
-          <Button onClick={() => runStep(2, "/api/v1/digibib/directmedia-strings")} disabled={loading === 2 || !findResult?.found} size="sm">
-            {loading === 2 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+          <Button
+            onClick={() => runStep(2, "/api/v1/digibib/directmedia-strings")}
+            disabled={loading === 2 || !findResult?.found}
+            size="sm"
+          >
+            {loading === 2 ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4 mr-2" />
+            )}
             Extract keyword strings
           </Button>
           {stringsResult?.success && (
             <div className="max-h-64 overflow-y-auto space-y-1 mt-2 border border-slate-800 rounded-lg p-2">
-              {(stringsResult.hits as Array<Record<string, unknown>>)?.slice(0, 50).map((h, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs font-mono border-b border-slate-800 py-1">
-                  <span className="text-slate-500 shrink-0">0x{(h.offset as number)?.toString(16).padStart(8, "0")}</span>
-                  <span className="text-slate-300 truncate">{(h.string as string)?.slice(0, 120)}</span>
-                  <Badge className="shrink-0 bg-amber-900/30 text-amber-400 border-amber-800 text-[10px]">
-                    {h.keyword_hit as string}
-                  </Badge>
-                </div>
-              ))}
+              {(stringsResult.hits as Array<Record<string, unknown>>)
+                ?.slice(0, 50)
+                .map((h, i) => (
+                  <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: offset-keyed rows, static snapshot render
+                    key={i}
+                    className="flex items-start gap-2 text-xs font-mono border-b border-slate-800 py-1"
+                  >
+                    <span className="text-slate-500 shrink-0">
+                      0x{(h.offset as number)?.toString(16).padStart(8, "0")}
+                    </span>
+                    <span className="text-slate-300 truncate">
+                      {(h.string as string)?.slice(0, 120)}
+                    </span>
+                    <Badge className="shrink-0 bg-amber-900/30 text-amber-400 border-amber-800 text-[10px]">
+                      {h.keyword_hit as string}
+                    </Badge>
+                  </div>
+                ))}
               {((stringsResult.hits as unknown[])?.length || 0) > 50 && (
-                <p className="text-xs text-slate-500 pt-1">...and {(stringsResult.hits as unknown[]).length - 50} more</p>
+                <p className="text-xs text-slate-500 pt-1">
+                  ...and {(stringsResult.hits as unknown[]).length - 50} more
+                </p>
               )}
             </div>
           )}
@@ -332,7 +479,9 @@ export function DigiBib() {
               <div />
               <div>
                 <p className="text-slate-500 text-xs">Overall entropy</p>
-                <p className="text-white font-mono text-lg">{Number(ent?.overall || 0).toFixed(2)}</p>
+                <p className="text-white font-mono text-lg">
+                  {Number(ent?.overall || 0).toFixed(2)}
+                </p>
                 <p className="text-xs text-slate-500 mt-1">
                   {Number(ent?.overall || 0) > 7.5
                     ? "High — likely compressed/encrypted"
@@ -343,15 +492,23 @@ export function DigiBib() {
               </div>
               <div>
                 <p className="text-slate-500 text-xs">Compressed regions</p>
-                <p className="text-white font-mono">{String(ent?.compressed_region_count || 0)}</p>
+                <p className="text-white font-mono">
+                  {String(ent?.compressed_region_count || 0)}
+                </p>
               </div>
               <div>
-                <p className="text-slate-500 text-xs">Random/encrypted regions</p>
-                <p className="text-white font-mono">{String(ent?.random_region_count || 0)}</p>
+                <p className="text-slate-500 text-xs">
+                  Random/encrypted regions
+                </p>
+                <p className="text-white font-mono">
+                  {String(ent?.random_region_count || 0)}
+                </p>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">Run Step 1 first to see entropy data.</p>
+            <p className="text-sm text-slate-500">
+              Run Step 1 first to see entropy data.
+            </p>
           )}
         </CardContent>
       </Card>
@@ -362,13 +519,17 @@ export function DigiBib() {
           <CardTitle className="flex items-center gap-2 text-white text-lg">
             <BookOpen className="h-5 w-5 text-blue-500" />
             Step 5 — DKI Decode
-            {dkiResult?.success ? <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">Decoded</Badge> : null}
+            {dkiResult?.success ? (
+              <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">
+                Decoded
+              </Badge>
+            ) : null}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-slate-400">
-            Try the heuristic decoder on a .DKI file (zlib/gzip autodetection with header skips).
-            Enter a path to a .DKI file on disk.
+            Try the heuristic decoder on a .DKI file (zlib/gzip autodetection
+            with header skips). Enter a path to a .DKI file on disk.
           </p>
           <div className="flex gap-2">
             <input
@@ -378,8 +539,16 @@ export function DigiBib() {
               placeholder="e.g. L:/Multimedia Files/.../DB094/Data/TEXT.DKI"
               className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
             />
-            <Button onClick={decodeDki} disabled={loading === 4 || !dkiPath.trim()} size="sm">
-              {loading === 4 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <BookOpen className="h-4 w-4 mr-2" />}
+            <Button
+              onClick={decodeDki}
+              disabled={loading === 4 || !dkiPath.trim()}
+              size="sm"
+            >
+              {loading === 4 ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <BookOpen className="h-4 w-4 mr-2" />
+              )}
               Decode
             </Button>
           </div>
@@ -388,15 +557,22 @@ export function DigiBib() {
               <div className="flex gap-4">
                 <div>
                   <p className="text-slate-500 text-xs">Strategy</p>
-                  <p className="text-white font-mono">{String(dkiResult.strategy_used || "—")}</p>
+                  <p className="text-white font-mono">
+                    {String(dkiResult.strategy_used || "—")}
+                  </p>
                 </div>
                 <div>
                   <p className="text-slate-500 text-xs">Encoding</p>
-                  <p className="text-white font-mono">{String(dkiResult.encoding_guess || "—")}</p>
+                  <p className="text-white font-mono">
+                    {String(dkiResult.encoding_guess || "—")}
+                  </p>
                 </div>
                 <div>
                   <p className="text-slate-500 text-xs">Uncompressed</p>
-                  <p className="text-white font-mono">{Number(dkiResult.uncompressed_bytes || 0).toLocaleString()} bytes</p>
+                  <p className="text-white font-mono">
+                    {Number(dkiResult.uncompressed_bytes || 0).toLocaleString()}{" "}
+                    bytes
+                  </p>
                 </div>
               </div>
               {dkiResult.text_preview && (
@@ -408,7 +584,9 @@ export function DigiBib() {
                 </div>
               )}
               {!dkiResult.success && (
-                <p className="text-red-400 text-xs">{String(dkiResult.error)}</p>
+                <p className="text-red-400 text-xs">
+                  {String(dkiResult.error)}
+                </p>
               )}
             </div>
           )}
@@ -425,39 +603,83 @@ export function DigiBib() {
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-3 text-sm">
           <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
-            <p className="text-white font-medium mb-1">Turbo Pascal 7.0 (DOS)</p>
-            <p className="text-slate-400 text-xs mb-2">Borland's classic IDE — also Delphi ancestor, also uses RTTI/VMT. Good second target after DigiBib.</p>
+            <p className="text-white font-medium mb-1">
+              Turbo Pascal 7.0 (DOS)
+            </p>
+            <p className="text-slate-400 text-xs mb-2">
+              Borland's classic IDE — also Delphi ancestor, also uses RTTI/VMT.
+              Good second target after DigiBib.
+            </p>
             <div className="flex gap-2 text-xs text-slate-500">
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">DOS MZ</Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">16-bit</Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Borland</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                DOS MZ
+              </Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                16-bit
+              </Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                Borland
+              </Badge>
             </div>
           </div>
           <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
-            <p className="text-white font-medium mb-1">Windows Notepad (notepad.exe)</p>
-            <p className="text-slate-400 text-xs mb-2">Simple, every Windows has it. Good for learning PE structure, import table, message loop pattern.</p>
+            <p className="text-white font-medium mb-1">
+              Windows Notepad (notepad.exe)
+            </p>
+            <p className="text-slate-400 text-xs mb-2">
+              Simple, every Windows has it. Good for learning PE structure,
+              import table, message loop pattern.
+            </p>
             <div className="flex gap-2 text-xs text-slate-500">
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Win32 PE</Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">MSVC</Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Ships with OS</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                Win32 PE
+              </Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                MSVC
+              </Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                Ships with OS
+              </Badge>
             </div>
           </div>
           <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
-            <p className="text-white font-medium mb-1">Windows Minesweeper (winmine.exe)</p>
-            <p className="text-slate-400 text-xs mb-2">Classic Windows game. Interesting for game RE: random seeding, board logic, WinAPI GDI drawing.</p>
+            <p className="text-white font-medium mb-1">
+              Windows Minesweeper (winmine.exe)
+            </p>
+            <p className="text-slate-400 text-xs mb-2">
+              Classic Windows game. Interesting for game RE: random seeding,
+              board logic, WinAPI GDI drawing.
+            </p>
             <div className="flex gap-2 text-xs text-slate-500">
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Win32 PE</Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Game logic</Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">GDI</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                Win32 PE
+              </Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                Game logic
+              </Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                GDI
+              </Badge>
             </div>
           </div>
           <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-3">
-            <p className="text-white font-medium mb-1">Windows Calculator (calc.exe)</p>
-            <p className="text-slate-400 text-xs mb-2">Simple math, UI controls, input parsing. Good for tracing arithmetic operations in the decompiler.</p>
+            <p className="text-white font-medium mb-1">
+              Windows Calculator (calc.exe)
+            </p>
+            <p className="text-slate-400 text-xs mb-2">
+              Simple math, UI controls, input parsing. Good for tracing
+              arithmetic operations in the decompiler.
+            </p>
             <div className="flex gap-2 text-xs text-slate-500">
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Win32 PE</Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Arithmetic</Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">Win32 controls</Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                Win32 PE
+              </Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                Arithmetic
+              </Badge>
+              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+                Win32 controls
+              </Badge>
             </div>
           </div>
         </CardContent>
@@ -469,23 +691,45 @@ export function DigiBib() {
           <CardTitle className="text-white text-lg">Next Steps</CardTitle>
         </CardHeader>
         <CardContent className="grid md:grid-cols-3 gap-4 text-sm">
-          <a href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/REVA.md"
-            target="_blank" rel="noreferrer"
-            className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:bg-slate-800/50 transition-colors">
-            <p className="text-blue-400 font-medium mb-1">ReVa MCP Setup <ExternalLink className="h-3 w-3 inline" /></p>
-            <p className="text-slate-400 text-xs">Ghidra MCP server — decompile, xrefs, rename via MCP</p>
+          <a
+            href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/REVA.md"
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:bg-slate-800/50 transition-colors"
+          >
+            <p className="text-blue-400 font-medium mb-1">
+              ReVa MCP Setup <ExternalLink className="h-3 w-3 inline" />
+            </p>
+            <p className="text-slate-400 text-xs">
+              Ghidra MCP server — decompile, xrefs, rename via MCP
+            </p>
           </a>
-          <a href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/IDR.md"
-            target="_blank" rel="noreferrer"
-            className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:bg-slate-800/50 transition-colors">
-            <p className="text-blue-400 font-medium mb-1">IDR Delphi Reconstructor <ExternalLink className="h-3 w-3 inline" /></p>
-            <p className="text-slate-400 text-xs">Recover symbols, forms, and event handlers from the Delphi PE</p>
+          <a
+            href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/IDR.md"
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:bg-slate-800/50 transition-colors"
+          >
+            <p className="text-blue-400 font-medium mb-1">
+              IDR Delphi Reconstructor{" "}
+              <ExternalLink className="h-3 w-3 inline" />
+            </p>
+            <p className="text-slate-400 text-xs">
+              Recover symbols, forms, and event handlers from the Delphi PE
+            </p>
           </a>
-          <a href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/DIGIBIB_REVERSING_GUIDE.md"
-            target="_blank" rel="noreferrer"
-            className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:bg-slate-800/50 transition-colors">
-            <p className="text-blue-400 font-medium mb-1">Full Reversing Guide <ExternalLink className="h-3 w-3 inline" /></p>
-            <p className="text-slate-400 text-xs">Dynamic tracing with Frida, procmon, offset-table extraction</p>
+          <a
+            href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/DIGIBIB_REVERSING_GUIDE.md"
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 hover:bg-slate-800/50 transition-colors"
+          >
+            <p className="text-blue-400 font-medium mb-1">
+              Full Reversing Guide <ExternalLink className="h-3 w-3 inline" />
+            </p>
+            <p className="text-slate-400 text-xs">
+              Dynamic tracing with Frida, procmon, offset-table extraction
+            </p>
           </a>
         </CardContent>
       </Card>

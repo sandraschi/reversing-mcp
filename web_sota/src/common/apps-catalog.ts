@@ -2,10 +2,9 @@ import {
   Activity,
   Archive,
   Bot,
-  Box,
   Brain,
-  Github,
   LayoutGrid,
+  type LucideIcon,
   MonitorPlay,
   Scan,
 } from "lucide-react";
@@ -14,8 +13,8 @@ export interface AppEntry {
   id: string;
   label: string;
   description: string;
-  icon: any;
-  url: string; // Absolute URL for cross-app navigation
+  icon: LucideIcon;
+  url: string; // Absolute URL for cross-app navigation (links, not fetches: cross-origin by design)
   port: number;
   tags: string[];
 }
