@@ -245,7 +245,7 @@ class ComprehensiveTestRunner:
         total_tests = 0
         passed_tests = 0
 
-        for category, results in all_results.items():
+        for _category, results in all_results.items():
             if isinstance(results, dict):
                 if "success" in results and isinstance(results["success"], bool):
                     total_tests += 1

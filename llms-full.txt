@@ -37,16 +37,32 @@ uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 - `shutdown(confirm=False)` — graceful server termination. Requires confirm=True.
 - `help(level="basic", topic=None)` — multi-level help. Levels: basic, intermediate, advanced. Topics: ghidra, binary, analysis.
 
-## REST API
+## REST API (single FastAPI app on :10750; `uvicorn reversing_mcp.server:app`)
 
 | Endpoint | Description |
 |----------|-------------|
 | GET /health | Liveness probe. Returns status, version, tool_count. |
 | GET /api/v1/diagnostics | Full diagnostics. Returns tools, system info, uptime, errors. |
+| GET /api/capabilities | Ports, features, tool inventory. |
 | GET /api/skills | List available skills. |
-| GET /api/skills/{name} | Get skill content. |
+| GET /api/skills/{name} | Get skill content (JSON). |
+| GET /skill/{name} | Get skill content (raw text). |
 | POST /api/shutdown | Graceful shutdown. |
+| POST /analyze/upload | Analyze an uploaded binary (multipart). |
+| POST /analyze/file | Analyze a server-side path (`{file_path, tools?}`). |
+| GET /tools/status | Engine inventory for Status/Tools pages. |
+| GET /ghidra/status | Ghidra install + bridge health. |
+| GET /ghidra/instances, POST /ghidra/connect, GET /ghidra/functions, POST /ghidra/decompile, POST /ghidra/disassemble, POST /start_ghidra | Ghidra bridge proxy. |
+| POST /llm/list_providers, POST /llm/list_models, POST /llm/select_model, POST /llm/load_model, POST /llm/unload_model, POST /llm/status, POST /llm/health | Ollama provider ops. |
+| GET /api/llm/discover, GET /api/llm/providers | Provider auto-discovery (presence, resident-first default, lists). |
+| GET /api/llm/models?provider= | Live model list. |
+| GET /api/llm/onboarding | Starter facts + recommended path. |
+| POST /api/llm/chat | Backend chat proxy (`{provider, model, messages}`). |
+| POST /api/v1/chat | Chat (`{message, history, system?, model?}`). |
+| GET /api/logs, GET /api/logs/stats, GET /api/logs/export, DELETE /api/logs | In-repo activity log ring buffer. |
+| GET /api/v1/digibib/find\|snapshot\|check-idr\|decode-dki\|directmedia-strings | Digibib5/DKI flows. |
 | /mcp | FastMCP HTTP transport endpoint. |
+| /docs, /redoc, /openapi.json | Auto API docs. |
 
 ## Environment variables
 
@@ -58,6 +74,8 @@ uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 | MCP_PATH | /mcp | HTTP endpoint path |
 | GHIDRA_INSTALL_DIR | — | Ghidra installation root (for headless) |
 | GHIDRA_HOME | — | Alias for GHIDRA_INSTALL_DIR |
+| GHIDRA_BRIDGE_URL | http://127.0.0.1:8089 | Webapp Ghidra-status proxy target |
+| OLLAMA_BASE_URL | http://localhost:11434 | Webapp Chat + LLM discovery |
 | DIGITALE_BIBLIOTHEK_ROOT | — | Digitale Bibliothek library root |
 | LOG_LEVEL | INFO | Logging level |
 

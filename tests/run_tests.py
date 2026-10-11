@@ -17,7 +17,7 @@ def install_test_deps():
     try:
         import pytest
 
-        print("✓ pytest already installed")
+        print(f"✓ pytest {pytest.__version__} already installed")
     except ImportError:
         print("Installing test dependencies...")
         requirements_file = Path(__file__).parent.parent / "requirements-dev.txt"
