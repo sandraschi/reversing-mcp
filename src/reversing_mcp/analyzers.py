@@ -433,7 +433,8 @@ class BinaryAnalyzer:
     ) -> dict[str, Any]:
         """Real Ghidra analysis using analyzeHeadless.bat"""
         try:
-            ghidra_run = Path(self.tools_cache["ghidra"]["path"])
+            tools = self.tools_cache or {}
+            ghidra_run = Path(tools["ghidra"]["path"])
             ghidra_root = ghidra_run.parent
             headless_bat = ghidra_root / "support" / "analyzeHeadless.bat"
 
@@ -555,7 +556,7 @@ class BinaryAnalyzer:
         if not self.tools_cache:
             self.check_available_tools()
 
-        if not self.tools_cache.get("ghidra", {}).get("available"):
+        if not (self.tools_cache or {}).get("ghidra", {}).get("available"):
             return {"error": "Ghidra not available", "success": False}
 
         script_path = Path(__file__).parent.parent.parent / "ghidra_scripts" / "decompile_function.py"
@@ -812,7 +813,7 @@ class BinaryAnalyzer:
         """Find functions using Ghidra headless analysis"""
         try:
             # Ensure Ghidra is available
-            if not self.tools_cache.get("ghidra", {}).get("available"):
+            if not (self.tools_cache or {}).get("ghidra", {}).get("available"):
                 return [{"error": "Ghidra not available"}]
 
             # Run Ghidra analysis and extract functions from results

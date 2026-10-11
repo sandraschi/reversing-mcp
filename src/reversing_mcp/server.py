@@ -991,7 +991,7 @@ try:
 
     @_http_app.get("/health")
     async def _health() -> dict:
-        tools = mcp._tool_manager.list_tools() if hasattr(mcp, "_tool_manager") else []
+        tools = await mcp.list_tools()
         return {
             "status": "ok",
             "version": "0.4.0",
@@ -1000,7 +1000,7 @@ try:
 
     @_http_app.get("/api/v1/diagnostics")
     async def _diagnostics() -> dict:
-        tools = mcp._tool_manager.list_tools() if hasattr(mcp, "_tool_manager") else []
+        tools = await mcp.list_tools()
         uptime = int(__import__("time").time() - _start_time)
         return {
             "status": "ok",
@@ -1688,7 +1688,7 @@ try:
     @_http_app.get("/api/capabilities")
     async def _capabilities():
         """Fleet-standard capability surface (ports, features, tool inventory)."""
-        tools = mcp._tool_manager.list_tools() if hasattr(mcp, "_tool_manager") else []
+        tools = await mcp.list_tools()
         return {
             "name": "reversing-mcp",
             "version": "0.4.0",

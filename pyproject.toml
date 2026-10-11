@@ -20,7 +20,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest>=8.0", "pytest-asyncio", "httpx"]
-dev = ["ruff>=0.16.0,<0.17", "mypy"]
+dev = ["ruff>=0.16.0,<0.17", "mypy", "pyright", "pre-commit", "bandit", "safety"]
 # Headless Ghidra from Python (DecompInterface, import/analyze). Requires a local Ghidra install;
 # set GHIDRA_INSTALL_DIR if not using the default path in scripts/decompile_pe_pyghidra.py.
 ghidra = [
