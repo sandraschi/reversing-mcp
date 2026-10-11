@@ -19,6 +19,11 @@ just test              # run tests
 
 > Full install: [INSTALL.md](INSTALL.md) · Tools: [llms-full.txt](llms-full.txt) · Changelog: [CHANGELOG.md](CHANGELOG.md)
 
+**Claude Desktop bundle (one-liner):**
+```powershell
+powershell -c "irm https://github.com/sandraschi/reversing-mcp/releases/latest/download/install.ps1 | iex"
+```
+
 ## What it does
 
 15 tools across five domains:

@@ -15,7 +15,6 @@
         "PYTHONUNBUFFERED": "1"
       }
     }
-    }
   },
   "tools": [
     { "name": "analyze_binary", "description": "analyze_binary" },

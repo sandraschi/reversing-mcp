@@ -1,4 +1,4 @@
-set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+set windows-shell := ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
 import 'scripts/just/fleet.just'
 
 # --- Core ---
