@@ -36,6 +36,7 @@ just test              # run tests
 |------|------|-------|
 | **Interactive** (ReVa MCP) | You want decompile, xrefs, rename in Ghidra via MCP | [ReVa MCP guide](docs/REVA.md) |
 | **Agent RE** (REA sidecar) | JS/Electron, .NET, APK, firmware, browser, or agent-driven native via Hopper/Ghidra/IDA | [REA sidecar guide](docs/REA.md) |
+| **Behavioral + static** (Tier 3) | CUA feature tour correlated to disassembly: feature-to-code maps (spec, not built) | [Combo spec](docs/CUA_DISASSEMBLY_COMBO.md) |
 | **Headless** (`analyzeHeadless`) | Batch/script analysis from `analyze_binary` | Install Ghidra, set `GHIDRA_INSTALL_DIR` |
 | **IDA Pro headless** | Higher-quality decompilation if you have IDA | [IDA integration guide](docs/IDA.md) |
 
