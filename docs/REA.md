@@ -157,6 +157,16 @@ Behavior to know:
   `notes.rea_sidecar` pointer. No `rea`/`npx` on PATH -> tools still work, REA ones
   degrade to "run `just setup-rea`" instead of crashing.
 * Native kinds accept `provider` (`hopper`, `ghidra`, `ida`); omit it for auto-select.
+  Ranked happy path (fleet stance - cheap and legit first):
+  1. **`hopper`** - recommended: commercial but ~$100-range, REA setup auto-installs it,
+     first-class support. Caveat: macOS/Linux-native, no Windows build - Goliath needs WSL
+     or a second host (unverified; see `mcp-central-docs/integrations/hopper.md`).
+  2. **`ghidra`** - free, most knobs, but Windows support is experimental upstream and first
+     import on big binaries is slow (raise `timeout_s` + `REA_GHIDRA_STARTUP_TIMEOUT_MS`).
+  3. **`ida`** - bring-your-own-license only: IDA Pro + Hex-Rays + `mrexodia/ida-pro-mcp`
+     wiring (`REA_IDA_MCP_CONFIG`). Best decompiler, most setup, narrower adapter coverage
+     (function dossiers; no whole-binary overview, no mutation/debugging). REA never touches
+     activation - keep the license clean.
   `snapshot_path` passes `--snapshot` through for cached repeat queries.
 * Outputs over 512 KB are **not parsed** (a real Electron evidence file can be 300+ MB).
   You get `stdout_preview` (20k chars) + `stdout_bytes` + a hint to re-run with
