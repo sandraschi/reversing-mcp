@@ -167,6 +167,8 @@ Behavior to know:
      wiring (`REA_IDA_MCP_CONFIG`). Best decompiler, most setup, narrower adapter coverage
      (function dossiers; no whole-binary overview, no mutation/debugging). REA never touches
      activation - keep the license clean.
+  Fleet-wide five-way comparison (adds IDA Free + Frida, with decision matrix):
+  `mcp-central-docs/integrations/re-tools-comparison.md`.
   `snapshot_path` passes `--snapshot` through for cached repeat queries.
 * Outputs over 512 KB are **not parsed** (a real Electron evidence file can be 300+ MB).
   You get `stdout_preview` (20k chars) + `stdout_bytes` + a hint to re-run with
