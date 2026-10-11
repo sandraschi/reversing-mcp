@@ -54,6 +54,12 @@ fmt:
 ci:
     Set-Location '{{justfile_directory()}}'; uv run ruff check src/ tests/; uv run ruff format --check src/ tests/; uv run pyright src/; uv run pytest tests/ -q; Set-Location '{{justfile_directory()}}\web_sota'; npx tsc --noEmit; npx @biomejs/biome ci src
 
+# Certify: alias for ci (fleet gate name). Launcher separately certified via start.ps1 -BackendOnly.
+
+# Certify: alias for ci (fleet gate name). Launcher separately certified via start.ps1 -BackendOnly.
+certify:
+    just ci
+
 # Browser end-to-end: CUA webapp walk (stack start + nav walk in browser)
 e2e:
     powershell.exe -NoProfile -File '{{justfile_directory()}}\scripts\just\cua-webapp-test.ps1'

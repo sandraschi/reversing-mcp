@@ -74,7 +74,7 @@ export function Inbox() {
           <h2 className="text-2xl font-bold tracking-tight text-white">
             Inbox
           </h2>
-          <p className="text-slate-400">
+          <p className="text-slate-300">
             Recent analysis results, newest first
           </p>
         </div>
@@ -98,7 +98,7 @@ export function Inbox() {
       />
 
       {loading && (
-        <p className="text-sm text-slate-500" data-testid="inbox-loading">
+        <p className="text-sm text-slate-300" data-testid="inbox-loading">
           Loading…
         </p>
       )}
@@ -108,7 +108,7 @@ export function Inbox() {
           className="border-slate-800 bg-slate-950/50"
           data-testid="inbox-empty"
         >
-          <CardContent className="pt-6 text-sm text-slate-400">
+          <CardContent className="pt-6 text-sm text-slate-300">
             {entries.length === 0 ? (
               <span>
                 Nothing here yet.{" "}
@@ -134,7 +134,7 @@ export function Inbox() {
             <CardTitle className="text-white text-base flex items-center gap-2">
               <InboxIcon className="h-4 w-4 text-blue-400" />
               {e.title}
-              <span className="text-sm font-normal text-slate-500">
+              <span className="text-sm font-normal text-slate-300">
                 [{e.kind}]
               </span>
             </CardTitle>
@@ -143,7 +143,7 @@ export function Inbox() {
             <p className="text-sm text-slate-300 whitespace-pre-wrap break-words">
               {e.detail}
             </p>
-            <p className="text-sm text-slate-500 mt-1 font-mono">{e.ts}</p>
+            <p className="text-sm text-slate-300 mt-1 font-mono">{e.ts}</p>
           </CardContent>
         </Card>
       ))}

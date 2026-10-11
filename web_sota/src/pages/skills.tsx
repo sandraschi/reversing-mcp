@@ -53,13 +53,13 @@ export function Skills() {
     <div className="space-y-6" data-testid="skills-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">Skills</h2>
-        <p className="text-slate-400">
+        <p className="text-slate-300">
           Agent skill preprompts served by the backend
         </p>
       </div>
 
       {loading && (
-        <p className="text-sm text-slate-500" data-testid="skills-loading">
+        <p className="text-sm text-slate-300" data-testid="skills-loading">
           Loading skills…
         </p>
       )}
@@ -80,7 +80,7 @@ export function Skills() {
           className="border-slate-800 bg-slate-950/50"
           data-testid="skills-empty"
         >
-          <CardContent className="pt-6 text-sm text-slate-400">
+          <CardContent className="pt-6 text-sm text-slate-300">
             No skills registered. Skills live in{" "}
             <span className="font-mono">src/reversing_mcp/skills/</span>.
           </CardContent>

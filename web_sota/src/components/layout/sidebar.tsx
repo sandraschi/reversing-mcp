@@ -67,7 +67,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               to={item.href}
               className={cn(
                 "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-slate-800 hover:text-white",
-                isActive ? "bg-slate-800 text-white" : "text-slate-400",
+                isActive ? "bg-slate-800 text-white" : "text-slate-300",
                 collapsed ? "justify-center" : "justify-start",
               )}
             >
