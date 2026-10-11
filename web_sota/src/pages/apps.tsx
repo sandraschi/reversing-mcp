@@ -54,14 +54,14 @@ export function Apps() {
         <h2 className="text-2xl font-bold tracking-tight text-white">
           This Server
         </h2>
-        <p className="text-slate-400">
+        <p className="text-slate-300">
           Live capabilities from the backend ({getApiBase()})
         </p>
       </div>
 
       {loading && (
         <p
-          className="text-sm text-slate-500 flex items-center gap-2"
+          className="text-sm text-slate-300 flex items-center gap-2"
           data-testid="apps-loading"
         >
           <Loader2 className="h-4 w-4 animate-spin" /> Loading capabilities…
@@ -95,7 +95,7 @@ export function Apps() {
                 <div className="text-2xl font-bold text-white font-mono">
                   {caps.name}
                 </div>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-slate-300">
                   v{caps.version} · :{caps.ports.backend} / :
                   {caps.ports.frontend}
                 </p>
@@ -118,7 +118,7 @@ export function Apps() {
                       className={`text-sm px-2 py-0.5 rounded border ${
                         v
                           ? "text-emerald-400 bg-emerald-900/30 border-emerald-800/50"
-                          : "text-slate-500 bg-slate-900 border-slate-800"
+                          : "text-slate-300 bg-slate-900 border-slate-800"
                       }`}
                     >
                       {k}
@@ -143,13 +143,13 @@ export function Apps() {
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-slate-200 flex items-center gap-2">
-                <Wrench className="h-4 w-4 text-slate-400" /> MCP tools (
+                <Wrench className="h-4 w-4 text-slate-300" /> MCP tools (
                 {tools.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               {tools.length === 0 ? (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-300">
                   No tools match this filter.
                 </p>
               ) : (

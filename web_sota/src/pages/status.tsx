@@ -46,7 +46,7 @@ export function Status() {
   if (loading && !tools && !ghidra) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
       </div>
     );
   }
@@ -58,7 +58,7 @@ export function Status() {
           <h2 className="text-2xl font-bold tracking-tight text-white">
             System Status
           </h2>
-          <p className="text-slate-400">
+          <p className="text-slate-300">
             Tools and Ghidra from backend ({getApiBase()})
           </p>
         </div>
@@ -114,7 +114,7 @@ export function Status() {
               ))}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm">
+            <p className="text-slate-300 text-sm">
               No tools data (backend down?)
             </p>
           )}
@@ -150,13 +150,13 @@ export function Status() {
                 )}
               </div>
               {ghidra.version && (
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-sm text-slate-300 mt-2">
                   Version: {ghidra.version}
                 </p>
               )}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm">
+            <p className="text-slate-300 text-sm">
               Could not load Ghidra status
             </p>
           )}

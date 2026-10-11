@@ -73,13 +73,13 @@ function LLMSettings() {
     <Card className="border-slate-800 bg-slate-950/50">
       <CardHeader>
         <CardTitle className="text-white">Local LLM</CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardDescription className="text-slate-300">
           Ollama provider · resident-first defaults (never evict a loaded model)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {status === "loading" && (
-          <p className="text-sm text-slate-500 flex items-center gap-2">
+          <p className="text-sm text-slate-300 flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" /> Detecting Ollama…
           </p>
         )}
@@ -115,7 +115,7 @@ function LLMSettings() {
                 </option>
               ))}
             </select>
-            {note && <p className="text-sm text-slate-500">{note}</p>}
+            {note && <p className="text-sm text-slate-300">{note}</p>}
           </>
         )}
       </CardContent>
@@ -165,7 +165,7 @@ export function Settings() {
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Configuration
         </h2>
-        <p className="text-slate-400">Backend API and connection</p>
+        <p className="text-slate-300">Backend API and connection</p>
       </div>
 
       <Card
@@ -174,7 +174,7 @@ export function Settings() {
       >
         <CardHeader>
           <CardTitle className="text-white">API Bridge</CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardDescription className="text-slate-300">
             FastAPI backend (SOTA port 10750). Saved in localStorage.
           </CardDescription>
         </CardHeader>
@@ -212,7 +212,7 @@ export function Settings() {
             )}
           </div>
           {ghidraInstalled !== null && (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-300">
               Ghidra: {ghidraInstalled ? "installed" : "not found"}
               {ghidraInstalled &&
                 (ghidraPlugin ? ", plugin running" : ", plugin not running")}

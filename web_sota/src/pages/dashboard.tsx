@@ -93,7 +93,7 @@ export function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
       </div>
     );
   }
@@ -105,7 +105,7 @@ export function Dashboard() {
           <h2 className="text-2xl font-bold tracking-tight text-white">
             Reversing MCP Dashboard
           </h2>
-          <p className="text-slate-400">System overview and status</p>
+          <p className="text-slate-300">System overview and status</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2" data-testid="backend-dot">
@@ -122,7 +122,7 @@ export function Dashboard() {
               }`}
             ></span>
           </span>
-          <span className="text-xs text-slate-400">
+          <span className="text-sm text-slate-300">
             {backendOk === true
               ? "Live"
               : backendOk === false
@@ -136,7 +136,7 @@ export function Dashboard() {
               className="ml-2 p-1 rounded hover:bg-slate-800 transition-colors"
               title="Retry connection (restart the backend via start.ps1 if it stays down)"
             >
-              <RefreshCw className="h-3 w-3 text-slate-400" />
+              <RefreshCw className="h-3 w-3 text-slate-300" />
             </button>
           )}
         </div>
@@ -172,7 +172,7 @@ export function Dashboard() {
             ) : backendOk === false ? (
               <XCircle className="h-4 w-4 text-red-500" />
             ) : (
-              <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
             )}
           </CardHeader>
           <CardContent>
@@ -183,7 +183,7 @@ export function Dashboard() {
                   ? "Not reachable"
                   : "Loading"}
             </div>
-            <p className="text-xs text-slate-400 font-mono truncate">{base}</p>
+            <p className="text-sm text-slate-300 font-mono truncate">{base}</p>
           </CardContent>
         </Card>
 
@@ -201,7 +201,7 @@ export function Dashboard() {
             <div className="text-2xl font-bold text-white">
               {backendOk ? (health?.tool_count ?? "—") : "—"}
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-sm text-slate-300">
               {backendOk ? `v${health?.version ?? "?"}` : "Offline"}
             </p>
           </CardContent>
@@ -225,7 +225,7 @@ export function Dashboard() {
             <div className="text-2xl font-bold text-white">
               {ghidra ? (ghidra.installed ? "Installed" : "Not found") : "—"}
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-sm text-slate-300">
               Bridge: {ghidra?.bridge_running ? "Running" : "Stopped"}
             </p>
           </CardContent>
@@ -245,7 +245,7 @@ export function Dashboard() {
             <div className="text-2xl font-bold text-white">
               {backendOk ? "Ready" : "Offline"}
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-sm text-slate-300">
               <Link to="/tools" className="text-blue-400 hover:underline">
                 Browse tools →
               </Link>

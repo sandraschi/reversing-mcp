@@ -94,7 +94,7 @@ export function Analyze() {
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Analyze Binary
         </h2>
-        <p className="text-slate-400">
+        <p className="text-slate-300">
           Upload an executable for reverse engineering analysis
         </p>
       </div>
@@ -105,7 +105,7 @@ export function Analyze() {
             <Upload className="h-5 w-5" />
             File Upload
           </CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardDescription className="text-slate-300">
             Choose a binary (.exe, .dll, .so, .bin, etc.)
           </CardDescription>
         </CardHeader>
@@ -118,13 +118,13 @@ export function Analyze() {
                 className="hidden"
                 onChange={onFileChange}
               />
-              <Upload className="h-5 w-5 text-slate-400" />
+              <Upload className="h-5 w-5 text-slate-300" />
               <span className="text-sm text-slate-300">
                 {file ? file.name : "Select a binary file"}
               </span>
             </label>
             {file && (
-              <div className="flex flex-wrap gap-2 text-sm text-slate-400">
+              <div className="flex flex-wrap gap-2 text-sm text-slate-300">
                 <span>{formatSize(file.size)}</span>
                 {!isValidBinary(file) && (
                   <Badge variant="destructive">Unsupported type</Badge>
@@ -139,7 +139,7 @@ export function Analyze() {
         <Card className="border-slate-800 bg-slate-950/50">
           <CardHeader>
             <CardTitle className="text-white">Analysis options</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-slate-300">
               Select tools to run (backend: {getApiBase()})
             </CardDescription>
           </CardHeader>
@@ -221,7 +221,7 @@ export function Analyze() {
               <CheckCircle className="h-5 w-5 text-emerald-500" />
               Analysis result
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-slate-300">
               {String(result.file_path)} — score{" "}
               {Number(result.analysis_score ?? 0).toFixed(0)}%
             </CardDescription>
@@ -229,25 +229,25 @@ export function Analyze() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <div className="text-slate-500">Tools</div>
+                <div className="text-slate-300">Tools</div>
                 <div className="text-slate-200 font-mono">
                   {(result.tools_used as string[])?.join(", ") ?? "—"}
                 </div>
               </div>
               <div>
-                <div className="text-slate-500">Strings</div>
+                <div className="text-slate-300">Strings</div>
                 <div className="text-slate-200">
                   {Number(result.strings ?? 0)}
                 </div>
               </div>
               <div>
-                <div className="text-slate-500">Functions</div>
+                <div className="text-slate-300">Functions</div>
                 <div className="text-slate-200">
                   {Number(result.functions ?? 0)}
                 </div>
               </div>
               <div>
-                <div className="text-slate-500">Language hint</div>
+                <div className="text-slate-300">Language hint</div>
                 <div className="text-slate-200">
                   {String(result.language_hint ?? "—")}
                 </div>
@@ -258,7 +258,7 @@ export function Analyze() {
       )}
 
       {!file && (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-300">
           Need help? See{" "}
           <a href="/help" className="text-blue-400 hover:underline">
             Help

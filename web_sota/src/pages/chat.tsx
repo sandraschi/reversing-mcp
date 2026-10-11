@@ -322,7 +322,7 @@ export function Chat() {
               skill:{skillName}
             </span>
           </div>
-          <p className="text-slate-400" title={providerLabel}>
+          <p className="text-slate-300" title={providerLabel}>
             {providerLabel} ·{" "}
             <a className="underline" href="#/settings">
               Settings
@@ -405,7 +405,7 @@ export function Chat() {
                 className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center border ${m.role === "user" ? "bg-slate-800 border-slate-700" : "bg-blue-900/20 border-blue-800"}`}
               >
                 {m.role === "user" ? (
-                  <User className="h-4 w-4 text-slate-400" />
+                  <User className="h-4 w-4 text-slate-300" />
                 ) : (
                   <Bot className="h-4 w-4 text-blue-400" />
                 )}
@@ -425,7 +425,7 @@ export function Chat() {
               <div className="h-8 w-8 rounded-full bg-blue-900/20 border border-blue-800 flex items-center justify-center">
                 <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
               </div>
-              <span className="text-sm text-slate-500">Thinking...</span>
+              <span className="text-sm text-slate-300">Thinking...</span>
             </div>
           )}
           <div ref={scrollRef} />
@@ -442,7 +442,7 @@ export function Chat() {
                   // biome-ignore lint/suspicious/noArrayIndexKey: static pill list, never reordered
                   key={`${g.group}-${i}`}
                   onClick={() => setInput(p)}
-                  className="text-sm bg-slate-800 hover:bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 transition-colors"
+                  className="text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700 transition-colors"
                 >
                   {p}
                 </button>

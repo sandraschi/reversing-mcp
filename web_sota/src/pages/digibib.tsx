@@ -117,13 +117,13 @@ export function DigiBib() {
             <h2 className="text-2xl font-bold text-white">
               DigiBib Reversing Lab
             </h2>
-            <p className="text-slate-400 text-sm">
+            <p className="text-slate-300 text-sm">
               Walk through the Digibib5.exe / Directmedia reversing workflow
               step by step
             </p>
           </div>
         </div>
-        <p className="text-slate-400 text-sm leading-relaxed max-w-3xl">
+        <p className="text-slate-300 text-sm leading-relaxed max-w-3xl">
           <strong className="text-slate-200">Digitale Bibliothek</strong> was a
           1990s German e-book platform by Directmedia Publishing. This lab walks
           through reversing Digibib5.exe and its proprietary .DKI container
@@ -152,7 +152,7 @@ export function DigiBib() {
               className={
                 s.done
                   ? "bg-emerald-900/50 text-emerald-400 border-emerald-700"
-                  : "border-slate-700 text-slate-500"
+                  : "border-slate-700 text-slate-300"
               }
             >
               {s.done ? <CheckCircle2 className="h-3 w-3 mr-1" /> : null}
@@ -187,7 +187,7 @@ export function DigiBib() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-300">
             Scan known paths (fixtures, Program Files) for Digibib5.exe.
           </p>
           <Button
@@ -214,7 +214,7 @@ export function DigiBib() {
                   : "Not found in standard paths"}
               </p>
               {!findResult.found && (
-                <p className="text-slate-500 text-xs">
+                <p className="text-slate-300 text-sm">
                   Searched:{" "}
                   {(findResult.paths_searched as string[])?.join(", ") || "—"}
                 </p>
@@ -238,7 +238,7 @@ export function DigiBib() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-300">
             Full static analysis: PE summary, entropy, keyword strings, tool
             availability.
           </p>
@@ -257,25 +257,25 @@ export function DigiBib() {
           {snapResult?.success && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-2">
               <div>
-                <p className="text-slate-500 text-xs">File size</p>
+                <p className="text-slate-300 text-sm">File size</p>
                 <p className="text-white font-mono">
                   {Number(snap?.size || 0).toLocaleString()} bytes
                 </p>
               </div>
               <div>
-                <p className="text-slate-500 text-xs">Type</p>
+                <p className="text-slate-300 text-sm">Type</p>
                 <p className="text-white font-mono">
                   {(snap?.type as string) || "—"}
                 </p>
               </div>
               <div>
-                <p className="text-slate-500 text-xs">DM string hits</p>
+                <p className="text-slate-300 text-sm">DM string hits</p>
                 <p className="text-white font-mono">
                   {String(snapResult.directmedia_string_hits_total || 0)}
                 </p>
               </div>
               <div>
-                <p className="text-slate-500 text-xs">Overall entropy</p>
+                <p className="text-slate-300 text-sm">Overall entropy</p>
                 <p className="text-white font-mono">
                   {String(ent?.overall || "—")}
                 </p>
@@ -348,7 +348,7 @@ export function DigiBib() {
             </div>
           )}
           {idrChecked && !idrStatus?.installed && (
-            <div className="text-sm text-slate-400">
+            <div className="text-sm text-slate-300">
               Not found. Run{" "}
               <code className="text-amber-400">just install-idr</code> or
               download from{" "}
@@ -366,7 +366,7 @@ export function DigiBib() {
 
           <div className="border border-slate-700 rounded-lg p-3 bg-slate-900/50 text-sm space-y-2">
             <p className="text-slate-200 font-medium">Workflow:</p>
-            <ol className="text-slate-400 space-y-1.5 text-sm list-decimal list-inside">
+            <ol className="text-slate-300 space-y-1.5 text-sm list-decimal list-inside">
               <li>
                 Launch IDR: <code className="text-amber-400">Idr.exe</code>
               </li>
@@ -397,7 +397,7 @@ export function DigiBib() {
             </ol>
           </div>
 
-          <div className="text-xs text-slate-500">
+          <div className="text-sm text-slate-300">
             <a
               href="https://github.com/sandraschi/reversing-mcp/blob/master/docs/IDR.md"
               className="text-blue-400 hover:underline"
@@ -424,7 +424,7 @@ export function DigiBib() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-300">
             Strings matching DKI, decompress, inflate, ReadFile and other
             keywords. Xref anchors for Ghidra/ReVa.
           </p>
@@ -448,9 +448,9 @@ export function DigiBib() {
                   <div
                     // biome-ignore lint/suspicious/noArrayIndexKey: offset-keyed rows, static snapshot render
                     key={i}
-                    className="flex items-start gap-2 text-xs font-mono border-b border-slate-800 py-1"
+                    className="flex items-start gap-2 text-sm font-mono border-b border-slate-800 py-1"
                   >
-                    <span className="text-slate-500 shrink-0">
+                    <span className="text-slate-300 shrink-0">
                       0x{(h.offset as number)?.toString(16).padStart(8, "0")}
                     </span>
                     <span className="text-slate-300 truncate">
@@ -462,7 +462,7 @@ export function DigiBib() {
                   </div>
                 ))}
               {((stringsResult.hits as unknown[])?.length || 0) > 50 && (
-                <p className="text-xs text-slate-500 pt-1">
+                <p className="text-sm text-slate-300 pt-1">
                   ...and {(stringsResult.hits as unknown[]).length - 50} more
                 </p>
               )}
@@ -484,11 +484,11 @@ export function DigiBib() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div />
               <div>
-                <p className="text-slate-500 text-xs">Overall entropy</p>
+                <p className="text-slate-300 text-sm">Overall entropy</p>
                 <p className="text-white font-mono text-lg">
                   {Number(ent?.overall || 0).toFixed(2)}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-sm text-slate-300 mt-1">
                   {Number(ent?.overall || 0) > 7.5
                     ? "High — likely compressed/encrypted"
                     : Number(ent?.overall || 0) > 5.5
@@ -497,13 +497,13 @@ export function DigiBib() {
                 </p>
               </div>
               <div>
-                <p className="text-slate-500 text-xs">Compressed regions</p>
+                <p className="text-slate-300 text-sm">Compressed regions</p>
                 <p className="text-white font-mono">
                   {String(ent?.compressed_region_count || 0)}
                 </p>
               </div>
               <div>
-                <p className="text-slate-500 text-xs">
+                <p className="text-slate-300 text-sm">
                   Random/encrypted regions
                 </p>
                 <p className="text-white font-mono">
@@ -512,7 +512,7 @@ export function DigiBib() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-300">
               Run Step 1 first to see entropy data.
             </p>
           )}
@@ -533,7 +533,7 @@ export function DigiBib() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-300">
             Try the heuristic decoder on a .DKI file (zlib/gzip autodetection
             with header skips). Enter a path to a .DKI file on disk.
           </p>
@@ -562,19 +562,19 @@ export function DigiBib() {
             <div className="text-sm space-y-2 mt-2">
               <div className="flex gap-4">
                 <div>
-                  <p className="text-slate-500 text-xs">Strategy</p>
+                  <p className="text-slate-300 text-sm">Strategy</p>
                   <p className="text-white font-mono">
                     {String(dkiResult.strategy_used || "—")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-500 text-xs">Encoding</p>
+                  <p className="text-slate-300 text-sm">Encoding</p>
                   <p className="text-white font-mono">
                     {String(dkiResult.encoding_guess || "—")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-500 text-xs">Uncompressed</p>
+                  <p className="text-slate-300 text-sm">Uncompressed</p>
                   <p className="text-white font-mono">
                     {Number(dkiResult.uncompressed_bytes || 0).toLocaleString()}{" "}
                     bytes
@@ -583,14 +583,14 @@ export function DigiBib() {
               </div>
               {dkiResult.text_preview && (
                 <div>
-                  <p className="text-slate-500 text-xs mb-1">Preview</p>
-                  <pre className="text-xs text-slate-300 bg-slate-900 rounded-lg p-3 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">
+                  <p className="text-slate-300 text-sm mb-1">Preview</p>
+                  <pre className="text-sm text-slate-300 bg-slate-900 rounded-lg p-3 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">
                     {String(dkiResult.text_preview).slice(0, 2000)}
                   </pre>
                 </div>
               )}
               {!dkiResult.success && (
-                <p className="text-red-400 text-xs">
+                <p className="text-red-400 text-sm">
                   {String(dkiResult.error)}
                 </p>
               )}
@@ -612,18 +612,18 @@ export function DigiBib() {
             <p className="text-white font-medium mb-1">
               Turbo Pascal 7.0 (DOS)
             </p>
-            <p className="text-slate-400 text-xs mb-2">
+            <p className="text-slate-300 text-sm mb-2">
               Borland's classic IDE — also Delphi ancestor, also uses RTTI/VMT.
               Good second target after DigiBib.
             </p>
-            <div className="flex gap-2 text-xs text-slate-500">
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+            <div className="flex gap-2 text-sm text-slate-300">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 DOS MZ
               </Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 16-bit
               </Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 Borland
               </Badge>
             </div>
@@ -632,18 +632,18 @@ export function DigiBib() {
             <p className="text-white font-medium mb-1">
               Windows Notepad (notepad.exe)
             </p>
-            <p className="text-slate-400 text-xs mb-2">
+            <p className="text-slate-300 text-sm mb-2">
               Simple, every Windows has it. Good for learning PE structure,
               import table, message loop pattern.
             </p>
-            <div className="flex gap-2 text-xs text-slate-500">
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+            <div className="flex gap-2 text-sm text-slate-300">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 Win32 PE
               </Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 MSVC
               </Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 Ships with OS
               </Badge>
             </div>
@@ -652,18 +652,18 @@ export function DigiBib() {
             <p className="text-white font-medium mb-1">
               Windows Minesweeper (winmine.exe)
             </p>
-            <p className="text-slate-400 text-xs mb-2">
+            <p className="text-slate-300 text-sm mb-2">
               Classic Windows game. Interesting for game RE: random seeding,
               board logic, WinAPI GDI drawing.
             </p>
-            <div className="flex gap-2 text-xs text-slate-500">
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+            <div className="flex gap-2 text-sm text-slate-300">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 Win32 PE
               </Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 Game logic
               </Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 GDI
               </Badge>
             </div>
@@ -672,18 +672,18 @@ export function DigiBib() {
             <p className="text-white font-medium mb-1">
               Windows Calculator (calc.exe)
             </p>
-            <p className="text-slate-400 text-xs mb-2">
+            <p className="text-slate-300 text-sm mb-2">
               Simple math, UI controls, input parsing. Good for tracing
               arithmetic operations in the decompiler.
             </p>
-            <div className="flex gap-2 text-xs text-slate-500">
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+            <div className="flex gap-2 text-sm text-slate-300">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 Win32 PE
               </Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 Arithmetic
               </Badge>
-              <Badge className="bg-slate-800 text-slate-400 border-slate-700">
+              <Badge className="bg-slate-800 text-slate-300 border-slate-700">
                 Win32 controls
               </Badge>
             </div>
@@ -706,7 +706,7 @@ export function DigiBib() {
             <p className="text-blue-400 font-medium mb-1">
               ReVa MCP Setup <ExternalLink className="h-3 w-3 inline" />
             </p>
-            <p className="text-slate-400 text-xs">
+            <p className="text-slate-300 text-sm">
               Ghidra MCP server — decompile, xrefs, rename via MCP
             </p>
           </a>
@@ -720,7 +720,7 @@ export function DigiBib() {
               IDR Delphi Reconstructor{" "}
               <ExternalLink className="h-3 w-3 inline" />
             </p>
-            <p className="text-slate-400 text-xs">
+            <p className="text-slate-300 text-sm">
               Recover symbols, forms, and event handlers from the Delphi PE
             </p>
           </a>
@@ -733,7 +733,7 @@ export function DigiBib() {
             <p className="text-blue-400 font-medium mb-1">
               Full Reversing Guide <ExternalLink className="h-3 w-3 inline" />
             </p>
-            <p className="text-slate-400 text-xs">
+            <p className="text-slate-300 text-sm">
               Dynamic tracing with Frida, procmon, offset-table extraction
             </p>
           </a>

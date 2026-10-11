@@ -43,7 +43,7 @@ export function Tools() {
         className="flex items-center justify-center py-12"
         data-testid="tools-loading"
       >
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
       </div>
     );
   }
@@ -58,7 +58,7 @@ export function Tools() {
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Tool Inventory
         </h2>
-        <p className="text-slate-400">Backend tools from {getApiBase()}</p>
+        <p className="text-slate-300">Backend tools from {getApiBase()}</p>
       </div>
 
       <input
@@ -82,7 +82,7 @@ export function Tools() {
                 <Card key={name} className="border-slate-800 bg-slate-950/50">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-slate-200 flex items-center gap-2">
-                      <Icon className="h-4 w-4 text-slate-400" />
+                      <Icon className="h-4 w-4 text-slate-300" />
                       {name}
                     </CardTitle>
                     {info?.available ? (
@@ -92,7 +92,7 @@ export function Tools() {
                     )}
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-slate-300">
                       {info?.available
                         ? `Available${info.version ? ` (${info.version})` : ""}`
                         : "Unavailable"}
@@ -103,14 +103,14 @@ export function Tools() {
             })
           ) : (
             <Card className="border-slate-800 bg-slate-950/50 col-span-full">
-              <CardContent className="pt-6 text-sm text-slate-500">
+              <CardContent className="pt-6 text-sm text-slate-300">
                 No tools match this filter.
               </CardContent>
             </Card>
           )
         ) : (
           <Card className="border-slate-800 bg-slate-950/50 col-span-full">
-            <CardContent className="pt-6 text-sm text-slate-500">
+            <CardContent className="pt-6 text-sm text-slate-300">
               Could not load tools. Is the backend running?
             </CardContent>
           </Card>
