@@ -1,0 +1,35 @@
+# Digibib5 feature tour (Tier 3) — NOT EXECUTED YET
+# Live run needs: isolated host, Digibib5 installed, pywinauto driver
+# implementing docs/CUA_DISASSEMBLY_COMBO.md section 3. This file documents
+# intent so the driver has something deterministic to execute.
+target:
+  exe: "C:/Program Files (x86)/Digitale Bibliothek 5/Digibib5.exe"
+  fallback_fixture: "tests/fixtures/exe files/Digibib5.exe"
+isolation:
+  network: off
+  credentials: none
+  snapshot_before: true
+steps:
+  - id: launch
+    action: launch
+    expect: "Digitale Bibliothek"
+    capture: [screenshot, process_list]
+  - id: open_volume
+    action: [click_menu: "Datei", click_item: "Öffnen"]
+    expect: "DB"
+    capture: [screenshot, uia_tree, file_diff]
+  - id: page_text
+    action: [key: PageDown, key: PageDown]
+    expect: null
+    capture: [screenshot, clipboard]
+  - id: search
+    action: [hotkey: "ctrl+f", type: "Goethe", key: Enter]
+    expect: "Goethe"
+    capture: [screenshot, uia_tree]
+  - id: quit
+    action: [hotkey: "alt+F4"]
+    expect: null
+    capture: [process_list]
+correlate_after:
+  seeds_from: [ocr_text, uia_labels, file_paths_written]
+  map_out: "maps/digibib5-tour-v1.md"

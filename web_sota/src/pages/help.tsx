@@ -9,7 +9,7 @@ export function Help() {
           <h2 className="text-2xl font-bold tracking-tight text-white">
             Help & Documentation
           </h2>
-          <p className="text-slate-400">
+          <p className="text-slate-300">
             Guidelines, standards, and usage patterns
           </p>
         </div>
@@ -23,7 +23,7 @@ export function Help() {
               <CardTitle className="text-white">Getting Started</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="text-sm text-slate-400 space-y-4">
+          <CardContent className="text-sm text-slate-300 space-y-4">
             <p>
               This MCP server provides a standardized interface for Reverse
               Engineering operations. It facilitates binary analysis, system
@@ -57,7 +57,7 @@ export function Help() {
               <CardTitle className="text-white">Developer Standards</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="text-sm text-slate-400 space-y-4">
+          <CardContent className="text-sm text-slate-300 space-y-4">
             <p>
               Follow the
               [AGENT_PROTOCOLS.md](file:///D:/Dev/repos/mcp-central-docs/standards/AGENT_PROTOCOLS.md)
@@ -84,7 +84,7 @@ export function Help() {
           </div>
         </CardHeader>
         <CardContent>
-          <table className="w-full text-sm text-left text-slate-400">
+          <table className="w-full text-sm text-left text-slate-300">
             <tbody className="divide-y divide-slate-800">
               <tr>
                 <td className="py-2 font-medium text-slate-300">

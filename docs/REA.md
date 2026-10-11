@@ -158,9 +158,10 @@ Behavior to know:
   degrade to "run `just setup-rea`" instead of crashing.
 * Native kinds accept `provider` (`hopper`, `ghidra`, `ida`); omit it for auto-select.
   Ranked happy path (fleet stance - cheap and legit first):
-  1. **`hopper`** - recommended: commercial but ~$100-range, REA setup auto-installs it,
-     first-class support. Caveat: macOS/Linux-native, no Windows build - Goliath needs WSL
-     or a second host (unverified; see `mcp-central-docs/integrations/hopper.md`).
+  1. **`hopper`** - recommended on macOS/Linux hosts: commercial but ~$100-range, REA setup
+     auto-installs it, first-class support. **Not available on Windows** (REA reports
+     "Hopper integration is not supported on win32", verified 2026-10-11) - Goliath skips
+     straight to 2.
   2. **`ghidra`** - free, most knobs, but Windows support is experimental upstream and first
      import on big binaries is slow (raise `timeout_s` + `REA_GHIDRA_STARTUP_TIMEOUT_MS`).
   3. **`ida`** - bring-your-own-license only: IDA Pro + Hex-Rays + `mrexodia/ida-pro-mcp`
