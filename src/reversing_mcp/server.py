@@ -7,10 +7,14 @@ server separately and connect it in your MCP client. See docs/GHIDRA.md and
 CURSOR_HANDOFF.md in this repository.
 """
 
+import json
 import os
 import tempfile
+import time
+from collections import deque
 from pathlib import Path
 from typing import Annotated, Any
+from uuid import uuid4
 
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
@@ -95,6 +99,7 @@ async def analyze_binary(
             "file_size": os.path.getsize(file_path),
             "tools_used": list(results.keys()),
             "results": results,
+            "message": f"Analyzed {file_path} with {len(results)} tool(s): {', '.join(results.keys())}.",
         }
     except Exception as e:
         logger.error(f"Error analyzing {file_path}: {e}")
@@ -154,7 +159,13 @@ async def get_hexdump(
 
     try:
         hexdump = analyzer.get_hexdump(file_path, offset, length)
-        return {"file_path": file_path, "offset": offset, "length": length, "hexdump": hexdump}
+        return {
+            "file_path": file_path,
+            "offset": offset,
+            "length": length,
+            "hexdump": hexdump,
+            "message": f"Hexdump of {file_path} at offset {offset} ({length} bytes).",
+        }
     except Exception as e:
         logger.error(f"Error getting hexdump for {file_path}: {e}")
         return {"error": f"Hexdump failed: {e!s}"}
@@ -187,6 +198,8 @@ async def analyze_entropy(
             "entropy_map": entropy_data["map"],
             "compressed_regions": entropy_data["compressed"],
             "random_regions": entropy_data["random"],
+            "message": f"Entropy of {file_path}: {entropy_data['overall']:.2f} overall, "
+            f"{len(entropy_data['compressed'])} compressed and {len(entropy_data['random'])} random regions.",
         }
     except Exception as e:
         logger.error(f"Error analyzing entropy for {file_path}: {e}")
@@ -213,7 +226,12 @@ async def find_functions(
 
     try:
         functions = analyzer.find_functions(file_path, tool)
-        return {"file_path": file_path, "tool_used": tool, "functions": functions}
+        return {
+            "file_path": file_path,
+            "tool_used": tool,
+            "functions": functions,
+            "message": f"Found {len(functions)} function(s) in {file_path} via {tool}.",
+        }
     except Exception as e:
         logger.error(f"Error finding functions in {file_path}: {e}")
         return {"error": f"Function analysis failed: {e!s}"}
@@ -246,6 +264,7 @@ async def get_file_info(
             "readable": os.access(file_path, os.R_OK),
             "writable": os.access(file_path, os.W_OK),
             "executable": os.access(file_path, os.X_OK),
+            "message": f"{file_path}: {stat.st_size} bytes, {analyzer.detect_file_type(file_path)}.",
         }
     except Exception as e:
         logger.error(f"Error getting file info for {file_path}: {e}")
@@ -309,6 +328,7 @@ async def check_tools() -> dict[str, Any]:
                 "recommended": ["ghidra", "r2", "binwalk"],
                 "premium": ["ida"],
             },
+            "message": f"{len([t for t in available_tools.values() if t['available']])}/{len(available_tools)} engines available.",
             "notes": {
                 "ghidra_mcp": (
                     "Ghidra MCP is not bundled here. Install ReVa (reverse-engineering-assistant) "
@@ -333,14 +353,28 @@ async def check_tools() -> dict[str, Any]:
 
 @mcp.tool(annotations=_READ_ONLY)
 async def rea_investigate(
-    target: Annotated[str | None, Field(description="Absolute path to target (binary, .asar, or app dir). Not needed for providers/capabilities/doctor.")] = None,
-    kind: Annotated[str, Field(description="Query kind: auto, javascript, native_overview, native_search, native_function, native_decompile, native_xrefs, native_trace, providers, capabilities, doctor.")] = "auto",
-    provider: Annotated[str | None, Field(description="Native provider: hopper, ghidra, ida. Omit for auto-select.")] = None,
+    target: Annotated[
+        str | None,
+        Field(
+            description="Absolute path to target (binary, .asar, or app dir). Not needed for providers/capabilities/doctor."
+        ),
+    ] = None,
+    kind: Annotated[
+        str,
+        Field(
+            description="Query kind: auto, javascript, native_overview, native_search, native_function, native_decompile, native_xrefs, native_trace, providers, capabilities, doctor."
+        ),
+    ] = "auto",
+    provider: Annotated[
+        str | None, Field(description="Native provider: hopper, ghidra, ida. Omit for auto-select.")
+    ] = None,
     query: Annotated[str | None, Field(description="Search text (native_search, native_trace).")] = None,
     symbol: Annotated[str | None, Field(description="Function name or address (native_function).")] = None,
     address: Annotated[str | None, Field(description="Address for decompile/xrefs (e.g. 0x1000, main).")] = None,
     snapshot_path: Annotated[str | None, Field(description="Snapshot file to read/write cached REA results.")] = None,
-    timeout_s: Annotated[int, Field(description="Subprocess timeout 10-900s (default 180). Large binaries need more.")] = 180,
+    timeout_s: Annotated[
+        int, Field(description="Subprocess timeout 10-900s (default 180). Large binaries need more.")
+    ] = 180,
 ) -> dict[str, Any]:
     """
     REA_INVESTIGATE - Delegate one query to the REA sidecar (`rea` CLI).
@@ -364,7 +398,7 @@ async def rea_investigate(
     if kind not in rea_bridge.REA_KINDS:
         return {"success": False, "error": f"Unknown kind '{kind}'. Valid: {', '.join(rea_bridge.REA_KINDS)}."}
     try:
-        return rea_bridge.run_rea(
+        out = rea_bridge.run_rea(
             kind,
             target,
             provider=provider,
@@ -374,12 +408,15 @@ async def rea_investigate(
             snapshot_path=snapshot_path,
             timeout_s=timeout_s,
         )
+        if out.get("success"):
+            out["message"] = f"REA {out.get('kind')} complete (exit {out.get('exit_code', 0)})."
+        return out
     except Exception as e:
         logger.error(f"REA investigate failed for {target}: {e}")
         return {"success": False, "error": f"REA investigate failed: {e!s}"}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def digibib_research_snapshot(exe_path: str | None = None) -> dict[str, Any]:
     """
     DIGIBIB_RESEARCH_SNAPSHOT - Static research bundle for Digibib5.exe / Directmedia viewer work.
@@ -409,7 +446,9 @@ async def digibib_research_snapshot(exe_path: str | None = None) -> dict[str, An
             "hint": "Copy Digibib5.exe into tests/fixtures/exe files/ or pass exe_path.",
         }
     try:
-        return build_research_snapshot(analyzer, resolved)
+        snap = build_research_snapshot(analyzer, resolved)
+        snap["message"] = f"Digibib snapshot for {resolved} complete."
+        return snap
     except Exception as e:
         logger.exception("digibib_research_snapshot failed")
         return {"success": False, "error": f"Snapshot failed: {e!s}", "exe_path": str(resolved)}
@@ -433,7 +472,11 @@ async def analyze_pe_file(
 
     try:
         pe_info = analyzer.analyze_pe_file(file_path)
-        return {"file_path": file_path, "pe_info": pe_info}
+        return {
+            "file_path": file_path,
+            "pe_info": pe_info,
+            "message": f"PE analysis of {file_path} complete ({pe_info.get('num_sections', '?')} sections).",
+        }
     except Exception as e:
         logger.error(f"Error analyzing PE file {file_path}: {e}")
         return {"error": f"PE analysis failed: {e!s}"}
@@ -458,7 +501,9 @@ async def decode_dki_file(
     if not os.path.exists(file_path):
         return {"success": False, "error": f"File not found: {file_path}"}
     r = decode_dki_path(Path(file_path))
-    return result_to_mcp_dict(file_path, r)
+    out = result_to_mcp_dict(file_path, r)
+    out["message"] = f"DKI decode of {file_path}: {'success' if out.get('success') else 'failed'}."
+    return out
 
 
 @mcp.tool(annotations=_MUTATING)
@@ -547,6 +592,10 @@ async def analyze_directmedia_file(
 
         response["output_file"] = str(output_file)
         response["extraction_status"] = "success"
+        response["message"] = (
+            f"Extracted {result['total_extracted_size']:,} text bytes from "
+            f"{len(result['extracted_sections'])} section(s) of {file_path}."
+        )
 
         return response
 
@@ -639,6 +688,8 @@ async def decompress_directmedia_library(
             "total_text_extracted": total_text_extracted,
             "results": results,
             "batch_status": "completed",
+            "message": f"Processed {processed_volumes}/{len(volume_dirs)} volumes, "
+            f"{total_text_extracted:,} text bytes extracted.",
         }
 
     except Exception as e:
@@ -646,7 +697,7 @@ async def decompress_directmedia_library(
         return {"error": f"Batch decompression failed: {e!s}"}
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READ_ONLY)
 async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]:
     """
     Get comprehensive help information about Reversing MCP tools and capabilities.
@@ -867,10 +918,11 @@ async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]
                 "workflows": help_content.get("workflows", {}),
             }
 
+    help_content["message"] = f"Reversing MCP help ({level} level)."
     return help_content
 
 
-@mcp.tool()
+@mcp.tool(annotations=_DESTRUCTIVE)
 async def shutdown(confirm: bool = False) -> dict:
     """
     Gracefully shut down the Reversing MCP server.
@@ -914,6 +966,7 @@ try:
     from fastapi import BackgroundTasks, File, HTTPException, UploadFile
     from fastapi import FastAPI as _FastAPI
     from fastapi.middleware.cors import CORSMiddleware as _CORSMiddleware
+    from fastapi.responses import Response
 
     _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.4.0")
 
@@ -1182,7 +1235,9 @@ try:
             raise HTTPException(status_code=500, detail=f"Tools status check failed: {e!s}") from e
 
     @_http_app.post("/analyze/upload")
-    async def _analyze_upload(background_tasks: BackgroundTasks, file: UploadFile = File(...), tools: str | None = None):
+    async def _analyze_upload(
+        background_tasks: BackgroundTasks, file: UploadFile = File(...), tools: str | None = None
+    ):
         """Analyze an uploaded file (Analyze page)."""
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file provided")
@@ -1251,7 +1306,7 @@ try:
                 bridge_running = True
                 connected_instance = status.get("connected_instance")
         except Exception:
-            pass
+            logger.exception("Ghidra status probe failed; reporting bridge as down")
         return _GhidraStatus(
             available=bridge_running,
             installed=installed,
@@ -1460,6 +1515,194 @@ try:
         except Exception as e:
             logger.error("Chat error: %s", e)
             raise HTTPException(status_code=502, detail=f"Ollama chat failed: {e!s}") from e
+
+    # --- In-repo activity log (folded 2026-10-11 from web_sota/backend/server.py;
+    # that standalone app bound forbidden port 8000 and was never started by any
+    # launcher. Same shapes the Logging page already calls.)
+
+    class _ActivityLog:
+        def __init__(self, max_entries: int = 2000):
+            self.max_entries = max_entries
+            self._entries: deque = deque(maxlen=max_entries)
+
+        def add(self, level: str, kind: str, detail: str, meta: dict | None = None) -> str:
+            eid = f"{time.time():.6f}.{uuid4().hex[:6]}"
+            self._entries.append(
+                {
+                    "id": eid,
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()),
+                    "level": level.upper(),
+                    "kind": kind,
+                    "detail": detail,
+                    "meta": meta or {},
+                }
+            )
+            return eid
+
+        def query(self, limit=50, offset=0, level=None, kind=None, search=None, sort="desc", after_id=None):
+            entries = list(self._entries)
+            if after_id:
+                try:
+                    at = float(after_id.split(".")[0])
+                    entries = [e for e in entries if float(e["id"].split(".")[0]) > at]
+                except (ValueError, IndexError):
+                    pass
+            if level:
+                lo = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3}
+                ml = lo.get(level.upper(), 1)
+                entries = [e for e in entries if lo.get(e["level"], 1) >= ml]
+            if kind:
+                entries = [e for e in entries if e["kind"] == kind]
+            if search:
+                q = search.lower()
+                entries = [e for e in entries if q in e["detail"].lower()]
+            entries.sort(key=lambda e: e["id"], reverse=(sort == "desc"))
+            total = len(entries)
+            return {
+                "entries": entries[offset : offset + limit],
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "max_entries": self.max_entries,
+                "sort": sort,
+            }
+
+        def stats(self):
+            levels: dict[str, int] = {}
+            kinds: dict[str, int] = {}
+            for e in self._entries:
+                levels[e["level"]] = levels.get(e["level"], 0) + 1
+                kinds[e["kind"]] = kinds.get(e["kind"], 0) + 1
+            return {"total": len(self._entries), "max_entries": self.max_entries, "levels": levels, "kinds": kinds}
+
+        def export(self, format="json", **filters):
+            result = self.query(limit=self.max_entries, **filters)
+            if format == "csv":
+                import csv
+                import io
+
+                buf = io.StringIO()
+                w = csv.writer(buf)
+                w.writerow(["id", "timestamp", "level", "kind", "detail", "meta"])
+                for e in result["entries"]:
+                    w.writerow([e["id"], e["timestamp"], e["level"], e["kind"], e["detail"], json.dumps(e["meta"])])
+                return buf.getvalue()
+            return json.dumps(result["entries"], indent=2)
+
+        def clear(self):
+            self._entries.clear()
+
+    _activity_log = _ActivityLog()
+    _activity_log.add("INFO", "server", "Reversing MCP HTTP backend started")
+
+    @_http_app.get("/api/logs")
+    async def _logs(
+        limit: int = 50,
+        offset: int = 0,
+        level: str | None = None,
+        kind: str | None = None,
+        search: str | None = None,
+        sort: str = "desc",
+        after_id: str | None = None,
+    ):
+        return _activity_log.query(
+            limit=limit, offset=offset, level=level, kind=kind, search=search, sort=sort, after_id=after_id
+        )
+
+    @_http_app.get("/api/logs/stats")
+    async def _logs_stats():
+        return _activity_log.stats()
+
+    @_http_app.get("/api/logs/export")
+    async def _logs_export(
+        format: str = "json", level: str | None = None, kind: str | None = None, search: str | None = None
+    ):
+        content = _activity_log.export(format=format, level=level, kind=kind, search=search)
+        media = "text/csv" if format == "csv" else "application/json"
+        return Response(
+            content=content, media_type=media, headers={"Content-Disposition": f'attachment; filename="logs.{format}"'}
+        )
+
+    @_http_app.delete("/api/logs")
+    async def _logs_clear():
+        _activity_log.clear()
+        return {"success": True, "message": "Logs cleared."}
+
+    # --- Fleet-standard LLM surface (aliases + discovery gaps closed 2026-10-11) ---
+
+    @_http_app.get("/api/llm/models")
+    async def _llm_models_get(provider: str = "ollama"):
+        """Live model list per provider (Settings dropdown)."""
+        if provider != "ollama":
+            return {"provider": provider, "models": [], "source": "none"}
+        try:
+            data = await _ollama_tags()
+            models = [m.get("name", m.get("model", "")) for m in data.get("models", [])]
+            return {"provider": provider, "models": models, "source": "live"}
+        except Exception as e:
+            return {"provider": provider, "models": [], "source": "none", "error": str(e)}
+
+    @_http_app.get("/api/llm/onboarding")
+    async def _llm_onboarding():
+        """Fresh-install starter facts + recommended path (under-hero cue)."""
+        disc = await _llm_discover()
+        if disc.get("detected"):
+            return {
+                "ready": True,
+                "path": "chat",
+                "reason": f"Ollama detected with {len(disc.get('models', []))} model(s); default {disc.get('default_model')}.",
+                "default_model": disc.get("default_model"),
+                "models": disc.get("models", []),
+            }
+        return {
+            "ready": False,
+            "path": "settings",
+            "reason": "No Ollama detected. Install Ollama, pull a model (e.g. qwen3.8:27b), then chat.",
+            "default_model": None,
+            "models": [],
+        }
+
+    @_http_app.post("/api/llm/chat")
+    async def _llm_chat(body: dict):
+        """Backend chat proxy (OpenAI-style {provider, model, messages}) — the ONLY
+        path Chat uses besides the legacy /api/v1/chat shape. Keys never leave the server
+        (Ollama-only today; cloud providers phase 2)."""
+        provider = body.get("provider", "ollama")
+        if provider != "ollama":
+            raise HTTPException(status_code=501, detail=f"Provider '{provider}' not wired yet (Ollama only).")
+        messages = body.get("messages", [])
+        text = ""
+        history = []
+        if messages and messages[-1].get("role") == "user":
+            text = messages[-1].get("content", "")
+            history = messages[:-1]
+        req = _ChatRequest(
+            message=text,
+            history=history,
+            system=next((m.get("content") for m in messages if m.get("role") == "system"), None),
+            model=body.get("model"),
+        )
+        out = await _chat(req)
+        return {"content": out["reply"], "model": out["model"], "provider": provider}
+
+    @_http_app.get("/api/capabilities")
+    async def _capabilities():
+        """Fleet-standard capability surface (ports, features, tool inventory)."""
+        tools = mcp._tool_manager.list_tools() if hasattr(mcp, "_tool_manager") else []
+        return {
+            "name": "reversing-mcp",
+            "version": "0.4.0",
+            "ports": {"backend": 10750, "frontend": 10751},
+            "features": {
+                "chat": True,
+                "skills": True,
+                "llm_discover": True,
+                "diagnostics": True,
+                "logs": True,
+                "rea_sidecar": True,
+            },
+            "tools": sorted([t.name for t in tools]),
+        }
 
     _http_app.mount("/mcp", mcp.http_app(path="/"))
     app = _http_app

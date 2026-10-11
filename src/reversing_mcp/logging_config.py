@@ -1,5 +1,9 @@
 """
-Logging configuration for IDA Pro MCP
+Logging configuration for reversing-mcp.
+
+Log records go to stderr: stdout is reserved for JSON-RPC in stdio transport
+(MCP clients such as opencode parse stdout strictly; log lines there corrupt
+the stream and surface as Internal Server Error notifications).
 """
 
 import logging
@@ -15,8 +19,8 @@ def get_logger(name: str) -> logging.Logger:
     if not logger.handlers:
         logger.setLevel(logging.INFO)
 
-        # Console handler
-        console_handler = logging.StreamHandler(sys.stdout)
+        # Console handler (stderr - never stdout: stdio transport owns stdout)
+        console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setLevel(logging.INFO)
 
         # Format

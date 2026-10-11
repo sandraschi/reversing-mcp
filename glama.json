@@ -5,8 +5,8 @@
   "description": "Static binary analysis and Directmedia decompression MCP. Pair with ReVa MCP for Ghidra-backed decompilation and listings.",
   "type": "mcp_server",
   "status": "beta",
-  "framework": "FastMCP 3.1+",
-  "tools": 13,
+  "framework": "FastMCP 3.4+",
+  "tools": 15,
   "version": "0.4.0",
   "transport": ["stdio"],
   "keywords": [
