@@ -1,0 +1,17 @@
+{
+  "$schema": "https://code.claude.com/schemas/hooks.json",
+  "description": "reversing-mcp session context: triage-first RE workflow reminder (read-only, no side effects).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -Command \"Write-Output 'reversing-mcp session: check_tools() then analyze_binary() for triage; rea_investigate() for JS/Electron/native via provider; DKI via decode_dki_file; leave tree clean (ruff+pytest). Ports 10750 backend / 10751 webapp.'\""
+          }
+        ]
+      }
+    ]
+  }
+}
