@@ -40,6 +40,7 @@ All registered in `server.py`, implementations in `analyzers.py`, `directmedia_d
 - `README.md` — short starter (links to sub-docs below)
 - `INSTALL.md` — quick start + manual setup + troubleshooting
 - `docs/REVA.md` — **ReVa MCP guide** (install, assistant/headless modes, client config, two-server workflow)
+- `docs/REA.md` — **REA sidecar guide** (agent-driven native + JS/Electron/.NET/APK/firmware/browser, setup, three-server workflow)
 - `docs/GHIDRA.md` — **Ghidra headless guide** (analyzeHeadless, scripts, CLI reference)
 - `docs/DIRECTMEDIA_MISSION.md` — Directmedia / Digibib5 mission scope
 - `docs/DIRECTMEDIA_REVERSING_TOOLKIT.md` — CLI/MCP reversing toolkit
