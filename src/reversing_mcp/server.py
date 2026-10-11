@@ -1654,6 +1654,17 @@ try:
                 "default_model": disc.get("default_model"),
                 "models": disc.get("models", []),
             }
+        gpus = await _llm_gpus()
+        if gpus:
+            names = ", ".join(g.get("name", "?") for g in gpus)
+            return {
+                "ready": False,
+                "path": "settings",
+                "reason": f"GPU detected ({names}) but no Ollama. Install Ollama, pull a model, then chat.",
+                "default_model": None,
+                "models": [],
+                "gpus": gpus,
+            }
         return {
             "ready": False,
             "path": "settings",
@@ -1661,6 +1672,35 @@ try:
             "default_model": None,
             "models": [],
         }
+
+    @_http_app.get("/api/llm/gpus")
+    async def _llm_gpus():
+        """NVIDIA GPU inventory for VRAM-aware model defaults (empty when absent)."""
+        import shutil
+        import subprocess
+
+        nvidia_smi = shutil.which("nvidia-smi")
+        if nvidia_smi is None:
+            return []
+        try:
+            proc = subprocess.run(
+                [nvidia_smi, "--query-gpu=index,name,memory.total", "--format=csv,noheader,nounits"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            gpus = []
+            for line in (proc.stdout or "").splitlines():
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) >= 3 and parts[2].isdigit():
+                    gpus.append(
+                        {"index": int(parts[0]), "name": parts[1], "total_mb": int(parts[2]), "vramMb": int(parts[2])}
+                    )
+            return gpus
+        except (subprocess.SubprocessError, OSError):
+            logger.exception("nvidia-smi probe failed")
+            return []
 
     @_http_app.post("/api/llm/chat")
     async def _llm_chat(body: dict):
