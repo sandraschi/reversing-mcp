@@ -90,13 +90,13 @@ export function Help() {
                 <td className="py-2 font-medium text-slate-300">
                   FastMCP Version
                 </td>
-                <td className="py-2 font-mono">2.14.4</td>
+                <td className="py-2 font-mono">3.4.8</td>
               </tr>
               <tr>
                 <td className="py-2 font-medium text-slate-300">
-                  Template Mode
+                  Assfix Score
                 </td>
-                <td className="py-2">SOTA v2.0 (Feb 2026)</td>
+                <td className="py-2">86/100 SOTA (Oct 2026, self-assessed)</td>
               </tr>
               <tr>
                 <td className="py-2 font-medium text-slate-300">Locale</td>
