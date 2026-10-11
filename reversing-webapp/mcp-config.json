@@ -1,9 +1,0 @@
-{
-  "reversing-mcp": {
-    "command": "python",
-    "args": ["-m", "reversing_mcp.server"],
-    "env": {
-      "PYTHONPATH": "../src"
-    }
-  }
-}
