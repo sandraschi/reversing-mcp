@@ -6,7 +6,9 @@ import { Chat } from "@/pages/chat";
 import { Dashboard } from "@/pages/dashboard";
 import { DigiBib } from "@/pages/digibib";
 import { Help } from "@/pages/help";
+import { Inbox } from "@/pages/inbox";
 import { Settings } from "@/pages/settings";
+import { Skills } from "@/pages/skills";
 import { Status } from "@/pages/status";
 import { Tools } from "@/pages/tools";
 import {
@@ -23,8 +25,10 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/analyze" element={<Analyze />} />
+          <Route path="/inbox" element={<Inbox />} />
           <Route path="/digibib" element={<DigiBib />} />
           <Route path="/tools" element={<Tools />} />
+          <Route path="/skills" element={<Skills />} />
           <Route path="/status" element={<Status />} />
           <Route path="/apps" element={<Apps />} />
           <Route path="/chat" element={<Chat />} />
