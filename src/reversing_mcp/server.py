@@ -1096,6 +1096,8 @@ try:
     class _ChatRequest(BaseModel):
         message: str
         history: list[dict[str, str]] = []
+        system: str | None = None
+        model: str | None = None
 
     def _analysis_score(results: dict[str, Any]) -> float:
         score = 0.0
@@ -1432,13 +1434,16 @@ try:
         auto-pick, else 409 (never a hardcoded ghost model)."""
         import httpx
 
-        model = _selected_ollama_model or await _pick_model()
+        model = request.model or _selected_ollama_model or await _pick_model()
         if not model:
             raise HTTPException(
                 status_code=409,
                 detail="No Ollama model available. Start Ollama and pull a model, then retry.",
             )
-        messages = [{"role": h.get("role", "user"), "content": h.get("content", "")} for h in request.history]
+        messages = []
+        if request.system:
+            messages.append({"role": "system", "content": request.system})
+        messages.extend({"role": h.get("role", "user"), "content": h.get("content", "")} for h in request.history)
         messages.append({"role": "user", "content": request.message})
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:

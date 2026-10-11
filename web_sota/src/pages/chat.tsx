@@ -1,19 +1,37 @@
+import { Bot, Download, Loader2, Send, Trash2, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Bot, Download, Loader2, Send, Trash2, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  buildSystemPrompt,
+  fetchDiscovery,
+  fetchSkillPreprompt,
+  loadSelection,
+  saveSelection,
+  sendChat,
+  subscribeSelection,
+  type ChatMessage as WireMessage,
+} from "@/lib/llm";
 
 const LS_KEY = "reversing-mcp-chat-history";
 const PERS_KEY = "reversing-mcp-chat-personality";
+const CUSTOM_KEY = "reversing-mcp-chat-custom-prompt";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  ts: string;
 }
 
 const PERSONALITIES = [
+  {
+    id: "reversing-expert",
+    label: "Reversing Expert",
+    prompt:
+      "You are a reversing expert. Be precise and tool-oriented: name exact tools, addresses and next steps. Suggest the next concrete tool call after every result.",
+  },
   {
     id: "binary-analyst",
     label: "Binary Analyst",
@@ -59,24 +77,23 @@ const EXAMPLE_PROMPTS = [
   },
 ];
 
+const nowIso = () => new Date().toISOString();
+
 function loadHistory(): Message[] {
   try {
     const d = localStorage.getItem(LS_KEY);
-    return d ? JSON.parse(d) : [];
+    const arr = d ? (JSON.parse(d) as Message[]) : [];
+    return arr.slice(-100);
   } catch {
     return [];
   }
 }
-function saveHistory(msgs: Message[]) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(msgs.slice(-100)));
-  } catch {}
-}
+
 function loadPersonality(): string {
   try {
-    return localStorage.getItem(PERS_KEY) || "binary-analyst";
+    return localStorage.getItem(PERS_KEY) || "reversing-expert";
   } catch {
-    return "binary-analyst";
+    return "reversing-expert";
   }
 }
 
@@ -84,7 +101,8 @@ const INITIAL_MSG: Message = {
   id: "0",
   role: "assistant",
   content:
-    "Reversing assistant. I can help with binary analysis and Ghidra. Pick a model in Settings (Ollama) and ask.",
+    "Reversing assistant. Skill preprompt loads on mount; pick a personality and ask. Model is resolved resident-first (see Settings).",
+  ts: nowIso(),
 };
 
 export function Chat() {
@@ -95,17 +113,91 @@ export function Chat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [personalityId, setPersonalityId] = useState(() => loadPersonality());
+  const [customPrompt, setCustomPrompt] = useState(() => {
+    try {
+      return localStorage.getItem(CUSTOM_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+  const [skillName, setSkillName] = useState("loading…");
+  const [skillContent, setSkillContent] = useState("");
+  const [providerOk, setProviderOk] = useState<boolean | null>(null);
+  const [model, setModel] = useState(() => loadSelection().model);
+  const [modelDraft, setModelDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Skill-first preprompt + provider status, once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    fetchSkillPreprompt("primary")
+      .then(({ name, content }) => {
+        if (!cancelled) {
+          setSkillName(name);
+          setSkillContent(content);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSkillName("unavailable");
+          setSkillContent("");
+        }
+      });
+    fetchDiscovery()
+      .then((d) => {
+        if (cancelled) return;
+        setProviderOk(d.detected);
+        const sel = loadSelection();
+        const current =
+          sel.model && d.models.includes(sel.model)
+            ? sel.model
+            : (d.default_model ?? "");
+        setModel(current);
+        setModelDraft(current);
+        if (current && current !== sel.model)
+          saveSelection(sel.provider, current);
+      })
+      .catch(() => {
+        if (!cancelled) setProviderOk(false);
+      });
+    const unsub = subscribeSelection((sel) => {
+      setModel(sel.model);
+      setModelDraft(sel.model);
+    });
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new message; ref read is intentional
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   useEffect(() => {
-    saveHistory(messages);
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(messages.slice(-100)));
+    } catch {
+      /* quota */
+    }
   }, [messages]);
   useEffect(() => {
-    localStorage.setItem(PERS_KEY, personalityId);
+    try {
+      localStorage.setItem(PERS_KEY, personalityId);
+    } catch {
+      /* private mode */
+    }
   }, [personalityId]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOM_KEY, customPrompt);
+    } catch {
+      /* private mode */
+    }
+  }, [customPrompt]);
+
+  const personality =
+    PERSONALITIES.find((p) => p.id === personalityId) ?? PERSONALITIES[0];
 
   const send = async () => {
     const text = input.trim();
@@ -115,26 +207,40 @@ export function Chat() {
       id: String(Date.now()),
       role: "user",
       content: text,
+      ts: nowIso(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    const next = [...messages, userMsg];
+    setMessages(next);
     setLoading(true);
     try {
-      const res = await fetch(`${getApiBase()}/api/v1/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          history: messages.map((m) => ({ role: m.role, content: m.content })),
-          personality: personalityId,
-        }),
+      const system = buildSystemPrompt(
+        skillContent,
+        personalityId,
+        personality.prompt,
+        customPrompt,
+      );
+      const wire: WireMessage[] = next.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+      const { reply, model: used } = await sendChat({
+        message: text,
+        history: wire.slice(0, -1),
+        system: system || undefined,
+        model: model || undefined,
       });
-      const data = await res.json().catch(() => ({}));
-      const reply =
-        data?.reply ??
-        "Backend or Ollama not reachable. Check Settings and run the backend (e.g. start-webapp.ps1).";
+      if (used && used !== model) {
+        setModel(used);
+        setModelDraft(used);
+      }
       setMessages((prev) => [
         ...prev,
-        { id: String(Date.now() + 1), role: "assistant", content: reply },
+        {
+          id: String(Date.now() + 1),
+          role: "assistant",
+          content: reply,
+          ts: nowIso(),
+        },
       ]);
     } catch (err) {
       setMessages((prev) => [
@@ -142,7 +248,11 @@ export function Chat() {
         {
           id: String(Date.now() + 1),
           role: "assistant",
-          content: "Request failed. Is the backend running?",
+          content:
+            err instanceof Error
+              ? err.message
+              : "Request failed. Is the backend running?",
+          ts: nowIso(),
         },
       ]);
     } finally {
@@ -150,18 +260,60 @@ export function Chat() {
     }
   };
 
+  const applyModel = async () => {
+    const m = modelDraft.trim();
+    if (!m) return;
+    setModel(m);
+    const sel = loadSelection();
+    saveSelection(sel.provider, m);
+    try {
+      await fetch(`${getApiBase()}/llm/select_model`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: sel.provider, model: m }),
+      });
+    } catch {
+      /* backend down - local selection applies on reconnect */
+    }
+  };
+
   const exportChat = () => {
     const text = messages
-      .map((m) => `${m.role === "user" ? "You" : "Assistant"}: ${m.content}`)
+      .map(
+        (m) =>
+          `[${m.ts}] ${m.role === "user" ? "You" : "Assistant"}: ${m.content}`,
+      )
       .join("\n\n");
     const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reversing-chat-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `reversing-mcp-chat-${new Date().toISOString().slice(0, 10)}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const clearChat = () => {
+    setMessages([INITIAL_MSG]);
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify([INITIAL_MSG]));
+    } catch {
+      /* private mode */
+    }
+  };
+
+  const dot =
+    providerOk === null
+      ? "bg-slate-500"
+      : providerOk
+        ? "bg-green-500"
+        : "bg-red-500";
+  const providerLabel =
+    providerOk === null
+      ? "Detecting Ollama…"
+      : providerOk
+        ? `Ollama OK${model ? ` · ${model}` : ""}`
+        : "Ollama not detected";
 
   return (
     <div
@@ -177,16 +329,33 @@ export function Chat() {
             <span
               className="text-xs text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded border border-blue-800/50"
               data-testid="skill-badge"
+              title="Skill preprompt loaded as the base system prompt"
             >
-              reversing-mcp
+              skill:{skillName}
             </span>
           </div>
-          <p className="text-slate-400">Ollama chat (set model in Settings)</p>
+          <p className="text-slate-400" title={providerLabel}>
+            {providerLabel} ·{" "}
+            <a className="underline" href="#/settings">
+              Settings
+            </a>
+          </p>
         </div>
         <div className="flex items-center gap-2" data-testid="chat-controls">
           <span
-            className={`inline-block w-2 h-2 rounded-full bg-green-500`}
+            className={`inline-block w-2 h-2 rounded-full ${dot}`}
             data-testid="backend-dot"
+            title={providerLabel}
+          />
+          <input
+            value={modelDraft}
+            onChange={(e) => setModelDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && applyModel()}
+            onBlur={applyModel}
+            placeholder="model (Enter to apply)"
+            className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-200 w-44"
+            data-testid="model-input"
+            title="Current Ollama model; type another installed model and press Enter"
           />
           <select
             value={personalityId}
@@ -213,7 +382,7 @@ export function Chat() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setMessages([INITIAL_MSG])}
+            onClick={clearChat}
             disabled={messages.length <= 1}
             className="h-8 text-xs gap-1 text-red-400 border-red-900/30 hover:bg-red-950/20"
             data-testid="chat-clear"
@@ -222,6 +391,17 @@ export function Chat() {
           </Button>
         </div>
       </div>
+
+      {personalityId === "custom" && (
+        <textarea
+          value={customPrompt}
+          onChange={(e) => setCustomPrompt(e.target.value)}
+          placeholder="Custom system prompt (replaces the skill+role composition)"
+          className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-200 w-full"
+          rows={3}
+          data-testid="custom-prompt"
+        />
+      )}
 
       <Card
         className="flex-1 border-slate-800 bg-slate-950/50 flex flex-col overflow-hidden"
@@ -270,6 +450,7 @@ export function Chat() {
             {EXAMPLE_PROMPTS.map((g) =>
               g.items.map((p, i) => (
                 <button
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static pill list, never reordered
                   key={`${g.group}-${i}`}
                   type="button"
                   onClick={() => setInput(p)}
@@ -293,7 +474,7 @@ export function Chat() {
               size="icon"
               className="bg-blue-600 hover:bg-blue-700 shrink-0"
               onClick={send}
-              disabled={loading || !input.trim()}
+              disabled={loading || !input.trim() || providerOk === false}
               data-testid="chat-send"
             >
               <Send className="h-4 w-4" />

@@ -1,3 +1,5 @@
+import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { getApiBase, setApiBase } from "@/common/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,81 +12,122 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { API_BASE } from "@/lib/api";
-import { CheckCircle, Loader2, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { fetchDiscovery, loadSelection, saveSelection } from "@/lib/llm";
+import { pickPreferredModel } from "@/lib/model-preference";
 
 function LLMSettings() {
-  const [providers, setProviders] = useState<
-    Record<string, { name: string }[]>
-  >({});
+  const [models, setModels] = useState<string[]>([]);
+  const [running, setRunning] = useState<string[]>([]);
   const [selectedProvider, setSelectedProvider] = useState("ollama");
   const [selectedModel, setSelectedModel] = useState("");
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
+  const [note, setNote] = useState("");
   useEffect(() => {
-    fetch(`${API_BASE}/api/llm/providers`)
-      .then((r) => r.json())
+    let cancelled = false;
+    fetchDiscovery()
       .then((d) => {
-        setProviders(d);
-        const savedP = localStorage.getItem("llm_provider") || "ollama";
-        const savedM = localStorage.getItem("llm_model") || "";
-        setSelectedProvider(savedP);
-        const models = d[savedP === "ollama" ? "ollama" : "lm_studio"] || [];
-        setSelectedModel(
-          savedM && models.some((m: { name: string }) => m.name === savedM)
-            ? savedM
-            : models[0]?.name || "",
+        if (cancelled) return;
+        if (!d.detected) {
+          setModels([]);
+          setRunning([]);
+          setStatus("error");
+          setNote(d.error || `Ollama not reachable at ${d.base_url}`);
+          return;
+        }
+        setModels(d.models);
+        setRunning(d.running);
+        const saved = loadSelection().model;
+        // Resident-first: saved model only if still installed, else backend default.
+        const current =
+          saved && d.models.includes(saved)
+            ? saved
+            : (d.default_model ?? d.models[0] ?? "");
+        // Cross-check client-side with the vendored preference table.
+        const preferred = pickPreferredModel(d.running, d.models);
+        setSelectedModel(current || preferred);
+        setStatus(d.models.length > 0 ? "ready" : "error");
+        setNote(
+          d.running.length > 0
+            ? `Resident in VRAM: ${d.running.join(", ")} (defaults never evict these)`
+            : "No model resident; default is highest-preference installed.",
         );
-        setStatus(models.length > 0 ? "ready" : "error");
       })
       .catch(() => {
-        setProviders({ ollama: [{ name: "llama3.2:3b" }] });
-        setSelectedModel(localStorage.getItem("llm_model") || "llama3.2:3b");
-        setStatus("ready");
+        if (cancelled) return;
+        // No fake stand-ins: error state, never an undeclared mock model.
+        setModels([]);
+        setRunning([]);
+        setStatus("error");
+        setNote("Backend not reachable. Start it (repo root start.ps1).");
       });
+    return () => {
+      cancelled = true;
+    };
   }, []);
   const save = (p: string, m: string) => {
-    localStorage.setItem("llm_provider", p);
-    localStorage.setItem("llm_model", m);
+    saveSelection(p, m);
+    fetch(`${getApiBase()}/llm/select_model`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: p, model: m }),
+    }).catch(() => {
+      /* backend down - local selection applies on reconnect */
+    });
   };
-  const models =
-    providers[selectedProvider === "ollama" ? "ollama" : "lm_studio"] || [];
+  const saveAndSelect = (p: string, m: string) => {
+    setSelectedProvider(p);
+    setSelectedModel(m);
+    save(p, m);
+  };
   return (
     <Card className="border-slate-800 bg-slate-950/50">
       <CardHeader>
         <CardTitle className="text-white">Local LLM</CardTitle>
         <CardDescription className="text-slate-400">
-          Select provider and model for AI features
+          Ollama provider · resident-first defaults (never evict a loaded model)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <select
-          className="h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200"
-          value={selectedProvider}
-          onChange={(e) => {
-            setSelectedProvider(e.target.value);
-            save(e.target.value, "");
-          }}
-        >
-          <option value="ollama">Ollama</option>
-          <option value="lm_studio">LM Studio</option>
-        </select>
-        <select
-          className="h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200"
-          value={selectedModel}
-          onChange={(e) => {
-            setSelectedModel(e.target.value);
-            save(selectedProvider, e.target.value);
-          }}
-        >
-          {models.map((m) => (
-            <option key={m.name} value={m.name}>
-              {m.name}
-            </option>
-          ))}
-        </select>
+        {status === "loading" && (
+          <p className="text-sm text-slate-500 flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" /> Detecting Ollama…
+          </p>
+        )}
+        {status === "error" && (
+          <p className="text-sm text-red-400">
+            {note || "Ollama not detected."}
+          </p>
+        )}
+        {status === "ready" && (
+          <>
+            <select
+              className="h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200"
+              value={selectedProvider}
+              onChange={(e) => {
+                saveAndSelect(e.target.value, "");
+              }}
+            >
+              <option value="ollama">Ollama</option>
+            </select>
+            <select
+              className="h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200"
+              value={selectedModel}
+              onChange={(e) => {
+                saveAndSelect(selectedProvider, e.target.value);
+              }}
+            >
+              {models.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                  {running.includes(m) ? " (resident)" : ""}
+                </option>
+              ))}
+            </select>
+            {note && <p className="text-xs text-slate-500">{note}</p>}
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -116,7 +159,7 @@ export function Settings() {
       .then((d) => {
         if (d) {
           setGhidraInstalled(d.installed === true);
-          setGhidraPlugin(d.http_server_running === true);
+          setGhidraPlugin(d.bridge_running === true);
         }
       })
       .catch(() => {
