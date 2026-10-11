@@ -10,7 +10,7 @@ uv run python -m reversing_mcp.server           # stdio mode (Claude Desktop)
 uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 ```
 
-## Tools (13)
+## Tools (15)
 
 ### Binary analysis
 - `analyze_binary(file_path, tools=None)` — multi-tool analysis. tools: ida, ghidra, r2, binwalk, static, strings, file. Returns file_path, file_size, tools_used, results.
@@ -23,6 +23,9 @@ uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 - `get_file_info(file_path)` — file metadata. Returns path, size, type, permissions, readable/writable/executable.
 - `analyze_pe_file(file_path)` — Windows PE structure. Returns machine, num_sections, dos_stub_size.
 
+### Agent RE (sidecar)
+- `rea_investigate(target=None, kind="auto", provider=None, query=None, symbol=None, address=None, snapshot_path=None, timeout_s=180)` — delegate to REA CLI. Kinds: auto, javascript, native_overview/search/function/decompile/xrefs/trace, providers, capabilities, doctor. Outputs over 512 KB truncate with a snapshot hint. See docs/REA.md.
+
 ### Directmedia / DKI
 - `decode_dki_file(file_path)` — decompress a .DKI with zlib/gzip autodetection. Returns success, strategy_used, text_preview, uncompressed_bytes, attempts.
 - `analyze_directmedia_file(file_path)` — full .DKI analysis with text extraction. Writes `*_extracted.txt` beside the file. Returns analysis, extraction_summary, sample_content.
@@ -30,7 +33,7 @@ uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 - `digibib_research_snapshot(exe_path=None)` — DigiBib5 static research prelude. Returns file_info, directmedia_string_hits, entropy, tools, next_steps, viewer_roadmap.
 
 ### System
-- `check_tools()` — check which RE tools are available (Ghidra, radare2, binwalk, strings, file, IDA). Returns tools, summary, notes.
+- `check_tools()` — check which RE tools are available (Ghidra, radare2, binwalk, strings, file, IDA, REA). Returns tools, summary, notes.
 - `shutdown(confirm=False)` — graceful server termination. Requires confirm=True.
 - `help(level="basic", topic=None)` — multi-level help. Levels: basic, intermediate, advanced. Topics: ghidra, binary, analysis.
 

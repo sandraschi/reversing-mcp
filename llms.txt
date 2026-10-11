@@ -8,10 +8,12 @@
 - [AGENTS.md](AGENTS.md): Agent context
 - [Install](INSTALL.md): Installation guide
 - [Ghidra Plugin](GHIDRA_PLUGIN_SETUP.md): Ghidra setup
+- [PRD](PRD.md): Vision - agent-driven feature-to-code-map platform
 
-## Tools (13)
+## Tools (15)
 - [Server](src/reversing_mcp/server.py): FastMCP server with all tools
 - [Analyzers](src/reversing_mcp/analyzers.py): Binary analysis, PE parsing, entropy, string
+- [REA bridge](src/reversing_mcp/rea_bridge.py): REA sidecar subprocess bridge
 - [Directmedia DKI](src/reversing_mcp/directmedia_dki.py): DKI decoder
 - [DigiBib Research](src/reversing_mcp/digibib_research.py): DigiBib snapshot builder
 - [Transport](src/reversing_mcp/transport.py): stdio/HTTP/SSE dual transport
@@ -25,12 +27,14 @@
 | `analyze_entropy` | Shannon entropy analysis per block |
 | `find_functions` | Find functions using Ghidra/radare2 |
 | `get_file_info` | File metadata via `file` command |
-| `check_tools` | Check installed reversing tools |
+| `check_tools` | Check installed reversing tools (incl. REA sidecar) |
+| `rea_investigate` | REA sidecar delegate: JS/Electron/native via provider |
 | `digibib_research_snapshot` | DigiBib research snapshot |
 | `analyze_pe_file` | PE file structure analysis |
 | `decode_dki_file` | Decode DKI file format |
 | `analyze_directmedia_file` | Directmedia format analysis |
 | `decompress_directmedia_library` | Decompress DM library archives |
+| `shutdown` | Graceful server shutdown |
 | `help` | Multi-level help system |
 
 ## Config

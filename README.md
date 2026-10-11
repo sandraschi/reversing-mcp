@@ -21,14 +21,17 @@ just test              # run tests
 
 ## What it does
 
-13 tools across four domains:
+15 tools across five domains:
 
 | Domain | Tools | Docs |
 |--------|-------|------|
 | **Binary analysis** | `analyze_binary`, `extract_strings`, `get_hexdump`, `analyze_entropy`, `find_functions` | — |
 | **File / PE analysis** | `get_file_info`, `analyze_pe_file` | — |
+| **Agent RE** (REA sidecar) | `rea_investigate` | [REA sidecar guide](docs/REA.md) |
 | **Directmedia / DKI** | `decode_dki_file`, `analyze_directmedia_file`, `decompress_directmedia_library`, `digibib_research_snapshot` | [Reversing guide](docs/DIGIBIB_REVERSING_GUIDE.md) · [Mission](docs/DIRECTMEDIA_MISSION.md) · [Toolkit](docs/DIRECTMEDIA_REVERSING_TOOLKIT.md) · [Decompile plan](docs/DIGIBIB_DECOMPILE_PLAN.md) |
-| **System** | `check_tools`, `shutdown` | — |
+| **System** | `check_tools`, `shutdown`, `help` | — |
+
+Vision: agent-driven **feature-to-code maps** (behavior + disassembly correlated) - see [PRD.md](PRD.md) and the [Tier 3 spec](docs/CUA_DISASSEMBLY_COMBO.md).
 
 ## Ghidra / IDA / REA integration
 

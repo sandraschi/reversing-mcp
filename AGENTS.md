@@ -17,8 +17,8 @@ just install-idr                         # Install IDR (Delphi reconstructor)
 | Backend (MCP + API) | 10750 |
 | Frontend (Vite dev) | 10751 |
 
-## Tools (13)
-All registered in `server.py`, implementations in `analyzers.py`, `directmedia_dki.py`, `digibib_research.py`.
+## Tools (15)
+All registered in `server.py`; implementations in `analyzers.py`, `directmedia_dki.py`, `digibib_research.py`, `rea_bridge.py`.
 
 | Tool | Description |
 |------|-------------|
@@ -28,12 +28,14 @@ All registered in `server.py`, implementations in `analyzers.py`, `directmedia_d
 | `analyze_entropy` | Shannon entropy per block |
 | `find_functions` | Function discovery (Ghidra/radare2) |
 | `get_file_info` | File command metadata |
-| `check_tools` | Reversing tool availability check |
+| `check_tools` | Reversing tool availability check (incl. REA sidecar) |
+| `rea_investigate` | REA sidecar delegate: JS/Electron/native via provider |
 | `digibib_research_snapshot` | DigiBib 5.exe research report |
 | `analyze_pe_file` | PE structure analysis |
 | `decode_dki_file` | DKI format decoder |
 | `analyze_directmedia_file` | Directmedia container analysis |
 | `decompress_directmedia_library` | DM library extraction |
+| `shutdown` | Graceful server shutdown |
 | `help` | Multi-level help system |
 
 ## Documentation Map
@@ -49,12 +51,14 @@ All registered in `server.py`, implementations in `analyzers.py`, `directmedia_d
 - `docs/IDR.md` — **IDR Delphi reconstructor** guide (install, workflow, Ghidra map import, Delphi internals)
 - `docs/IDA.md` — **IDA Pro integration** (headless analysis, env var setup, scripting)
 - `docs/DIGIBIB_DECOMPILE_PLAN.md` — phased EXE reverse plan
+- `PRD.md` — vision: agent-driven feature-to-code-map platform (tiers, requirements, roadmap)
 - `llms-full.txt` — full LLM tool reference
 
 ## Architecture
 ```
 server.py (FastMCP 3.4+)
   ├── analyzers.py       — BinaryAnalyzer (Ghidra, radare2, binwalk, PE, entropy, strings)
+  ├── rea_bridge.py      — REA sidecar subprocess bridge (find/run/truncate)
   ├── directmedia_dki.py — DKI decode/decompress
   ├── digibib_research.py — DigiBib research snapshot builder
   ├── transport.py       — Dual transport (stdio/HTTP/SSE)
