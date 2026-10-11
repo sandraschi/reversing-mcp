@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-10-11)
+- Tier 2 REA sidecar bridge: `rea_investigate` MCP tool (9 hermetic tests), `just setup-rea/check-rea/update-rea`, `docs/REA.md`
+- Backend transplant: analyze/ghidra/llm/chat/tools/logs/capabilities REST (36 routes) into `server.py _http_app`; retired Next.js frontend (Vite survives)
+- Chat to SOTA standard: skill preprompt, 5 personalities, resident-first LLM, `/api/llm/*` + `/api/capabilities` + `/api/logs*` endpoints, `skill://primary` resource
+- Webapp: Inbox + Skills pages, Zustand LLM store, `useZoom`, live capabilities view, testids throughout
+- Docs pack: `PRD.md`, `docs/{ONBOARDING,CONFIGURATION,DEVELOPMENT,TOOLS,TROUBLESHOOTING,CUA_DISASSEMBLY_COMBO}.md`, fixtures `MANIFEST.md`
+- CI: `.github/workflows/ci.yml` (windows-latest: ruff/pyright/pytest + biome/tsc); pyright clean; `e2e`/`fmt` recipes; `scripts/pre-commit-biome.ps1`
+- Session context: `.claude-plugin/hooks/hooks.json`, rewritten `.cursorrules` (+`.windsurfrules` mirror)
+- opencode registration: `revops` server (global config); stderr-only logging for stdio hygiene
+
+### Fixed (2026-10-11)
+- mcpb `manifest.json`: `${PWD}` to `${__dirname}`, real 15-tool list (dropped hallucinated entries)
+- Forbidden-port backend: `web_sota/backend/server.py` (:8000) folded into main app, file removed
+- Chat personalities were decorative (backend ignored them); history order fixed; no ghost-model default (honest 409)
+- Settings fake `llama3.2:3b` fallback removed; Ghidra field `http_server_running` to `bridge_running` (3 pages)
+- `S110`/`S112` removed from ruff ignore (1 silent swallow fixed); fastmcp floor to `>=3.4.4`; T20 enabled
+- `start.ps1` launched stdio expecting HTTP: now uvicorn + `-BackendOnly`, fail-fast with job output
+- `.gitignore`: `*.bak.*` + un-ignored `web_sota/src/lib/` and `package-lock.json` (both were silently untracked)
+
 ### Security (CRITICAL)
 - `native/build.ps1`: Bundle `.env.example` instead of `.env` — prevents API key leaks in installer
 
