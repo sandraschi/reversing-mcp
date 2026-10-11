@@ -1,5 +1,5 @@
+import { Book, Code, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Book, Code, HelpCircle, Info } from "lucide-react";
 
 export function Help() {
   return (
@@ -31,14 +31,9 @@ export function Help() {
             </p>
             <p>
               Backend: API runs on port 10750. Start it (e.g.{" "}
-              <code className="bg-slate-800 px-1 rounded">
-                .\start.ps1
-              </code>{" "}
-              or{" "}
-              <code className="bg-slate-800 px-1 rounded">
-                .\start.bat
-              </code>{" "}
-              at the repo root). Configure in Settings.
+              <code className="bg-slate-800 px-1 rounded">.\start.ps1</code> or{" "}
+              <code className="bg-slate-800 px-1 rounded">.\start.bat</code> at
+              the repo root). Configure in Settings.
             </p>
             <p>Key concepts:</p>
             <ul className="list-disc list-inside space-y-1">
@@ -70,9 +65,9 @@ export function Help() {
               pattern.
             </p>
             <div className="p-3 bg-slate-900 rounded border border-slate-800 font-mono text-xs">
-              <p># Always check port adjacency</p>
-              <p>WEB_PORT = 10888</p>
-              <p>BACKEND_PORT = 10889</p>
+              <p># Backend + frontend ports (fleet registry)</p>
+              <p>BACKEND_PORT = 10750</p>
+              <p>FRONTEND_PORT = 10751</p>
             </div>
           </CardContent>
         </Card>

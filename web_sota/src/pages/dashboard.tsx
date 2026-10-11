@@ -1,20 +1,17 @@
-import { getApiBase } from "@/common/api";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Activity,
   CheckCircle,
-  Cpu,
   Loader2,
-  RefreshCw,
   Search,
   Shield,
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getApiBase } from "@/common/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type GhidraStatus = { installed?: boolean; http_server_running?: boolean };
+type GhidraStatus = { installed?: boolean; bridge_running?: boolean };
 
 interface HealthData {
   status: string;
@@ -27,25 +24,52 @@ export function Dashboard() {
   const [backendOk, setBackendOk] = useState<boolean | null>(null);
   const [health, setHealth] = useState<HealthData | null>(null);
   const [ghidra, setGhidra] = useState<GhidraStatus | null>(null);
+  const [onboard, setOnboard] = useState<{
+    ready?: boolean;
+    reason?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
 
   const base = getApiBase();
 
   const fetchAll = useCallback(async () => {
-    const [h, g] = await Promise.all([
+    const [h, g, o] = await Promise.all([
       fetch(`${base}/health`)
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
       fetch(`${base}/ghidra/status`)
         .then((r) => r.json())
         .catch(() => null),
+      fetch(`${base}/api/llm/onboarding`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
     ]);
     setBackendOk(h !== null);
     setHealth(h);
     setGhidra(g);
+    setOnboard(o);
     setLoading(false);
   }, [base]);
+
+  // Tauri backend-status events when wrapped; HTTP polling above is the fallback.
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    (async () => {
+      try {
+        const mod = await import("@tauri-apps/api/event");
+        const { listen } = mod as unknown as {
+          listen: (ev: string, cb: () => void) => Promise<() => void>;
+        };
+        unlisten = await listen("backend-status", () => fetchAll());
+      } catch {
+        /* browser dev: polling covers it */
+      }
+    })();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [fetchAll]);
 
   useEffect(() => {
     fetchAll();
@@ -66,13 +90,11 @@ export function Dashboard() {
     }
   }, [backendOk, retryCount, fetchAll]);
 
+  // No self-restart endpoint exists on the backend (POST /api/shutdown stops
+  // without relaunch). Restart via the launcher: repo-root start.ps1 / start.bat.
   const handleRestart = async () => {
-    try {
-      await fetch(`${base}/restart`, { method: "POST" });
-      setTimeout(fetchAll, 3000);
-    } catch {
-      // Not available — poll will pick up restart
-    }
+    setRetryCount((c) => c + 1);
+    fetchAll();
   };
 
   if (loading) {
@@ -116,15 +138,29 @@ export function Dashboard() {
           </span>
           {backendOk === false && (
             <button
+              type="button"
               onClick={handleRestart}
               className="ml-2 p-1 rounded hover:bg-slate-800 transition-colors"
-              title="Restart Backend"
+              title="Retry connection (restart the backend via start.ps1 if it stays down)"
             >
               <RefreshCw className="h-3 w-3 text-slate-400" />
             </button>
           )}
         </div>
       </div>
+
+      {backendOk === true && onboard && onboard.ready === false && (
+        <div
+          className="rounded-lg border border-amber-800/50 bg-amber-950/20 px-4 py-3 text-sm text-amber-200"
+          data-testid="onboarding-cue"
+        >
+          <span className="font-medium">Get started with AI chat: </span>
+          {onboard.reason}{" "}
+          <a className="underline" href="#/settings">
+            Open Settings
+          </a>
+        </div>
+      )}
 
       <div
         className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
@@ -197,7 +233,7 @@ export function Dashboard() {
               {ghidra ? (ghidra.installed ? "Installed" : "Not found") : "—"}
             </div>
             <p className="text-xs text-slate-400">
-              HTTP server: {ghidra?.http_server_running ? "Running" : "Stopped"}
+              Bridge: {ghidra?.bridge_running ? "Running" : "Stopped"}
             </p>
           </CardContent>
         </Card>

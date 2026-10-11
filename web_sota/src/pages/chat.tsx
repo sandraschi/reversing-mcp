@@ -7,12 +7,10 @@ import {
   buildSystemPrompt,
   fetchDiscovery,
   fetchSkillPreprompt,
-  loadSelection,
-  saveSelection,
   sendChat,
-  subscribeSelection,
   type ChatMessage as WireMessage,
 } from "@/lib/llm";
+import { useLlmStore } from "@/store/llm";
 
 const LS_KEY = "reversing-mcp-chat-history";
 const PERS_KEY = "reversing-mcp-chat-personality";
@@ -123,11 +121,12 @@ export function Chat() {
   const [skillName, setSkillName] = useState("loading…");
   const [skillContent, setSkillContent] = useState("");
   const [providerOk, setProviderOk] = useState<boolean | null>(null);
-  const [model, setModel] = useState(() => loadSelection().model);
+  const { provider, model, select } = useLlmStore();
   const [modelDraft, setModelDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Skill-first preprompt + provider status, once on mount.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once discovery; store actions are stable
   useEffect(() => {
     let cancelled = false;
     fetchSkillPreprompt("primary")
@@ -147,27 +146,18 @@ export function Chat() {
       .then((d) => {
         if (cancelled) return;
         setProviderOk(d.detected);
-        const sel = loadSelection();
         const current =
-          sel.model && d.models.includes(sel.model)
-            ? sel.model
-            : (d.default_model ?? "");
-        setModel(current);
+          model && d.models.includes(model) ? model : (d.default_model ?? "");
         setModelDraft(current);
-        if (current && current !== sel.model)
-          saveSelection(sel.provider, current);
+        if (current && current !== model) select(d.provider, current);
       })
       .catch(() => {
         if (!cancelled) setProviderOk(false);
       });
-    const unsub = subscribeSelection((sel) => {
-      setModel(sel.model);
-      setModelDraft(sel.model);
-    });
     return () => {
       cancelled = true;
-      unsub();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new message; ref read is intentional
@@ -230,7 +220,7 @@ export function Chat() {
         model: model || undefined,
       });
       if (used && used !== model) {
-        setModel(used);
+        select(provider, used);
         setModelDraft(used);
       }
       setMessages((prev) => [
@@ -263,14 +253,12 @@ export function Chat() {
   const applyModel = async () => {
     const m = modelDraft.trim();
     if (!m) return;
-    setModel(m);
-    const sel = loadSelection();
-    saveSelection(sel.provider, m);
+    select(provider, m);
     try {
       await fetch(`${getApiBase()}/llm/select_model`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: sel.provider, model: m }),
+        body: JSON.stringify({ provider, model: m }),
       });
     } catch {
       /* backend down - local selection applies on reconnect */
@@ -327,7 +315,7 @@ export function Chat() {
               AI Command
             </h2>
             <span
-              className="text-xs text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded border border-blue-800/50"
+              className="text-sm text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded border border-blue-800/50"
               data-testid="skill-badge"
               title="Skill preprompt loaded as the base system prompt"
             >
@@ -353,14 +341,14 @@ export function Chat() {
             onKeyDown={(e) => e.key === "Enter" && applyModel()}
             onBlur={applyModel}
             placeholder="model (Enter to apply)"
-            className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-200 w-44"
+            className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200 w-44"
             data-testid="model-input"
             title="Current Ollama model; type another installed model and press Enter"
           />
           <select
             value={personalityId}
             onChange={(e) => setPersonalityId(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-200"
+            className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200"
             data-testid="personality-select"
           >
             {PERSONALITIES.map((p) => (
@@ -374,7 +362,7 @@ export function Chat() {
             size="sm"
             onClick={exportChat}
             disabled={messages.length === 0}
-            className="h-8 text-xs gap-1"
+            className="h-8 text-sm gap-1"
             data-testid="chat-export"
           >
             <Download className="h-3 w-3" /> Export
@@ -384,7 +372,7 @@ export function Chat() {
             size="sm"
             onClick={clearChat}
             disabled={messages.length <= 1}
-            className="h-8 text-xs gap-1 text-red-400 border-red-900/30 hover:bg-red-950/20"
+            className="h-8 text-sm gap-1 text-red-400 border-red-900/30 hover:bg-red-950/20"
             data-testid="chat-clear"
           >
             <Trash2 className="h-3 w-3" /> Clear
@@ -397,7 +385,7 @@ export function Chat() {
           value={customPrompt}
           onChange={(e) => setCustomPrompt(e.target.value)}
           placeholder="Custom system prompt (replaces the skill+role composition)"
-          className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-200 w-full"
+          className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 w-full"
           rows={3}
           data-testid="custom-prompt"
         />
@@ -454,7 +442,7 @@ export function Chat() {
                   key={`${g.group}-${i}`}
                   type="button"
                   onClick={() => setInput(p)}
-                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 transition-colors"
+                  className="text-sm bg-slate-800 hover:bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 transition-colors"
                 >
                   {p}
                 </button>

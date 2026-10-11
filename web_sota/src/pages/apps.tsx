@@ -1,72 +1,173 @@
+import { Cpu, Loader2, Server, Wrench } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { getApiBase } from "@/common/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Box, ExternalLink, Grid } from "lucide-react";
+
+interface Capabilities {
+  name: string;
+  version: string;
+  ports: { backend: number; frontend: number };
+  features: Record<string, boolean>;
+  tools: string[];
+}
 
 export function Apps() {
-  const apps = [
-    { name: "SDR MCP", port: 10886, description: "Radio frequency analysis" },
-    {
-      name: "Reversing MCP",
-      port: 10888,
-      description: "Binary instrumentation hub",
-    },
-    {
-      name: "Ring MCP",
-      port: 10890,
-      description: "Doorbell & security monitoring",
-    },
-    { name: "Obsidian MCP", port: 10892, description: "Knowledge base bridge" },
-  ];
+  const [caps, setCaps] = useState<Capabilities | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${getApiBase()}/api/capabilities`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`capabilities: ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (!cancelled) {
+          setCaps(d);
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Capabilities unavailable");
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const tools = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    const list = caps?.tools ?? [];
+    if (!q) return list;
+    return list.filter((t) => t.toLowerCase().includes(q));
+  }, [caps, filter]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">
-            App Hub
-          </h2>
-          <p className="text-slate-400">
-            Discover and navigate the Antigravity ecosystem
-          </p>
-        </div>
+    <div className="space-y-6" data-testid="apps-page">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-white">
+          This Server
+        </h2>
+        <p className="text-slate-400">
+          Live capabilities from the backend ({getApiBase()})
+        </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {apps.map((app) => (
+      {loading && (
+        <p
+          className="text-sm text-slate-500 flex items-center gap-2"
+          data-testid="apps-loading"
+        >
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading capabilities…
+        </p>
+      )}
+
+      {error && (
+        <Card
+          className="border-red-900/50 bg-red-950/20"
+          data-testid="apps-error"
+        >
+          <CardContent className="pt-6 text-sm text-red-400">
+            {error}. Is the backend running?
+          </CardContent>
+        </Card>
+      )}
+
+      {caps && (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card
+              className="border-slate-800 bg-slate-950/50"
+              data-testid="apps-identity"
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                  <Server className="h-4 w-4 text-blue-500" /> Server
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-white font-mono">
+                  {caps.name}
+                </div>
+                <p className="text-sm text-slate-400">
+                  v{caps.version} · :{caps.ports.backend} / :
+                  {caps.ports.frontend}
+                </p>
+              </CardContent>
+            </Card>
+            <Card
+              className="border-slate-800 bg-slate-950/50 md:col-span-2"
+              data-testid="apps-features"
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-emerald-500" /> Features
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(caps.features).map(([k, v]) => (
+                    <span
+                      key={k}
+                      className={`text-sm px-2 py-0.5 rounded border ${
+                        v
+                          ? "text-emerald-400 bg-emerald-900/30 border-emerald-800/50"
+                          : "text-slate-500 bg-slate-900 border-slate-800"
+                      }`}
+                    >
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter tools…"
+            className="w-full max-w-md bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            data-testid="apps-filter"
+          />
+
           <Card
-            key={app.name}
-            className="border-slate-800 bg-slate-950/50 hover:bg-slate-900/50 transition-colors group cursor-pointer"
-            onClick={() =>
-              window.open(`http://localhost:${app.port}`, "_blank")
-            }
+            className="border-slate-800 bg-slate-950/50"
+            data-testid="apps-tools"
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-200">
-                {app.name}
+              <CardTitle className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-slate-400" /> MCP tools (
+                {tools.length})
               </CardTitle>
-              <Box className="h-4 w-4 text-blue-500 group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-slate-400 mb-4">{app.description}</p>
-              <div className="flex items-center text-xs text-blue-400 font-medium">
-                <span>localhost:{app.port}</span>
-                <ExternalLink className="h-3 w-3 ml-1" />
-              </div>
+              {tools.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No tools match this filter.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {tools.map((t) => (
+                    <span
+                      key={t}
+                      className="text-sm font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
-        ))}
-      </div>
-
-      <Card className="border-slate-800 bg-slate-950/50 border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-          <Grid className="h-10 w-10 text-slate-700 mb-4" />
-          <h3 className="text-lg font-medium text-slate-300">
-            Fleet Auto-Discovery Active
-          </h3>
-          <p className="text-sm text-slate-500 max-w-sm">
-            Scanning local ports for registered MCP SOTA webapps...
-          </p>
-        </CardContent>
-      </Card>
+        </>
+      )}
     </div>
   );
 }

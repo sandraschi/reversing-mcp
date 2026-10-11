@@ -1,20 +1,14 @@
+import { CheckCircle, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Activity,
-  CheckCircle,
-  Loader2,
-  RefreshCw,
-  XCircle,
-} from "lucide-react";
-import { useEffect, useState } from "react";
 
 type ToolsStatus = Record<string, { available?: boolean; version?: string }>;
 type GhidraStatus = {
   installed?: boolean;
-  http_server_running?: boolean;
+  bridge_running?: boolean;
   version?: string;
 };
 
@@ -44,7 +38,10 @@ export function Status() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => fetchStatus(), []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once load; refresh is manual
+  useEffect(() => {
+    fetchStatus();
+  }, []);
 
   if (loading && !tools && !ghidra) {
     return (
@@ -55,7 +52,7 @@ export function Status() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="status-page">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">
@@ -71,6 +68,7 @@ export function Status() {
           onClick={fetchStatus}
           disabled={loading}
           className="border-slate-700"
+          data-testid="status-refresh"
         >
           <RefreshCw
             className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
@@ -80,12 +78,18 @@ export function Status() {
       </div>
 
       {error && (
-        <Card className="border-red-900/50 bg-red-950/20">
+        <Card
+          className="border-red-900/50 bg-red-950/20"
+          data-testid="status-error"
+        >
           <CardContent className="pt-6 text-red-400">{error}</CardContent>
         </Card>
       )}
 
-      <Card className="border-slate-800 bg-slate-950/50">
+      <Card
+        className="border-slate-800 bg-slate-950/50"
+        data-testid="status-tools"
+      >
         <CardHeader>
           <CardTitle className="text-white">Tools</CardTitle>
         </CardHeader>
@@ -117,7 +121,10 @@ export function Status() {
         </CardContent>
       </Card>
 
-      <Card className="border-slate-800 bg-slate-950/50">
+      <Card
+        className="border-slate-800 bg-slate-950/50"
+        data-testid="status-ghidra"
+      >
         <CardHeader>
           <CardTitle className="text-white">Ghidra</CardTitle>
         </CardHeader>
@@ -135,8 +142,8 @@ export function Status() {
                 )}
               </div>
               <div className="flex items-center justify-between py-2">
-                <span className="text-slate-300">Plugin (HTTP server)</span>
-                {ghidra.http_server_running ? (
+                <span className="text-slate-300">Bridge (ReVa/MCP)</span>
+                {ghidra.bridge_running ? (
                   <CheckCircle className="h-4 w-4 text-emerald-500" />
                 ) : (
                   <XCircle className="h-4 w-4 text-red-500" />

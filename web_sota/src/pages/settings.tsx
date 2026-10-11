@@ -12,14 +12,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { fetchDiscovery, loadSelection, saveSelection } from "@/lib/llm";
-import { pickPreferredModel } from "@/lib/model-preference";
+import { fetchDiscovery } from "@/lib/llm";
+import { useLlmStore } from "@/store/llm";
 
 function LLMSettings() {
-  const [models, setModels] = useState<string[]>([]);
-  const [running, setRunning] = useState<string[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState("ollama");
-  const [selectedModel, setSelectedModel] = useState("");
+  const { models, running, provider, model, select, applyDiscovery } =
+    useLlmStore();
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
@@ -30,23 +28,19 @@ function LLMSettings() {
       .then((d) => {
         if (cancelled) return;
         if (!d.detected) {
-          setModels([]);
-          setRunning([]);
+          applyDiscovery([], [], false);
           setStatus("error");
           setNote(d.error || `Ollama not reachable at ${d.base_url}`);
           return;
         }
-        setModels(d.models);
-        setRunning(d.running);
-        const saved = loadSelection().model;
-        // Resident-first: saved model only if still installed, else backend default.
+        applyDiscovery(d.models, d.running, true);
+        // Resident-first: keep saved model if installed, else backend default.
+        const saved = useLlmStore.getState().model;
         const current =
           saved && d.models.includes(saved)
             ? saved
             : (d.default_model ?? d.models[0] ?? "");
-        // Cross-check client-side with the vendored preference table.
-        const preferred = pickPreferredModel(d.running, d.models);
-        setSelectedModel(current || preferred);
+        if (current && current !== saved) select(d.provider, current);
         setStatus(d.models.length > 0 ? "ready" : "error");
         setNote(
           d.running.length > 0
@@ -57,17 +51,16 @@ function LLMSettings() {
       .catch(() => {
         if (cancelled) return;
         // No fake stand-ins: error state, never an undeclared mock model.
-        setModels([]);
-        setRunning([]);
+        applyDiscovery([], [], false);
         setStatus("error");
         setNote("Backend not reachable. Start it (repo root start.ps1).");
       });
     return () => {
       cancelled = true;
     };
-  }, []);
-  const save = (p: string, m: string) => {
-    saveSelection(p, m);
+  }, [applyDiscovery, select]);
+  const saveAndSelect = (p: string, m: string) => {
+    select(p, m);
     fetch(`${getApiBase()}/llm/select_model`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -75,11 +68,6 @@ function LLMSettings() {
     }).catch(() => {
       /* backend down - local selection applies on reconnect */
     });
-  };
-  const saveAndSelect = (p: string, m: string) => {
-    setSelectedProvider(p);
-    setSelectedModel(m);
-    save(p, m);
   };
   return (
     <Card className="border-slate-800 bg-slate-950/50">
@@ -104,19 +92,21 @@ function LLMSettings() {
           <>
             <select
               className="h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200"
-              value={selectedProvider}
+              value={provider}
               onChange={(e) => {
                 saveAndSelect(e.target.value, "");
               }}
+              data-testid="llm-provider-select"
             >
               <option value="ollama">Ollama</option>
             </select>
             <select
               className="h-9 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200"
-              value={selectedModel}
+              value={model}
               onChange={(e) => {
-                saveAndSelect(selectedProvider, e.target.value);
+                saveAndSelect(provider, e.target.value);
               }}
+              data-testid="llm-model-select"
             >
               {models.map((m) => (
                 <option key={m} value={m}>
@@ -125,7 +115,7 @@ function LLMSettings() {
                 </option>
               ))}
             </select>
-            {note && <p className="text-xs text-slate-500">{note}</p>}
+            {note && <p className="text-sm text-slate-500">{note}</p>}
           </>
         )}
       </CardContent>

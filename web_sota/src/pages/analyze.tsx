@@ -1,3 +1,5 @@
+import { CheckCircle, Loader2, Search, Upload, XCircle } from "lucide-react";
+import { useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,8 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CheckCircle, Loader2, Search, Upload, XCircle } from "lucide-react";
-import { useState } from "react";
+import { pushInbox } from "@/pages/inbox";
 
 const BINARY_EXTS = [
   ".exe",
@@ -35,7 +36,7 @@ function formatSize(bytes: number): string {
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`;
 }
 
 export function Analyze() {
@@ -75,6 +76,11 @@ export function Analyze() {
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       const data = await res.json();
       setResult(data);
+      pushInbox({
+        kind: "analyze",
+        title: `${file.name} — score ${Number(data.analysis_score ?? 0).toFixed(0)}%`,
+        detail: `tools=${(data.tools_used as string[])?.join(", ") ?? "—"} strings=${Number(data.strings ?? 0)} functions=${Number(data.functions ?? 0)} lang=${String(data.language_hint ?? "—")}`,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
     } finally {
@@ -83,7 +89,7 @@ export function Analyze() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="analyze-page">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Analyze Binary
@@ -173,6 +179,7 @@ export function Analyze() {
               onClick={runAnalysis}
               disabled={loading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
+              data-testid="analyze-run"
             >
               {loading ? (
                 <>
@@ -191,18 +198,24 @@ export function Analyze() {
       )}
 
       {error && (
-        <Card className="border-red-900/50 bg-red-950/20">
+        <Card
+          className="border-red-900/50 bg-red-950/20"
+          data-testid="analyze-error"
+        >
           <CardContent className="pt-6 flex items-center gap-2 text-red-400">
             <XCircle className="h-5 w-5 shrink-0" />
             <span>
-              {error}. Ensure backend is running (e.g. start-webapp.ps1).
+              {error}. Ensure backend is running (repo-root start.ps1).
             </span>
           </CardContent>
         </Card>
       )}
 
       {result && (
-        <Card className="border-slate-800 bg-slate-950/50">
+        <Card
+          className="border-slate-800 bg-slate-950/50"
+          data-testid="analyze-result"
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-white">
               <CheckCircle className="h-5 w-5 text-emerald-500" />
