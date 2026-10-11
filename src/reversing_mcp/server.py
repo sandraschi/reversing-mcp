@@ -8,6 +8,7 @@ CURSOR_HANDOFF.md in this repository.
 """
 
 import os
+import tempfile
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -255,6 +256,15 @@ async def get_file_info(
 def _tools_resource() -> dict[str, Any]:
     """List available RE tools as a config resource."""
     return {"tools": analyzer.check_available_tools()}
+
+
+@mcp.resource("skill://primary")
+def _primary_skill_resource() -> str:
+    """Reversing-expert skill content (skill-first chat preprompt)."""
+    skill_path = SKILLS_DIR / "primary" / "SKILL.md"
+    if skill_path.exists():
+        return skill_path.read_text(encoding="utf-8")
+    return "Reversing MCP: static binary analysis (analyze_binary, extract_strings, get_hexdump, analyze_entropy, find_functions), PE/DKI tools, REA sidecar (rea_investigate). Triage with check_tools() then analyze_binary()."
 
 
 @mcp.prompt()
@@ -901,6 +911,7 @@ def main():
 try:
     import platform
 
+    from fastapi import BackgroundTasks, File, HTTPException, UploadFile
     from fastapi import FastAPI as _FastAPI
     from fastapi.middleware.cors import CORSMiddleware as _CORSMiddleware
 
@@ -1027,6 +1038,423 @@ try:
         if skill_path.exists():
             return {"name": name, "content": skill_path.read_text(encoding="utf-8")}
         return {"error": "Skill not found"}
+
+    @_http_app.get("/skill/{name}")
+    async def _get_skill_alias(name: str):
+        """Skill content as raw text (chat-skills-prefab standard §5)."""
+        skill_path = SKILLS_DIR / name / "SKILL.md"
+        if skill_path.exists():
+            return skill_path.read_text(encoding="utf-8")
+        return "not found"
+
+    # --- Transplanted 2026-10-11 from reversing-webapp/api/main.py (Next.js app retired;
+    # Vite web_sota is the surviving frontend and already calls these routes).
+    # Adaptations: .dict() -> .model_dump() (pydantic v2), chat history order fixed
+    # (history first, new message last), chat model fallback auto-picks instead of
+    # hardcoded "llama2". No duplicate /health or /mcp mount (both exist above).
+
+    _GHIDRA_BRIDGE_URL = os.getenv("GHIDRA_BRIDGE_URL", "http://127.0.0.1:8089")
+    _OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    _selected_ollama_model: str | None = None
+
+    class _AnalysisRequest(BaseModel):
+        file_path: str
+        tools: list[str] | None = None
+
+    class _GhidraStatus(BaseModel):
+        available: bool
+        installed: bool = False
+        version: str | None = None
+        bridge_running: bool = False
+        bridge_url: str | None = None
+        connected_instance: str | None = None
+
+    class _GhidraConnectRequest(BaseModel):
+        instance_id: str
+        mode: str = "tcp"
+
+    class _AnalysisResponse(BaseModel):
+        file_path: str
+        file_size: int
+        tools_used: list[str]
+        results: dict[str, Any]
+        analysis_score: float
+        language_hint: str
+        entropy_score: float
+        functions: int
+        strings: int
+        has_pdb: bool
+        is_obfuscated: bool
+
+    class _LLMProviderBody(BaseModel):
+        provider: str = "ollama"
+
+    class _LLMSelectBody(BaseModel):
+        provider: str = "ollama"
+        model: str = ""
+
+    class _ChatRequest(BaseModel):
+        message: str
+        history: list[dict[str, str]] = []
+
+    def _analysis_score(results: dict[str, Any]) -> float:
+        score = 0.0
+        if "file_info" in results:
+            score += 20
+        if results.get("strings"):
+            score += 20
+        if "entropy_analysis" in results:
+            score += 20
+        if "pe_analysis" in results:
+            score += 20
+        if results.get("functions"):
+            score += 20
+        return min(score, 100.0)
+
+    def _language_hint(results: dict[str, Any]) -> str:
+        text = " ".join(str(s) for s in results.get("strings", [])).lower()
+        hints = {
+            "c/c++": ["printf", "scanf", "malloc", "free", "iostream", "std::"],
+            "python": ["import ", "def ", "class ", "python", "pip"],
+            "java": ["java", "public static void main", "system.out", "import java"],
+            "csharp": ["using system", "console.writeline", "namespace", ".net"],
+            "go": ["package main", "import (", "fmt.printf", "golang"],
+            "rust": ["fn main", "println!", "cargo", "rust"],
+            "javascript": ["function ", "console.log", "node.js", "npm"],
+        }
+        for lang, indicators in hints.items():
+            if any(i in text for i in indicators):
+                return lang.title()
+        return "Unknown"
+
+    def _has_pdb(results: dict[str, Any]) -> bool:
+        text = " ".join(str(s) for s in results.get("strings", [])).lower()
+        return ".pdb" in text
+
+    def _is_obfuscated(results: dict[str, Any]) -> bool:
+        if results.get("entropy_analysis", {}).get("overall_entropy", 0.0) > 7.5:
+            return True
+        if len(results.get("strings", [])) < 3:
+            return True
+        text = " ".join(str(s) for s in results.get("strings", [])).lower()
+        return any(w in text for w in ["obfuscated", "packed", "encrypted", "compressed"])
+
+    def _analysis_response(file_path: str, file_size: int, tool_list: list[str], results: dict[str, Any]):
+        return _AnalysisResponse(
+            file_path=file_path,
+            file_size=file_size,
+            tools_used=tool_list,
+            results=results,
+            analysis_score=_analysis_score(results),
+            language_hint=_language_hint(results),
+            entropy_score=results.get("entropy_analysis", {}).get("overall_entropy", 0.0),
+            functions=len(results.get("functions", [])),
+            strings=len(results.get("strings", [])),
+            has_pdb=_has_pdb(results),
+            is_obfuscated=_is_obfuscated(results),
+        )
+
+    @_http_app.get("/tools/status")
+    async def _web_tools_status():
+        """Engine inventory for Status/Tools pages (backed by check_tools data)."""
+        try:
+            tools = analyzer.check_available_tools()
+            ghidra = tools.get("ghidra", {})
+            return {
+                "tools": {
+                    "file": {"available": True},
+                    "strings": {"available": True},
+                    "entropy": {"available": True},
+                    "pefile": {"available": True},
+                    "ghidra_mcp": {
+                        "available": False,
+                        "installed": bool(ghidra.get("available")),
+                        "version": ghidra.get("version"),
+                        "note": f"Bridge: {_GHIDRA_BRIDGE_URL}",
+                    },
+                    "rea": tools.get("rea", {"available": False}),
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error checking tools status: {e}")
+            raise HTTPException(status_code=500, detail=f"Tools status check failed: {e!s}") from e
+
+    @_http_app.post("/analyze/upload")
+    async def _analyze_upload(background_tasks: BackgroundTasks, file: UploadFile = File(...), tools: str | None = None):
+        """Analyze an uploaded file (Analyze page)."""
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file provided")
+        tool_list = tools.split(",") if tools else ["file", "strings", "entropy"]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file.filename}") as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        try:
+            results = analyzer.analyze_file(temp_file_path, tool_list)
+            response = _analysis_response(file.filename, len(content), tool_list, results)
+            background_tasks.add_task(os.unlink, temp_file_path)
+            return response.model_dump()
+        except Exception as e:
+            try:
+                os.unlink(temp_file_path)
+            except OSError:
+                pass
+            logger.error(f"Error analyzing uploaded file {file.filename}: {e}")
+            raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}") from e
+
+    @_http_app.post("/analyze/file")
+    async def _analyze_path(request: _AnalysisRequest):
+        """Analyze a file by server-side path."""
+        if not os.path.exists(request.file_path):
+            raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
+        try:
+            tool_list = request.tools or ["file", "strings", "entropy"]
+            results = analyzer.analyze_file(request.file_path, tool_list)
+            response = _analysis_response(request.file_path, os.path.getsize(request.file_path), tool_list, results)
+            return response.model_dump()
+        except Exception as e:
+            logger.error(f"Error analyzing file {request.file_path}: {e}")
+            raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}") from e
+
+    async def _ghidra_request(path: str, method: str = "GET", params: dict | None = None, data: dict | None = None):
+        """Proxy to the Ghidra MCP bridge (ReVa/bridge on :8089). Returns None when down."""
+        import httpx
+
+        url = f"{_GHIDRA_BRIDGE_URL}{path}"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                if method == "GET":
+                    r = await client.get(url, params=params)
+                else:
+                    r = await client.post(url, json=data)
+                r.raise_for_status()
+                return r.json()
+            except Exception as e:
+                logger.error(f"Ghidra bridge error ({path}): {e}")
+                return None
+
+    @_http_app.get("/ghidra/status")
+    async def _ghidra_status():
+        """Ghidra install + bridge health for Dashboard/Settings/Status pages."""
+        installed = False
+        version = None
+        bridge_running = False
+        connected_instance = None
+        try:
+            g = analyzer.check_available_tools().get("ghidra", {})
+            installed = bool(g.get("available"))
+            version = g.get("version")
+            status = await _ghidra_request("/status")
+            if status:
+                bridge_running = True
+                connected_instance = status.get("connected_instance")
+        except Exception:
+            pass
+        return _GhidraStatus(
+            available=bridge_running,
+            installed=installed,
+            version=version,
+            bridge_running=bridge_running,
+            bridge_url=_GHIDRA_BRIDGE_URL,
+            connected_instance=connected_instance,
+        ).model_dump()
+
+    @_http_app.get("/ghidra/instances")
+    async def _ghidra_instances():
+        instances = await _ghidra_request("/instances")
+        if instances is None:
+            raise HTTPException(status_code=503, detail="Ghidra bridge unavailable")
+        return instances
+
+    @_http_app.post("/ghidra/connect")
+    async def _ghidra_connect(request: _GhidraConnectRequest):
+        result = await _ghidra_request("/connect", method="POST", data=request.model_dump())
+        if result is None:
+            raise HTTPException(status_code=502, detail="Failed to connect to Ghidra")
+        return result
+
+    @_http_app.get("/ghidra/functions")
+    async def _ghidra_functions():
+        functions = await _ghidra_request("/functions")
+        if functions is None:
+            raise HTTPException(status_code=502, detail="Ghidra not connected or error fetching functions")
+        return functions
+
+    @_http_app.post("/ghidra/decompile")
+    async def _ghidra_decompile(function_name: str):
+        result = await _ghidra_request("/decompile", method="POST", data={"function_name": function_name})
+        if result is None:
+            raise HTTPException(status_code=502, detail="Decompilation failed")
+        return result
+
+    @_http_app.post("/ghidra/disassemble")
+    async def _ghidra_disassemble(address: str):
+        result = await _ghidra_request("/disassemble", method="POST", data={"address": address})
+        if result is None:
+            raise HTTPException(status_code=502, detail="Disassembly failed")
+        return result
+
+    @_http_app.post("/start_ghidra")
+    async def _start_ghidra():
+        return {"ok": True, "message": "Start Ghidra from the desktop. The WebApp will connect via the MCP bridge."}
+
+    async def _ollama_tags() -> dict:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(f"{_OLLAMA_BASE}/api/tags")
+            r.raise_for_status()
+            return r.json()
+
+    async def _ollama_running() -> list[str]:
+        """Models currently resident in VRAM (never evict these by defaulting elsewhere)."""
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(f"{_OLLAMA_BASE}/api/ps")
+                r.raise_for_status()
+                return [m.get("name", "") for m in r.json().get("models", [])]
+        except Exception:
+            return []
+
+    _MODEL_PREFERENCE = ("qwen3.8:27b", "gemma4:12b")
+
+    async def _pick_model() -> str | None:
+        """Resident-first default (chat standard §1.7): running model in preference order,
+        else highest-preference installed model. Never tags[0] blindly... except there is
+        nothing else to go on, in which case first installed beats no model."""
+        try:
+            running = await _ollama_running()
+            for preferred in _MODEL_PREFERENCE:
+                for name in running:
+                    if name == preferred or name.startswith(preferred.split(":")[0] + ":"):
+                        return name
+            if running:
+                return running[0]
+            tags = await _ollama_tags()
+            installed = [m.get("name", m.get("model", "")) for m in tags.get("models", [])]
+            for preferred in _MODEL_PREFERENCE:
+                for name in installed:
+                    if name == preferred or name.startswith(preferred.split(":")[0] + ":"):
+                        return name
+            return installed[0] if installed else None
+        except Exception:
+            return None
+
+    @_http_app.post("/llm/list_providers")
+    async def _llm_providers():
+        """Available LLM providers (Ollama local today; cloud keys live in Settings)."""
+        return {"providers": [{"id": "ollama", "name": "Ollama"}]}
+
+    @_http_app.post("/llm/list_models")
+    async def _llm_models(body: _LLMProviderBody | None = None):
+        provider = body.provider if body else "ollama"
+        if provider != "ollama":
+            return {"models": []}
+        try:
+            data = await _ollama_tags()
+            models = [m.get("name", m.get("model", "")) for m in data.get("models", [])]
+            return {"models": models}
+        except Exception as e:
+            logger.error("Ollama list_models: %s", e)
+            return {"models": [], "error": str(e)}
+
+    @_http_app.post("/llm/select_model")
+    async def _llm_select(body: _LLMSelectBody | None = None):
+        global _selected_ollama_model
+        if not body:
+            body = _LLMSelectBody()
+        if body.provider == "ollama" and body.model:
+            _selected_ollama_model = body.model
+        return {"ok": True, "provider": body.provider, "model": body.model}
+
+    @_http_app.post("/llm/load_model")
+    async def _llm_load(body: _LLMSelectBody | None = None):
+        """Ollama loads on first use; selecting is sufficient."""
+        return await _llm_select(body)
+
+    @_http_app.post("/llm/unload_model")
+    async def _llm_unload(body: dict | None = None):
+        global _selected_ollama_model
+        _selected_ollama_model = None
+        return {"ok": True}
+
+    @_http_app.post("/llm/status")
+    async def _llm_status():
+        try:
+            await _ollama_tags()
+            healthy = True
+        except Exception:
+            healthy = False
+        return {"provider": "ollama", "model": _selected_ollama_model, "healthy": healthy, "base_url": _OLLAMA_BASE}
+
+    @_http_app.post("/llm/health")
+    async def _llm_health(body: _LLMProviderBody | None = None):
+        provider = body.provider if body else "ollama"
+        if provider != "ollama":
+            return {"healthy": False, "error": "Unknown provider"}
+        try:
+            await _ollama_tags()
+            return {"healthy": True, "provider": "ollama"}
+        except Exception as e:
+            return {"healthy": False, "error": str(e)}
+
+    @_http_app.get("/api/llm/discover")
+    async def _llm_discover():
+        """Provider detection for Settings/Chat (chat standard §1.7): Ollama presence,
+        resident-first default model, full installed list. No hardcoded fallbacks."""
+        try:
+            data = await _ollama_tags()
+            installed = [m.get("name", m.get("model", "")) for m in data.get("models", [])]
+            running = await _ollama_running()
+            default = await _pick_model()
+            return {
+                "provider": "ollama",
+                "detected": True,
+                "base_url": _OLLAMA_BASE,
+                "default_model": default,
+                "running": running,
+                "models": installed,
+            }
+        except Exception as e:
+            return {"provider": "ollama", "detected": False, "base_url": _OLLAMA_BASE, "error": str(e)}
+
+    @_http_app.get("/api/llm/providers")
+    async def _llm_providers_get():
+        """GET alias of provider discovery (Settings page calls this shape)."""
+        return await _llm_discover()
+
+    @_http_app.post("/api/v1/chat")
+    async def _chat(request: _ChatRequest):
+        """Send message history to the selected Ollama model; returns reply.
+        History first, new message last. Model: explicit selection, else resident-first
+        auto-pick, else 409 (never a hardcoded ghost model)."""
+        import httpx
+
+        model = _selected_ollama_model or await _pick_model()
+        if not model:
+            raise HTTPException(
+                status_code=409,
+                detail="No Ollama model available. Start Ollama and pull a model, then retry.",
+            )
+        messages = [{"role": h.get("role", "user"), "content": h.get("content", "")} for h in request.history]
+        messages.append({"role": "user", "content": request.message})
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                r = await client.post(
+                    f"{_OLLAMA_BASE}/api/chat",
+                    json={"model": model, "messages": messages, "stream": False},
+                )
+                r.raise_for_status()
+                data = r.json()
+                reply = data.get("message", {}).get("content", "")
+                return {"reply": reply, "model": model}
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Chat error: %s", e)
+            raise HTTPException(status_code=502, detail=f"Ollama chat failed: {e!s}") from e
 
     _http_app.mount("/mcp", mcp.http_app(path="/"))
     app = _http_app
