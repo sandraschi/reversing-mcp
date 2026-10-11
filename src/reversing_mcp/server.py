@@ -102,7 +102,7 @@ async def analyze_binary(
             "message": f"Analyzed {file_path} with {len(results)} tool(s): {', '.join(results.keys())}.",
         }
     except Exception as e:
-        logger.error(f"Error analyzing {file_path}: {e}")
+        logger.exception(f"Error analyzing {file_path}")
         return {"error": f"Analysis failed: {e!s}"}
 
 
@@ -134,7 +134,7 @@ async def extract_strings(
         strings = analyzer.extract_strings(file_path, min_length, encodings)
         return [s.model_dump() for s in strings]
     except Exception as e:
-        logger.error(f"Error extracting strings from {file_path}: {e}")
+        logger.exception(f"Error extracting strings from {file_path}")
         return [{"error": f"String extraction failed: {e!s}"}]
 
 
@@ -167,7 +167,7 @@ async def get_hexdump(
             "message": f"Hexdump of {file_path} at offset {offset} ({length} bytes).",
         }
     except Exception as e:
-        logger.error(f"Error getting hexdump for {file_path}: {e}")
+        logger.exception(f"Error getting hexdump for {file_path}")
         return {"error": f"Hexdump failed: {e!s}"}
 
 
@@ -202,7 +202,7 @@ async def analyze_entropy(
             f"{len(entropy_data['compressed'])} compressed and {len(entropy_data['random'])} random regions.",
         }
     except Exception as e:
-        logger.error(f"Error analyzing entropy for {file_path}: {e}")
+        logger.exception(f"Error analyzing entropy for {file_path}")
         return {"error": f"Entropy analysis failed: {e!s}"}
 
 
@@ -233,7 +233,7 @@ async def find_functions(
             "message": f"Found {len(functions)} function(s) in {file_path} via {tool}.",
         }
     except Exception as e:
-        logger.error(f"Error finding functions in {file_path}: {e}")
+        logger.exception(f"Error finding functions in {file_path}")
         return {"error": f"Function analysis failed: {e!s}"}
 
 
@@ -267,7 +267,7 @@ async def get_file_info(
             "message": f"{file_path}: {stat.st_size} bytes, {analyzer.detect_file_type(file_path)}.",
         }
     except Exception as e:
-        logger.error(f"Error getting file info for {file_path}: {e}")
+        logger.exception(f"Error getting file info for {file_path}")
         return {"error": f"File info failed: {e!s}"}
 
 
@@ -347,7 +347,7 @@ async def check_tools() -> dict[str, Any]:
             },
         }
     except Exception as e:
-        logger.error(f"Error checking tools: {e}")
+        logger.exception("Error checking tools")
         return {"error": f"Tool check failed: {e!s}"}
 
 
@@ -412,7 +412,7 @@ async def rea_investigate(
             out["message"] = f"REA {out.get('kind')} complete (exit {out.get('exit_code', 0)})."
         return out
     except Exception as e:
-        logger.error(f"REA investigate failed for {target}: {e}")
+        logger.exception(f"REA investigate failed for {target}")
         return {"success": False, "error": f"REA investigate failed: {e!s}"}
 
 
@@ -478,7 +478,7 @@ async def analyze_pe_file(
             "message": f"PE analysis of {file_path} complete ({pe_info.get('num_sections', '?')} sections).",
         }
     except Exception as e:
-        logger.error(f"Error analyzing PE file {file_path}: {e}")
+        logger.exception(f"Error analyzing PE file {file_path}")
         return {"error": f"PE analysis failed: {e!s}"}
 
 
@@ -600,7 +600,7 @@ async def analyze_directmedia_file(
         return response
 
     except Exception as e:
-        logger.error(f"Error analyzing Directmedia file {file_path}: {e}")
+        logger.exception(f"Error analyzing Directmedia file {file_path}")
         return {"error": f"Directmedia analysis failed: {e!s}"}
 
 
@@ -693,7 +693,7 @@ async def decompress_directmedia_library(
         }
 
     except Exception as e:
-        logger.error(f"Error in batch Directmedia decompression: {e}")
+        logger.exception("Error in batch Directmedia decompression")
         return {"error": f"Batch decompression failed: {e!s}"}
 
 
@@ -1231,7 +1231,7 @@ try:
                 }
             }
         except Exception as e:
-            logger.error(f"Error checking tools status: {e}")
+            logger.exception("Error checking tools status")
             raise HTTPException(status_code=500, detail=f"Tools status check failed: {e!s}") from e
 
     @_http_app.post("/analyze/upload")
@@ -1256,7 +1256,7 @@ try:
                 os.unlink(temp_file_path)
             except OSError:
                 pass
-            logger.error(f"Error analyzing uploaded file {file.filename}: {e}")
+            logger.exception(f"Error analyzing uploaded file {file.filename}")
             raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}") from e
 
     @_http_app.post("/analyze/file")
@@ -1270,7 +1270,7 @@ try:
             response = _analysis_response(request.file_path, os.path.getsize(request.file_path), tool_list, results)
             return response.model_dump()
         except Exception as e:
-            logger.error(f"Error analyzing file {request.file_path}: {e}")
+            logger.exception(f"Error analyzing file {request.file_path}")
             raise HTTPException(status_code=500, detail=f"Analysis failed: {e!s}") from e
 
     async def _ghidra_request(path: str, method: str = "GET", params: dict | None = None, data: dict | None = None):
@@ -1286,8 +1286,8 @@ try:
                     r = await client.post(url, json=data)
                 r.raise_for_status()
                 return r.json()
-            except Exception as e:
-                logger.error(f"Ghidra bridge error ({path}): {e}")
+            except Exception:
+                logger.exception(f"Ghidra bridge error ({path})")
                 return None
 
     @_http_app.get("/ghidra/status")
@@ -1414,7 +1414,7 @@ try:
             models = [m.get("name", m.get("model", "")) for m in data.get("models", [])]
             return {"models": models}
         except Exception as e:
-            logger.error("Ollama list_models: %s", e)
+            logger.exception("Ollama list_models failed")
             return {"models": [], "error": str(e)}
 
     @_http_app.post("/llm/select_model")
@@ -1513,7 +1513,7 @@ try:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error("Chat error: %s", e)
+            logger.exception("Chat error")
             raise HTTPException(status_code=502, detail=f"Ollama chat failed: {e!s}") from e
 
     # --- In-repo activity log (folded 2026-10-11 from web_sota/backend/server.py;

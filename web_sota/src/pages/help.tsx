@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function Help() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="help-page">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">
@@ -15,7 +15,7 @@ export function Help() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2" data-testid="help-guides">
         <Card className="border-slate-800 bg-slate-950/50">
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -73,7 +73,10 @@ export function Help() {
         </Card>
       </div>
 
-      <Card className="border-slate-800 bg-slate-950/50">
+      <Card
+        className="border-slate-800 bg-slate-950/50"
+        data-testid="help-system"
+      >
         <CardHeader>
           <div className="flex items-center gap-2">
             <Info className="h-5 w-5 text-purple-500" />

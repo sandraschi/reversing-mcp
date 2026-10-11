@@ -142,8 +142,11 @@ export default function Logging() {
   const currentPage = Math.floor(offset / limit) + 1;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-4" data-testid="logs-page">
+      <div
+        className="flex flex-wrap items-center gap-3"
+        data-testid="logs-filters"
+      >
         <h2 className="text-lg font-bold text-slate-200 mr-2">Logs</h2>
 
         <select
@@ -237,6 +240,7 @@ export default function Logging() {
         ref={containerRef}
         onScroll={handleScroll}
         className="h-[65vh] overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-3 font-mono text-xs leading-relaxed"
+        data-testid="logs-entries"
       >
         {entries.length === 0 && !loading && (
           <div className="text-slate-600 text-center py-12">No log entries</div>

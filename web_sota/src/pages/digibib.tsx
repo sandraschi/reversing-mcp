@@ -105,9 +105,12 @@ export function DigiBib() {
   const ent = (snapResult?.entropy as SnapData) || null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="digibib-page">
       {/* Hero */}
-      <div className="rounded-lg border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-6">
+      <div
+        className="rounded-lg border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-6"
+        data-testid="digibib-hero"
+      >
         <div className="flex items-center gap-3 mb-3">
           <BookOpen className="h-8 w-8 text-amber-500" />
           <div>
@@ -138,7 +141,10 @@ export function DigiBib() {
       </div>
 
       {/* Progress */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+      <div
+        className="flex items-center gap-2 overflow-x-auto pb-2"
+        data-testid="digibib-steps"
+      >
         {steps.map((s) => (
           <div key={s.id} className="flex items-center gap-1 shrink-0">
             <Badge
