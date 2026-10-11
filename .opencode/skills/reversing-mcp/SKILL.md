@@ -1,11 +1,11 @@
 ---
 name: reversing-mcp
-description: Static binary analysis and Directmedia format reversing MCP server — 15 tools
+description: Static binary analysis and Directmedia format reversing MCP server — 16 tools
 ---
 
 ## Session Context (Reversing MCP)
 
-You have access to a static binary analysis server with 15 tools for RE work, Directmedia format reversing, and REA sidecar delegation.
+You have access to a static binary analysis server with 16 tools for RE work, Directmedia format reversing, and REA sidecar delegation.
 
 **Before starting work:**
 1. Check available tools: check_tools()

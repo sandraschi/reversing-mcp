@@ -103,7 +103,7 @@ Use `analyze_binary(..., ['ghidra'])` when headless Ghidra is installed, or `ana
 - **Local LLM:** Ollama (model selectable in webapp Settings).
 - **Chat:** Webapp Chat page, persona "Reversing expert", sends the reversing-expert system prompt to Ollama.
 - **Webapp ports:** Backend 10750, frontend 10751 (fleet registry). Start from repo root: `.\start.ps1` or `.\start.bat`; from fleet: `mcp-central-docs\starts\reversing-start.bat`. Backend is a single FastAPI app (`uvicorn reversing_mcp.server:app`); MCP stdio (`uv run python -m reversing_mcp.server`) is separate for Claude Desktop.
-- **MCP:** FastMCP 3.4; 15 tools plus prompt `reversing_help` available when Reversing MCP server is connected.
+- **MCP:** FastMCP 3.4; 16 tools plus prompt `reversing_help` available when Reversing MCP server is connected.
 - **Docs:** `docs/DIRECTMEDIA_MISSION.md`, `docs/DIRECTMEDIA_REVERSING_TOOLKIT.md`, `docs/GHIDRA.md`; scripts in `scripts/directmedia/`.
 
 ---

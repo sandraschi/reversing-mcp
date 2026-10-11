@@ -35,4 +35,5 @@ Full signatures live in `llms-full.txt`. Every tool returns a `message` key.
 |------|----------|
 | `check_tools()` | Engine inventory incl. REA (never crashes) |
 | `shutdown(confirm=True)` | Graceful termination (DESTRUCTIVE) |
+| `show_tools_card()` | Engine inventory as in-chat Prefab card |
 | `help(level?, topic?)` | Leveled docs (basic/intermediate/advanced) |
