@@ -14,6 +14,7 @@ from typing import Annotated, Any
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
+from . import rea_bridge
 from .analyzers import BinaryAnalyzer
 from .digibib_research import build_research_snapshot, resolve_digibib_exe
 from .directmedia_dki import (
@@ -303,6 +304,11 @@ async def check_tools() -> dict[str, Any]:
                     "Ghidra MCP is not bundled here. Install ReVa (reverse-engineering-assistant) "
                     "and add it to your MCP client; see docs/GHIDRA.md."
                 ),
+                "rea_sidecar": (
+                    "REA (rea-agents) is an optional sidecar for JS/Electron, .NET, APK, firmware, "
+                    "browser, and agent-driven native queries. Setup: just setup-rea, then restart "
+                    "the agent. Query via rea_investigate(); guide: docs/REA.md."
+                ),
                 "directmedia_setup": "Install directmedia-mcp for .DKI file analysis",
                 "digibib5": (
                     "Digitale Bibliothek 5: digibib_research_snapshot() for static prelude; "
@@ -313,6 +319,54 @@ async def check_tools() -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error checking tools: {e}")
         return {"error": f"Tool check failed: {e!s}"}
+
+
+@mcp.tool(annotations=_READ_ONLY)
+async def rea_investigate(
+    target: Annotated[str | None, Field(description="Absolute path to target (binary, .asar, or app dir). Not needed for providers/capabilities/doctor.")] = None,
+    kind: Annotated[str, Field(description="Query kind: auto, javascript, native_overview, native_search, native_function, native_decompile, native_xrefs, native_trace, providers, capabilities, doctor.")] = "auto",
+    provider: Annotated[str | None, Field(description="Native provider: hopper, ghidra, ida. Omit for auto-select.")] = None,
+    query: Annotated[str | None, Field(description="Search text (native_search, native_trace).")] = None,
+    symbol: Annotated[str | None, Field(description="Function name or address (native_function).")] = None,
+    address: Annotated[str | None, Field(description="Address for decompile/xrefs (e.g. 0x1000, main).")] = None,
+    snapshot_path: Annotated[str | None, Field(description="Snapshot file to read/write cached REA results.")] = None,
+    timeout_s: Annotated[int, Field(description="Subprocess timeout 10-900s (default 180). Large binaries need more.")] = 180,
+) -> dict[str, Any]:
+    """
+    REA_INVESTIGATE - Delegate one query to the REA sidecar (`rea` CLI).
+
+    PORTMANTEAU PATTERN RATIONALE: Single entry point for everything reversing-mcp
+    does not do natively: JS/Electron app graphs, .NET/APK/firmware/browser targets,
+    and agent-driven native pseudocode/search/xrefs via Hopper/Ghidra/IDA. Triage
+    with analyze_binary() first, then hand off. Full guide: docs/REA.md.
+
+    ## Return Format
+    success=True: {success, kind, command, exit_code, stdout_bytes, result|result_text, truncated?, hint?}
+    success=False: {success: False, error, kind, ...}. Large outputs truncate with a
+    snapshot_path hint instead of parsing hundreds of MB into memory.
+
+    ## Examples
+    rea_investigate("D:/apps/notes", kind="javascript")
+    rea_investigate("prog.exe", kind="native_overview", provider="ghidra")
+    rea_investigate("prog.exe", kind="native_search", query="decrypt", provider="ghidra")
+    rea_investigate(None, kind="providers")
+    """
+    if kind not in rea_bridge.REA_KINDS:
+        return {"success": False, "error": f"Unknown kind '{kind}'. Valid: {', '.join(rea_bridge.REA_KINDS)}."}
+    try:
+        return rea_bridge.run_rea(
+            kind,
+            target,
+            provider=provider,
+            query=query,
+            symbol=symbol,
+            address=address,
+            snapshot_path=snapshot_path,
+            timeout_s=timeout_s,
+        )
+    except Exception as e:
+        logger.error(f"REA investigate failed for {target}: {e}")
+        return {"success": False, "error": f"REA investigate failed: {e!s}"}
 
 
 @mcp.tool()
@@ -615,6 +669,7 @@ async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]
                 "4. Get hex dump: get_hexdump('file.exe', offset=0, length=256)",
                 "5. For Ghidra: connect ReVa MCP (see docs/GHIDRA.md)",
                 "6. Digibib5 / Directmedia: digibib_research_snapshot() (see docs/DIRECTMEDIA_REVERSING_TOOLKIT.md)",
+                "7. For JS/Electron/.NET/APK/firmware or agent-driven native: rea_investigate(path) (see docs/REA.md)",
             ],
             "essential_tools": [
                 "analyze_binary - Full binary analysis",
@@ -622,6 +677,7 @@ async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]
                 "get_hexdump - View raw bytes",
                 "analyze_entropy - Detect compression/encryption",
                 "check_tools - See what's available",
+                "rea_investigate - REA sidecar delegate (JS/Electron/native via provider)",
                 "digibib_research_snapshot - Static bundle for Digibib5.exe / viewer roadmap",
             ],
             "next_steps": "Use level='intermediate' for detailed tool descriptions",
@@ -667,6 +723,11 @@ async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]
                     "2. analyze_entropy(file.bin) - Find packed sections",
                     "3. extract_strings(file.bin) - Find embedded strings",
                     "4. binwalk analysis for embedded filesystems",
+                ],
+                "agent_re": [
+                    "1. analyze_binary(path) - Triage first (type, strings, entropy)",
+                    "2. rea_investigate(path) - Auto-route to JS/native; no provider flags needed",
+                    "3. rea_investigate(path, kind='native_search', query='decrypt') - Follow-up specifics",
                 ],
             },
             "next_steps": "Use level='advanced' for technical details and Ghidra deep-dive",

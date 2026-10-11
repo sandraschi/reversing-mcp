@@ -15,6 +15,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from .logging_config import get_logger
+from .rea_bridge import check_rea as _rea_probe
 
 logger = get_logger("reversing_mcp.analyzers")
 
@@ -53,6 +54,7 @@ class BinaryAnalyzer:
             "binwalk": {"name": "Binwalk", "available": False, "version": None, "path": None},
             "strings": {"name": "GNU strings", "available": False, "version": None, "path": None},
             "file": {"name": "file command", "available": False, "version": None, "path": None},
+            "rea": {"name": "REA (rea-agents)", "available": False, "version": None, "path": None},
         }
 
         self._check_ida(tools["ida"])
@@ -61,6 +63,7 @@ class BinaryAnalyzer:
         self._check_binwalk(tools["binwalk"])
         self._check_strings(tools["strings"])
         self._check_file(tools["file"])
+        self._check_rea(tools["rea"])
 
         self.tools_cache = tools
         return tools
@@ -246,6 +249,16 @@ class BinaryAnalyzer:
                 tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
         except (subprocess.SubprocessError, OSError):
             pass
+
+    def _check_rea(self, tool_info: dict[str, Any]):
+        """Check for REA sidecar (`rea` global or npx fallback). Never raises."""
+        try:
+            probe = _rea_probe()
+            tool_info["available"] = bool(probe.get("available"))
+            tool_info["version"] = probe.get("version")
+            tool_info["path"] = probe.get("path")
+        except Exception:
+            logger.exception("REA probe failed")
 
     def get_file_info(self, file_path: str) -> dict[str, Any]:
         """Get comprehensive file information"""
