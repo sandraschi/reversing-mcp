@@ -42,4 +42,5 @@ Full signatures live in `llms-full.txt`. Every tool returns a `message` key.
 | Tool | One line |
 |------|----------|
 | `gym(operation, run_id?, target?, test_files?, notes?, decision?)` | Run lifecycle: start/status/advance/stop/list (stages 0/1/4 in G1) |
+| `engine(operation, file_path?, target?, args?, pid?, functions?, arg0_filter?, source?, duration_s?, max_events?, timeout_s?, confirm?)` | `die`: compiler/packer ID; `capa`: capabilities (slow on big binaries); `frida_trace` / `frida_script`: runtime hooks, need `confirm=True` |
 | `help(level?, topic?)` | Leveled docs (basic/intermediate/advanced) |

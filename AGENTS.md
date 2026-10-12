@@ -38,6 +38,7 @@ All registered in `server.py`; implementations in `analyzers.py`, `directmedia_d
 | `shutdown` | Graceful server shutdown |
 | `show_tools_card` | Engine inventory as in-chat Prefab card |
 | `gym` | Cloning-run lifecycle (start/status/advance/stop/list) |
+| `engine` | DiE / capa / Frida: compiler+packer ID, capabilities, runtime hooks |
 | `help` | Multi-level help system |
 
 ## Documentation Map

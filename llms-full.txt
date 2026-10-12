@@ -37,6 +37,7 @@ uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 - `shutdown(confirm=False)` — graceful server termination. Requires confirm=True.
 - `show_tools_card()` — engine inventory as an in-chat Prefab card (app=True).
 - `gym(operation="list", ...)` — cloning-run lifecycle (start/status/advance/stop/list).
+- `engine(operation="die"|"capa"|"frida_trace"|"frida_script", ...)` — Detect It Easy compiler/packer ID, capa capabilities, Frida runtime hooks (frida_* need confirm=True; they execute the target).
 - `help(level="basic", topic=None)` — multi-level help. Levels: basic, intermediate, advanced. Topics: ghidra, binary, analysis.
 
 ## REST API (single FastAPI app on :10750; `uvicorn reversing_mcp.server:app`)

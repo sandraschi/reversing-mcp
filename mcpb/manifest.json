@@ -33,6 +33,7 @@
     { "name": "shutdown", "description": "shutdown" },
     { "name": "show_tools_card", "description": "show_tools_card" },
     { "name": "gym", "description": "gym" },
+    { "name": "engine", "description": "engine" },
     { "name": "help", "description": "help" }
   ]
 }
