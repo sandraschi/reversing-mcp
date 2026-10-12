@@ -17,7 +17,7 @@ just install-idr                         # Install IDR (Delphi reconstructor)
 | Backend (MCP + API) | 10750 |
 | Frontend (Vite dev) | 10751 |
 
-## Tools (16)
+## Tools (17)
 All registered in `server.py`; implementations in `analyzers.py`, `directmedia_dki.py`, `digibib_research.py`, `rea_bridge.py`.
 
 | Tool | Description |
@@ -37,6 +37,7 @@ All registered in `server.py`; implementations in `analyzers.py`, `directmedia_d
 | `decompress_directmedia_library` | DM library extraction |
 | `shutdown` | Graceful server shutdown |
 | `show_tools_card` | Engine inventory as in-chat Prefab card |
+| `gym` | Cloning-run lifecycle (start/status/advance/stop/list) |
 | `help` | Multi-level help system |
 
 ## Documentation Map

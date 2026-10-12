@@ -32,6 +32,7 @@
     { "name": "rea_investigate", "description": "rea_investigate" },
     { "name": "shutdown", "description": "shutdown" },
     { "name": "show_tools_card", "description": "show_tools_card" },
+    { "name": "gym", "description": "gym" },
     { "name": "help", "description": "help" }
   ]
 }

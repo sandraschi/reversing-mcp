@@ -10,7 +10,7 @@
 - [Ghidra Plugin](GHIDRA_PLUGIN_SETUP.md): Ghidra setup
 - [PRD](PRD.md): Vision - agent-driven feature-to-code-map platform
 
-## Tools (16)
+## Tools (17)
 - [Server](src/reversing_mcp/server.py): FastMCP server with all tools
 - [Analyzers](src/reversing_mcp/analyzers.py): Binary analysis, PE parsing, entropy, string
 - [REA bridge](src/reversing_mcp/rea_bridge.py): REA sidecar subprocess bridge
@@ -36,6 +36,7 @@
 | `decompress_directmedia_library` | Decompress DM library archives |
 | `shutdown` | Graceful server shutdown |
 | `show_tools_card` | Engine inventory as in-chat Prefab card |
+| `gym` | Cloning-run lifecycle (start/status/advance/stop/list) |
 | `help` | Multi-level help system |
 
 ## Config

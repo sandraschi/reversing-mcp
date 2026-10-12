@@ -26,13 +26,14 @@ powershell -c "irm https://github.com/sandraschi/reversing-mcp/releases/latest/d
 
 ## What it does
 
-16 tools across five domains:
+17 tools across six domains:
 
 | Domain | Tools | Docs |
 |--------|-------|------|
 | **Binary analysis** | `analyze_binary`, `extract_strings`, `get_hexdump`, `analyze_entropy`, `find_functions` | — |
 | **File / PE analysis** | `get_file_info`, `analyze_pe_file` | — |
 | **Agent RE** (REA sidecar) | `rea_investigate` | [REA sidecar guide](docs/REA.md) |
+| **Gym** (cloning runs) | `gym` | [Gym spec](docs/GYM_SPEC.md) |
 | **Directmedia / DKI** | `decode_dki_file`, `analyze_directmedia_file`, `decompress_directmedia_library`, `digibib_research_snapshot` | [Reversing guide](docs/DIGIBIB_REVERSING_GUIDE.md) · [Mission](docs/DIRECTMEDIA_MISSION.md) · [Toolkit](docs/DIRECTMEDIA_REVERSING_TOOLKIT.md) · [Decompile plan](docs/DIGIBIB_DECOMPILE_PLAN.md) |
 | **System** | `check_tools`, `shutdown`, `help`, `show_tools_card` | — |
 
