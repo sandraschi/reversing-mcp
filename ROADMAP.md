@@ -23,8 +23,9 @@
   (2) rebuild the UI from that record (UX analysis / reimplementation reference);
   (3) Ghidra & co. for the functionality behind it, where possible. Steps 1 and 3 are the
   Tier 3 spec ([docs/CUA_DISASSEMBLY_COMBO.md](docs/CUA_DISASSEMBLY_COMBO.md)); step 2 (UI
-  rebuild) is new and not yet specced. Reference approach: the ArtCraft team's CUA
-  UX-analysis bot (details to be collected).
+  rebuild) is new. Reference approach: the ArtCraft team's CUA UX-analysis bot (details to
+  be collected). **Specced as the Reversing Gym: [docs/GYM_SPEC.md](docs/GYM_SPEC.md)**
+  (oracle -> clicker -> assessment -> recovery -> Tauri UI -> round trip -> compare).
 
 ## Out of scope (unless explicitly picked up)
 
