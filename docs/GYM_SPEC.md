@@ -9,6 +9,8 @@ clone is correct when the original agrees with it, not when the disassembly says
 
 Builds on Tier 3 ([CUA_DISASSEMBLY_COMBO.md](CUA_DISASSEMBLY_COMBO.md)): its tour YAML,
 capture bundle and `scripts/tour/correlate.py` are reused, not reinvented.
+Playbook detail: [ELICITATION_AND_CLICKER.md](ELICITATION_AND_CLICKER.md)
+(stage-1b elicitation procedure + stage-3 clicker layers, algorithms and papers).
 
 ---
 

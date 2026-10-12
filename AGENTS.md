@@ -46,6 +46,7 @@ All registered in `server.py`; implementations in `analyzers.py`, `directmedia_d
 - `docs/REVA.md` — **ReVa MCP guide** (install, assistant/headless modes, client config, two-server workflow)
 - `docs/REA.md` — **REA sidecar guide** (agent-driven native + JS/Electron/.NET/APK/firmware/browser, setup, three-server workflow)
 - `docs/CUA_DISASSEMBLY_COMBO.md` — **Tier 3 spec** (CUA tour + disassembly = feature-to-code maps; spec, not built)
+- `docs/ELICITATION_AND_CLICKER.md` — **Gym playbook** (stage-1b format/docs mining + stage-3 clicker layers, algorithms, papers)
 - `docs/GHIDRA.md` — **Ghidra headless guide** (analyzeHeadless, scripts, CLI reference)
 - `docs/DIRECTMEDIA_MISSION.md` — Directmedia / Digibib5 mission scope
 - `docs/DIRECTMEDIA_REVERSING_TOOLKIT.md` — CLI/MCP reversing toolkit
