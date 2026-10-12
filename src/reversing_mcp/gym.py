@@ -10,7 +10,9 @@ re-running a completed stage reuses its artifacts unless forced.
 Stages run in a background worker thread: advance_run() marks the stage
 "running", starts the worker and returns at once; callers poll get_run(). Each
 attempt carries a token so a stopped attempt that finishes late cannot
-overwrite a newer one. A stage left "running" with no live worker (backend
+overwrite a newer one. stop_run() also fires the attempt's cancel event, which
+kills the running engine's process tree (engines.run_cancellable) and aborts the
+stage. A stage left "running" with no live worker (backend
 restarted) is reported as "interrupted" and is retried by the next advance.
 The REST/MCP layers still call these functions via asyncio.to_thread because
 the bookkeeping does file I/O (2026-10-12 /ghidra/status incident).
@@ -58,6 +60,8 @@ _runs_dir: Path | None = None
 _lock = threading.RLock()
 # attempt token -> thread executing that stage attempt
 _workers: dict[str, threading.Thread] = {}
+# attempt token -> cancel event; stop_run sets it and the engine process tree is killed
+_cancels: dict[str, threading.Event] = {}
 
 
 def runs_dir() -> Path:
@@ -162,9 +166,9 @@ def create_run(target: str, test_files: list[str] | None = None, notes: str = ""
 
 
 _STAGE_FNS = {
-    "intake": lambda run_path, state: _stage_intake(run_path, state),
-    "triage": lambda run_path, state: _stage_triage(run_path, state),
-    "assessment": lambda run_path, state: _stage_assessment(run_path, state),
+    "intake": lambda run_path, state, _cancel: _stage_intake(run_path, state),
+    "triage": lambda run_path, state, cancel: _stage_triage(run_path, state, cancel),
+    "assessment": lambda run_path, state, _cancel: _stage_assessment(run_path, state),
 }
 
 
@@ -175,17 +179,21 @@ def _begin_stage(run_path: Path, state: dict, stage: str) -> str:
     state["stages"][stage].update(
         {"status": "running", "started": _now(), "ended": None, "error": None, "message": None, "attempt": token}
     )
+    _cancels[token] = threading.Event()
     _save(run_path, state)
     _log(run_path, "stage_started", stage)
     return token
 
 
-def _execute_stage(run_path: Path, stage: str) -> tuple[bool, dict[str, Any]]:
+def _execute_stage(run_path: Path, stage: str, token: str) -> tuple[bool, dict[str, Any]]:
     """Run the stage body (slow, no lock held). State is re-read: bodies only read it."""
     with _lock:
         state = json.loads((run_path / "run.json").read_text(encoding="utf-8"))
+        cancel = _cancels.get(token)
     try:
-        return True, _STAGE_FNS[stage](run_path, state)
+        return True, _STAGE_FNS[stage](run_path, state, cancel)
+    except engines.Cancelled:
+        return False, {"error": "Cancelled by stop; engine process killed."}
     except Exception as e:
         logger.exception("Gym stage %s failed for run %s", stage, state["id"])
         return False, {"error": str(e)}
@@ -195,6 +203,7 @@ def _finish_stage(run_path: Path, stage: str, token: str, ok: bool, result: dict
     """Record the outcome, unless this attempt was stopped or superseded meanwhile."""
     with _lock:
         _workers.pop(token, None)
+        _cancels.pop(token, None)
         state = json.loads((run_path / "run.json").read_text(encoding="utf-8"))
         info = state["stages"][stage]
         if info.get("attempt") != token or info["status"] != "running":
@@ -225,19 +234,20 @@ def _run_stage(run_path: Path, state: dict, stage: str) -> dict[str, Any]:
     with _lock:
         token = _begin_stage(run_path, state, stage)
         _workers[token] = threading.current_thread()
-    ok, result = _execute_stage(run_path, stage)
+    ok, result = _execute_stage(run_path, stage, token)
     return _finish_stage(run_path, stage, token, ok, result)
 
 
 def _stage_worker(run_path: Path, stage: str, token: str) -> None:
     try:
-        ok, result = _execute_stage(run_path, stage)
+        ok, result = _execute_stage(run_path, stage, token)
         _finish_stage(run_path, stage, token, ok, result)
     except Exception:
         # Run dir vanished or similar: the stage stays 'running' until _load marks it interrupted.
         logger.exception("Gym worker for %s/%s crashed", run_path.name, stage)
         with _lock:
             _workers.pop(token, None)
+            _cancels.pop(token, None)
 
 
 def _stage_intake(run_path: Path, state: dict) -> dict[str, Any]:
@@ -261,16 +271,23 @@ def _stage_intake(run_path: Path, state: dict) -> dict[str, Any]:
     }
 
 
-def _stage_triage(run_path: Path, state: dict) -> dict[str, Any]:
+def _stage_triage(run_path: Path, state: dict, cancel: threading.Event | None = None) -> dict[str, Any]:
     target = state["target"]
     analyzer = BinaryAnalyzer()
     triage: dict[str, Any] = {"target": target}
 
+    def check_cancel() -> None:
+        if cancel is not None and cancel.is_set():
+            raise engines.Cancelled("triage")
+
     # engines.run_* contract: success / error; DiE adds detections + packed, capa adds capabilities.
-    die = engines.run_die(target, timeout_s=120)
+    # A stop kills the running engine (cancelled=True) and aborts the rest of the stage.
+    die = engines.run_die(target, timeout_s=120, cancel=cancel)
+    check_cancel()
     die["available"] = bool(die.get("success"))
     triage["die"] = die
-    capa = engines.run_capa(target, timeout_s=CAPA_TIMEOUT_S)
+    capa = engines.run_capa(target, timeout_s=CAPA_TIMEOUT_S, cancel=cancel)
+    check_cancel()
     capa["available"] = bool(capa.get("success"))
     triage["capa"] = {
         "summary": capa.get("capabilities", []),
@@ -444,8 +461,8 @@ def advance_run(run_id: str, decision: str | None = None, background: bool = Tru
 
 
 def stop_run(run_id: str) -> dict[str, Any]:
-    """Mark a running stage stopped. Its worker cannot be killed mid-subprocess (an engine
-    call runs to its own timeout); whatever it returns afterwards is discarded."""
+    """Stop the running stage: mark it stopped and fire its cancel event, which kills the
+    engine process tree (DiE / capa) within about a second. The worker's result is discarded."""
     with _lock:
         run_path, state = _load(run_id)
         if run_path is None:
@@ -454,6 +471,9 @@ def stop_run(run_id: str) -> dict[str, Any]:
         for stage, info in state["stages"].items():
             if info["status"] == "running":
                 info.update({"status": "stopped", "ended": _now(), "error": "Stopped by user."})
+                cancel = _cancels.get(info.get("attempt") or "")
+                if cancel is not None:
+                    cancel.set()
                 stopped.append(stage)
         _save(run_path, state)
         _log(run_path, "stopped", ",".join(stopped))

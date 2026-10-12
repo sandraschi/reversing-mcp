@@ -5,6 +5,7 @@ All notable changes to this project are documented here. Format follows [Keep a 
 ## [Unreleased]
 
 ### Added (2026-10-12)
+- Gym stop kills the engine: `engines.run_cancellable` (Popen + cancel event + psutil tree kill) backs `run_die` / `run_capa`; stop cancels the attempt, timeouts kill the whole tree too
 - Gym stages run in the background: `advance` returns immediately, a worker thread runs the stage, the page polls (Stop button, running/stopped/interrupted states); attempt tokens discard late results of stopped attempts; atomic `run.json`
 - `engine` MCP tool (DiE / capa / Frida, 18 tools); IDA 8.x/9.x discovery with `idat` headless and IDA Free rejection
 - Gym G1: `gym.py` job runner (intake/DiE-capa triage/assessment gate), 6 REST endpoints, `gym` MCP tool (17 tools), `/gym` webapp page with stepper + gate buttons + artifact browser; `PRD.md` names the Gym as the product

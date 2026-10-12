@@ -221,3 +221,35 @@ def test_stage_exception_marks_failed(runs_root: Path, monkeypatch: pytest.Monke
     state = _wait_idle(run_id)
     assert state["stages"]["triage"]["status"] == "failed"
     assert "diec exploded" in state["stages"]["triage"]["error"]
+
+
+def test_stop_cancels_engine_and_worker_ends_promptly(runs_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """stop fires the attempt's cancel event; a cancel-aware engine returns at once."""
+    seen: dict[str, Any] = {}
+
+    def cancellable_capa(*_a: Any, cancel: threading.Event | None = None, **_k: Any) -> dict:
+        seen["cancel"] = cancel
+        assert cancel is not None
+        if cancel.wait(30):
+            return {"success": False, "cancelled": True, "error": "capa cancelled (process tree killed)"}
+        return {"success": True, "capabilities": []}
+
+    monkeypatch.setattr("reversing_mcp.engines.run_die", lambda *a, **k: {"success": True, "detections": []})
+    monkeypatch.setattr("reversing_mcp.engines.run_capa", cancellable_capa)
+    run_id = _start()["run_id"]
+    gym.advance_run(run_id)
+    deadline = time.monotonic() + 5
+    while "cancel" not in seen and time.monotonic() < deadline:
+        time.sleep(0.05)
+
+    t0 = time.monotonic()
+    gym.stop_run(run_id)
+    assert seen["cancel"].is_set()
+    while gym._workers and time.monotonic() - t0 < 5:
+        time.sleep(0.05)
+    assert not gym._workers, "worker still alive after stop"
+    assert time.monotonic() - t0 < 3
+    state = gym.get_run(run_id)
+    assert state["stages"]["triage"]["status"] == "stopped"
+    log = (runs_root / run_id / "log.jsonl").read_text(encoding="utf-8")
+    assert "stage_result_discarded" in log

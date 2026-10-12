@@ -105,8 +105,9 @@ the hard cases:
 * **Background execution (built 2026-10-12):** `advance` marks the stage `running`, starts a
   daemon worker thread and returns at once; clients poll the run (`running_stage`). Each
   attempt has a token, so a stopped attempt that finishes late is discarded instead of
-  overwriting a newer one. `stop` cannot kill an engine subprocess mid-run (it ends on its own
-  timeout). A `running` stage with no live worker (backend restarted) becomes `interrupted`.
+  overwriting a newer one. `stop` fires the attempt's cancel event: the running engine's whole
+  process tree is killed (`engines.run_cancellable`, polled every 0.5 s) and the stage aborts;
+  timeouts kill the tree the same way. A `running` stage with no live worker (backend restarted) becomes `interrupted`.
   `run.json` writes are atomic and lock-guarded (single backend process assumed).
 * Endpoints (built in G1): `POST /api/v1/gym/runs`, `GET /api/v1/gym/runs`,
   `GET /api/v1/gym/runs/{id}`, `POST /api/v1/gym/runs/{id}/advance` (gate approval),

@@ -8,10 +8,14 @@ from __future__ import annotations
 
 import asyncio
 import os
+import subprocess
 import sys
 import tempfile
+import threading
+import time
 from pathlib import Path
 
+import psutil
 import pytest
 
 from reversing_mcp import engines
@@ -100,3 +104,83 @@ def test_engine_tool_guards() -> None:
     assert asyncio.run(engine(operation="die"))["success"] is False
     bad = asyncio.run(engine(operation="nope"))
     assert bad["success"] is False and "Valid" in bad["error"]
+
+
+# ------------------------------------------------------------- cancellation / tree kill
+
+_SPAWN_CHILD = (
+    "import subprocess, sys, time; "
+    "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); "
+    "time.sleep(60)"
+)
+
+
+def test_run_cancellable_cancel_kills_whole_tree(monkeypatch: pytest.MonkeyPatch) -> None:
+    procs: list[subprocess.Popen] = []
+    real_popen = subprocess.Popen
+
+    def spy_popen(*a, **k):
+        procs.append(real_popen(*a, **k))
+        return procs[-1]
+
+    monkeypatch.setattr(engines.subprocess, "Popen", spy_popen)
+    cancel = threading.Event()
+    outcome: dict = {}
+
+    def run() -> None:
+        try:
+            engines.run_cancellable([sys.executable, "-c", _SPAWN_CHILD], timeout_s=60, cancel=cancel)
+        except engines.Cancelled:
+            outcome["cancelled"] = True
+
+    runner = threading.Thread(target=run)
+    runner.start()
+    deadline = time.monotonic() + 10
+    tree: list[psutil.Process] = []
+    while time.monotonic() < deadline and not tree:
+        if procs:
+            tree = psutil.Process(procs[0].pid).children(recursive=True)
+        time.sleep(0.1)
+    assert tree, "grandchild never started"
+    root = psutil.Process(procs[0].pid)
+
+    t0 = time.monotonic()
+    cancel.set()
+    runner.join(10)
+    assert outcome.get("cancelled") is True
+    assert time.monotonic() - t0 < 5
+    for p in [root, *tree]:
+        assert not p.is_running(), f"pid {p.pid} survived the cancel"
+
+
+def test_run_cancellable_timeout_kills_and_raises() -> None:
+    t0 = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        engines.run_cancellable([sys.executable, "-c", "import time; time.sleep(60)"], timeout_s=1)
+    assert time.monotonic() - t0 < 5
+
+
+def test_run_cancellable_normal_output() -> None:
+    r = engines.run_cancellable([sys.executable, "-c", "print('hi')"], timeout_s=30)
+    assert r.returncode == 0 and r.stdout.strip() == "hi"
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(engines.find_capa() is None, reason="capa not installed")
+@pytest.mark.skipif(not DIGIBIB.is_file(), reason="Digibib5 fixture missing")
+def test_run_capa_cancel_on_real_capa() -> None:
+    """Real capa on Digibib5 (a ~42 min run) is gone within seconds of cancel."""
+    before = {p.pid for p in psutil.process_iter(["cmdline"]) if "capa" in " ".join(p.info["cmdline"] or [])}
+    cancel = threading.Event()
+    threading.Timer(4, cancel.set).start()
+    t0 = time.monotonic()
+    r = engines.run_capa(str(DIGIBIB), timeout_s=1800, cancel=cancel)
+    assert r["success"] is False and r.get("cancelled") is True
+    assert time.monotonic() - t0 < 15
+    time.sleep(1)
+    after = {
+        p.pid
+        for p in psutil.process_iter(["cmdline"])
+        if "capa" in " ".join(p.info["cmdline"] or []) and p.pid not in before
+    }
+    assert not after, f"capa processes survived cancel: {after}"

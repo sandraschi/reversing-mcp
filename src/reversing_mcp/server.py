@@ -410,8 +410,8 @@ async def gym(
     ## Return Format
     `{"success": bool, "run_id"?, "stage"?, "message"?, ...stage payload}`.
     `advance` while a stage runs -> `{success: False, busy: True, stage}`. `stop` marks the
-    running stage stopped (the engine subprocess finishes on its own timeout; its result is
-    discarded). Advance past assessment requires `decision="go"|"no-go"`; stages
+    running stage stopped and kills the engine's process tree (DiE / capa) within about a
+    second. Advance past assessment requires `decision="go"|"no-go"`; stages
     2,3,5,6,7,8 refuse honestly (pending-spec) instead of pretending.
 
     ## Examples

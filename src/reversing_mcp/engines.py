@@ -20,11 +20,61 @@ import time
 from pathlib import Path
 from typing import Any
 
+import psutil
+
 from .logging_config import get_logger
 
 logger = get_logger("reversing_mcp.engines")
 
 FLEET_TOOLS_DIR = Path(r"D:\Dev\tools")
+
+# How often a running engine checks its cancel event.
+CANCEL_POLL_S = 0.5
+
+
+class Cancelled(Exception):
+    """The caller's cancel event fired; the engine process tree was killed."""
+
+
+def kill_tree(pid: int) -> None:
+    """Kill a process and all its descendants (uv/pip launchers spawn python children)."""
+    try:
+        parent = psutil.Process(pid)
+        procs = [*parent.children(recursive=True), parent]
+    except psutil.NoSuchProcess:
+        return
+    for p in procs:
+        try:
+            p.kill()
+        except psutil.NoSuchProcess:
+            pass
+    psutil.wait_procs(procs, timeout=5)
+
+
+def run_cancellable(
+    cmd: list[str], timeout_s: float, cancel: threading.Event | None = None
+) -> subprocess.CompletedProcess[str]:
+    """subprocess.run(capture_output, text) that also stops when `cancel` is set.
+
+    On timeout or cancel the whole process tree is killed (not just the launcher), then
+    subprocess.TimeoutExpired or Cancelled is raised.
+    """
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    deadline = time.monotonic() + timeout_s
+    while True:
+        try:
+            out, err = proc.communicate(timeout=CANCEL_POLL_S)
+            return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
+        except subprocess.TimeoutExpired:
+            cancelled = cancel is not None and cancel.is_set()
+            if not cancelled and time.monotonic() < deadline:
+                continue
+            kill_tree(proc.pid)
+            proc.communicate()  # reap + drain pipes
+            if cancelled:
+                raise Cancelled(Path(cmd[0]).name) from None
+            raise subprocess.TimeoutExpired(cmd, timeout_s) from None
+
 
 # ----------------------------------------------------------------- Detect It Easy
 
@@ -62,8 +112,11 @@ def check_die() -> dict[str, Any]:
     return info
 
 
-def run_die(file_path: str, timeout_s: int = 60) -> dict[str, Any]:
-    """Identify compiler, linker, packer, protector and libraries with `diec -j`."""
+def run_die(file_path: str, timeout_s: int = 60, cancel: threading.Event | None = None) -> dict[str, Any]:
+    """Identify compiler, linker, packer, protector and libraries with `diec -j`.
+
+    Setting `cancel` kills diec and returns {success: False, cancelled: True}.
+    """
     exe = find_diec()
     if not exe:
         return {
@@ -73,9 +126,9 @@ def run_die(file_path: str, timeout_s: int = 60) -> dict[str, Any]:
     if not Path(file_path).is_file():
         return {"success": False, "error": f"File not found: {file_path}"}
     try:
-        proc = subprocess.run(
-            [exe, "-j", file_path], check=False, capture_output=True, text=True, timeout=max(5, min(timeout_s, 300))
-        )
+        proc = run_cancellable([exe, "-j", file_path], max(5, min(timeout_s, 300)), cancel)
+    except Cancelled:
+        return {"success": False, "cancelled": True, "error": "diec cancelled (process killed)"}
     except subprocess.TimeoutExpired:
         return {"success": False, "error": f"diec timed out after {timeout_s}s"}
     except (subprocess.SubprocessError, OSError) as e:
@@ -169,8 +222,11 @@ def summarize_capa(data: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
-def run_capa(file_path: str, timeout_s: int = 600) -> dict[str, Any]:
-    """Run capa on a binary and return matched capabilities (namespace, ATT&CK, MBC)."""
+def run_capa(file_path: str, timeout_s: int = 600, cancel: threading.Event | None = None) -> dict[str, Any]:
+    """Run capa on a binary and return matched capabilities (namespace, ATT&CK, MBC).
+
+    Setting `cancel` kills the capa process tree and returns {success: False, cancelled: True}.
+    """
     exe = find_capa()
     if not exe:
         return {"success": False, "error": "capa not found. Install it - see docs/CAPA.md."}
@@ -185,7 +241,9 @@ def run_capa(file_path: str, timeout_s: int = 600) -> dict[str, Any]:
     cmd.append(file_path)
     timeout_s = max(30, min(timeout_s, 1800))
     try:
-        proc = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=timeout_s)
+        proc = run_cancellable(cmd, timeout_s, cancel)
+    except Cancelled:
+        return {"success": False, "cancelled": True, "error": "capa cancelled (process tree killed)"}
     except subprocess.TimeoutExpired:
         return {"success": False, "error": f"capa timed out after {timeout_s}s (large binaries take minutes)"}
     except (subprocess.SubprocessError, OSError) as e:
