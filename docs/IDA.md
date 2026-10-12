@@ -99,6 +99,7 @@ Scripts use **IDAPython** (Python 3, bundled with IDA 8.x). They run inside IDA'
 | `Analyzer is not available` | IDA Pro required. IDA Free has no scripting. |
 | `IDA script ran but produced no output` | IDAPython or import error. Run the script manually from IDA's Script Manager first. |
 | `ida64.exe` not used | The scan list prefers `ida64.exe` over `ida.exe` for 64-bit headless. |
+| IDA 9.x installed but not found | The default scan list only knows `IDA Pro 8.1`-`8.3` folders. Set `IDA_DIR` to the 9.x install root. Not yet tested against a 9.x install (no IDA seat on the dev host). |
 
 ---
 

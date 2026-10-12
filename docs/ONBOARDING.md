@@ -7,7 +7,8 @@ core (static triage works out of the box); each engine below unlocks a deeper ti
 
 Agent-driven static binary analysis + Directmedia/Digibib5 format recovery, with an
 optional REA sidecar for JS/Electron/native-via-provider work. Money involved: none
-for the core; Hopper (~$100) and IDA Pro ($$$$) are optional commercial engines.
+for the core; Hopper (~$100, macOS/Linux only) and IDA Pro ($$$$) are optional commercial
+engines. Full engine list: [ENGINES.md](ENGINES.md).
 
 ## Prerequisites
 
@@ -32,7 +33,7 @@ uv run pytest tests/test_mcp_server.py -q
 | 1 static triage | nothing (Python stdlib + `file`) | `analyze_binary`, strings, entropy, PE, DKI |
 | 1+ engines | Ghidra (`GHIDRA_INSTALL_DIR`) / radare2 / binwalk | headless decompile, function discovery |
 | 2 REA sidecar | Node 22.19+ → `just setup-rea`, restart agent | `rea_investigate`: JS/Electron/.NET/APK/firmware/browser/native |
-| 2 native providers | Hopper (buy, auto-installed) / IDA Pro (own seat + `REA_IDA_MCP_CONFIG`) | deeper native via REA; IDA is bring-your-own-license |
+| 2 native providers | Hopper (macOS/Linux only - [HOPPER.md](HOPPER.md); buy, auto-installed) / IDA Pro (own seat + `REA_IDA_MCP_CONFIG`) | deeper native via REA; IDA is bring-your-own-license |
 | Chat | Ollama running | webapp AI Command page |
 
 ## Pitfalls

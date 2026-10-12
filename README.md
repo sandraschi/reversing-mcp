@@ -47,6 +47,11 @@ Vision: agent-driven **feature-to-code maps** (behavior + disassembly correlated
 | **Behavioral + static** (Tier 3) | CUA feature tour correlated to disassembly: feature-to-code maps (spec, not built) | [Combo spec](docs/CUA_DISASSEMBLY_COMBO.md) |
 | **Headless** (`analyzeHeadless`) | Batch/script analysis from `analyze_binary` | Install Ghidra, set `GHIDRA_INSTALL_DIR` |
 | **IDA Pro headless** | Higher-quality decompilation if you have IDA | [IDA integration guide](docs/IDA.md) |
+| **radare2 / binwalk** | Function list, signature scan (subprocess, optional) | [radare2](docs/RADARE2.md) · [binwalk](docs/BINWALK.md) |
+| **Hopper** | Only via REA, macOS/Linux only | [Hopper](docs/HOPPER.md) |
+| **Frida** | Runtime hooking (planned) | [Frida](docs/FRIDA.md) |
+
+All engines, cost and status in one table: [docs/ENGINES.md](docs/ENGINES.md).
 
 ## Web UI
 
