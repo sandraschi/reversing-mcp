@@ -7,7 +7,10 @@ engines required (absent DiE/capa is an asserted honest outcome, not a skip).
 from __future__ import annotations
 
 import json
+import threading
+import time
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -42,12 +45,12 @@ def test_start_rejects_missing_and_non_exe(tmp_path: Path) -> None:
 def test_full_g1_flow_to_gate(runs_root: Path) -> None:
     run_id = _start()["run_id"]
 
-    triage = gym.advance_run(run_id)
+    triage = gym.advance_run(run_id, background=False)
     assert triage["success"], triage
     assert triage["stage"] == "triage"
     assert (runs_root / run_id / "triage" / "triage.json").exists()
 
-    assess = gym.advance_run(run_id)
+    assess = gym.advance_run(run_id, background=False)
     assert assess["success"], assess
     assert assess["stage"] == "assessment"
     dims = assess["assessment"]["dimensions"]
@@ -55,13 +58,13 @@ def test_full_g1_flow_to_gate(runs_root: Path) -> None:
     assert assess["assessment"]["verdict"] in ("green", "amber", "red")
     assert (runs_root / run_id / "assessment" / "assessment.json").exists()
 
-    gated = gym.advance_run(run_id)
+    gated = gym.advance_run(run_id, background=False)
     assert gated["success"] is False and "decision" in gated["error"]
 
     go = gym.advance_run(run_id, decision="go")
     assert go["success"] and "go" in go["message"]
 
-    beyond = gym.advance_run(run_id)
+    beyond = gym.advance_run(run_id, background=False)
     assert beyond["success"] is False and "pending-spec" in beyond["error"]
 
 
@@ -69,10 +72,10 @@ def test_engines_absent_is_honest(runs_root: Path, monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr("reversing_mcp.engines.run_die", lambda *a, **k: {"success": False, "error": "no DiE"})
     monkeypatch.setattr("reversing_mcp.engines.run_capa", lambda *a, **k: {"success": False, "error": "no capa"})
     run_id = _start()["run_id"]
-    triage = gym.advance_run(run_id)
+    triage = gym.advance_run(run_id, background=False)
     assert triage["success"]
     assert triage["triage"]["die"]["available"] is False
-    assess = gym.advance_run(run_id)
+    assess = gym.advance_run(run_id, background=False)
     by_dim = {d["dimension"]: d for d in assess["assessment"]["dimensions"]}
     assert by_dim["Binary"]["status"] == "unknown"
     assert by_dim["Logic"]["status"] == "unknown"
@@ -95,10 +98,10 @@ def test_engines_present_real_contract(runs_root: Path, monkeypatch: pytest.Monk
     monkeypatch.setattr("reversing_mcp.engines.run_die", lambda *a, **k: dict(die))
     monkeypatch.setattr("reversing_mcp.engines.run_capa", lambda *a, **k: dict(capa))
     run_id = _start()["run_id"]
-    triage = gym.advance_run(run_id)
+    triage = gym.advance_run(run_id, background=False)
     assert "DiE: answered" in triage["message"] and "capa: answered" in triage["message"]
     assert len(triage["triage"]["capa"]["summary"]) == 2
-    by_dim = {d["dimension"]: d for d in gym.advance_run(run_id)["assessment"]["dimensions"]}
+    by_dim = {d["dimension"]: d for d in gym.advance_run(run_id, background=False)["assessment"]["dimensions"]}
     assert by_dim["Binary"]["status"] == "green"
     assert by_dim["Logic"]["status"] == "amber"
     assert by_dim["Oracle"]["status"] == "amber" and "anti-VM" in by_dim["Oracle"]["reason"]
@@ -110,7 +113,7 @@ def test_artifact_traversal_guard(runs_root: Path) -> None:
     assert bad["success"] is False and "escapes" in bad["error"]
     missing = gym.read_artifact(run_id, "triage/nope.json")
     assert missing["success"] is False
-    gym.advance_run(run_id)
+    gym.advance_run(run_id, background=False)
     ok = gym.read_artifact(run_id, "triage/triage.json")
     assert ok["success"] and ok["content"].startswith("{")
 
@@ -125,3 +128,96 @@ def test_stop_list_unknown(runs_root: Path) -> None:
     log = (runs_root / run_id / "log.jsonl").read_text(encoding="utf-8")
     assert "stage_done" in log or "created" in log
     _ = json.loads((runs_root / run_id / "run.json").read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------- background execution
+
+
+def _wait_idle(run_id: str, timeout: float = 10.0) -> dict:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        state = gym.get_run(run_id)
+        if not state["running_stage"]:
+            return state
+        time.sleep(0.05)
+    raise AssertionError(f"run {run_id} still running after {timeout}s")
+
+
+@pytest.fixture()
+def gated_capa(monkeypatch: pytest.MonkeyPatch) -> threading.Event:
+    """run_capa blocks until the returned event is set (stands in for a 40-minute capa)."""
+    release = threading.Event()
+
+    def slow_capa(*_a: Any, **_k: Any) -> dict:
+        release.wait(10)
+        return {"success": True, "capabilities": []}
+
+    monkeypatch.setattr("reversing_mcp.engines.run_die", lambda *a, **k: {"success": True, "detections": []})
+    monkeypatch.setattr("reversing_mcp.engines.run_capa", slow_capa)
+    return release
+
+
+def test_advance_returns_immediately_and_completes_in_background(runs_root: Path, gated_capa: threading.Event) -> None:
+    run_id = _start()["run_id"]
+    t0 = time.monotonic()
+    started = gym.advance_run(run_id)
+    assert time.monotonic() - t0 < 2, "advance must not wait for the stage"
+    assert started["success"] and started["status"] == "running" and started["stage"] == "triage"
+    assert gym.get_run(run_id)["running_stage"] == "triage"
+
+    busy = gym.advance_run(run_id)
+    assert busy["success"] is False and busy["busy"] is True and busy["stage"] == "triage"
+    assert any(r["id"] == run_id and r["running"] == "triage" for r in gym.list_runs()["runs"])
+
+    gated_capa.set()
+    state = _wait_idle(run_id)
+    assert state["stages"]["triage"]["status"] == "done"
+    assert "Triage complete" in state["stages"]["triage"]["message"]
+
+    assert gym.advance_run(run_id)["stage"] == "assessment"
+    state = _wait_idle(run_id)
+    assert state["stages"]["assessment"]["status"] == "done"
+    assert state["gate"] == {"stage": "assessment", "decision": None, "at": None}
+
+
+def test_stop_discards_late_result_and_retry_works(runs_root: Path, gated_capa: threading.Event) -> None:
+    run_id = _start()["run_id"]
+    gym.advance_run(run_id)
+    stopped = gym.stop_run(run_id)
+    assert stopped["success"] and "triage" in stopped["message"]
+    assert gym.get_run(run_id)["stages"]["triage"]["status"] == "stopped"
+
+    # Retry while the stopped attempt is still blocked inside capa.
+    retry = gym.advance_run(run_id)
+    assert retry["success"] and retry["stage"] == "triage"
+    gated_capa.set()  # releases both attempts
+    state = _wait_idle(run_id)
+    assert state["stages"]["triage"]["status"] == "done"
+    log = (runs_root / run_id / "log.jsonl").read_text(encoding="utf-8")
+    assert "stage_result_discarded" in log  # the stopped attempt's late result
+
+
+def test_running_without_worker_becomes_interrupted(runs_root: Path) -> None:
+    run_id = _start()["run_id"]
+    state_file = runs_root / run_id / "run.json"
+    state = json.loads(state_file.read_text(encoding="utf-8"))
+    state["stages"]["triage"].update({"status": "running", "attempt": "from-a-dead-backend"})
+    state_file.write_text(json.dumps(state), encoding="utf-8")
+
+    seen = gym.get_run(run_id)
+    assert seen["stages"]["triage"]["status"] == "interrupted"
+    assert seen["running_stage"] is None
+    assert gym.advance_run(run_id)["stage"] == "triage"  # resumable
+    _wait_idle(run_id, timeout=120)  # don't leak the worker into later tests
+
+
+def test_stage_exception_marks_failed(runs_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(*_a: Any, **_k: Any) -> dict:
+        raise RuntimeError("diec exploded")
+
+    monkeypatch.setattr("reversing_mcp.engines.run_die", boom)
+    run_id = _start()["run_id"]
+    gym.advance_run(run_id)
+    state = _wait_idle(run_id)
+    assert state["stages"]["triage"]["status"] == "failed"
+    assert "diec exploded" in state["stages"]["triage"]["error"]

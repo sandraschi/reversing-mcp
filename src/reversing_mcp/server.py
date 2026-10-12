@@ -402,13 +402,17 @@ async def gym(
     GYM - Drive a Reversing Gym cloning run (stages 0/1/4 in G1).
 
     PORTMANTEAU PATTERN RATIONALE: One entry for the whole run lifecycle so agents
-    can triage a clone candidate without learning five endpoints. Blocking engine
-    work runs off the event loop; stages are idempotent and resumable.
+    can triage a clone candidate without learning five endpoints. `advance` starts the
+    next stage in a background worker and returns at once (`status: "running"`); poll
+    `status` until `running_stage` is null. Stages are resumable: failed, stopped or
+    interrupted (backend restarted) stages are retried by the next `advance`.
 
     ## Return Format
     `{"success": bool, "run_id"?, "stage"?, "message"?, ...stage payload}`.
-    Advance past assessment requires `decision="go"|"no-go"`; stages 2,3,5,6,7,8
-    refuse honestly (pending-spec) instead of pretending.
+    `advance` while a stage runs -> `{success: False, busy: True, stage}`. `stop` marks the
+    running stage stopped (the engine subprocess finishes on its own timeout; its result is
+    discarded). Advance past assessment requires `decision="go"|"no-go"`; stages
+    2,3,5,6,7,8 refuse honestly (pending-spec) instead of pretending.
 
     ## Examples
     `gym(operation="start", target="D:/apps/prog.exe")`

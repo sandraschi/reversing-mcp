@@ -100,10 +100,15 @@ the hard cases:
 * Backend job runner, one run = one directory `gym/runs/<run-id>/` (gitignored):
   `run.json` (state machine: stage, status, timestamps, errors), one subdirectory per stage,
   `log.jsonl`.
-* Stages are idempotent and resumable: a crashed or stopped run restarts at the failed stage.
-* Long stages run in a worker (not on the event loop - see the 2026-10-12 `/ghidra/status`
-  incident); the API only reads/writes run state.
-* Planned endpoints (none exist yet): `POST /api/v1/gym/runs`, `GET /api/v1/gym/runs`,
+* Stages are idempotent and resumable: a failed, stopped or interrupted stage is retried by
+  the next advance.
+* **Background execution (built 2026-10-12):** `advance` marks the stage `running`, starts a
+  daemon worker thread and returns at once; clients poll the run (`running_stage`). Each
+  attempt has a token, so a stopped attempt that finishes late is discarded instead of
+  overwriting a newer one. `stop` cannot kill an engine subprocess mid-run (it ends on its own
+  timeout). A `running` stage with no live worker (backend restarted) becomes `interrupted`.
+  `run.json` writes are atomic and lock-guarded (single backend process assumed).
+* Endpoints (built in G1): `POST /api/v1/gym/runs`, `GET /api/v1/gym/runs`,
   `GET /api/v1/gym/runs/{id}`, `POST /api/v1/gym/runs/{id}/advance` (gate approval),
   `POST /api/v1/gym/runs/{id}/stop`, `GET /api/v1/gym/runs/{id}/artifacts/{path}`.
 * MCP surface: one portmanteau tool `gym(operation=start|status|advance|stop|list)` so

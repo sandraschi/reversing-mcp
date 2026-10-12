@@ -19,6 +19,7 @@ interface RunSummary {
   target: string;
   created: string;
   done: string[];
+  running?: string | null;
   gate: string | null;
 }
 
@@ -34,11 +35,21 @@ interface RunDetail extends Omit<RunSummary, "gate"> {
       started: string | null;
       ended: string | null;
       error: string | null;
+      message?: string | null;
     }
   >;
   gate: { stage: string; decision: string | null; at: string | null } | null;
   message?: string;
+  running_stage?: string | null;
 }
+
+const STAGE_STYLE: Record<string, string> = {
+  done: "text-emerald-400 bg-emerald-900/30 border-emerald-800/50",
+  running: "text-blue-400 bg-blue-900/30 border-blue-800/50 animate-pulse",
+  failed: "text-red-400 bg-red-900/30 border-red-800/50",
+  stopped: "text-amber-400 bg-amber-900/30 border-amber-800/50",
+  interrupted: "text-amber-400 bg-amber-900/30 border-amber-800/50",
+};
 
 const DIM_LABEL: Record<string, string> = {
   green: "text-emerald-400",
@@ -172,10 +183,57 @@ export function Gym() {
     }
   };
 
+  const stop = async () => {
+    if (!selected || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const d = await fetch(
+        `${getApiBase()}/api/v1/gym/runs/${selected}/stop`,
+        { method: "POST" },
+      ).then((r) => r.json());
+      if (d.success === false) throw new Error(d.error ?? "Stop failed");
+      refreshDetail(selected);
+      refreshList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Stop failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const awaitingGate =
     detail !== null &&
     detail.stages.assessment?.status === "done" &&
     detail.gate?.decision === null;
+
+  const runningStage = detail?.running_stage ?? null;
+
+  // What happened most recently: a running stage, else the latest stage that ended.
+  const lastNote = (() => {
+    if (!detail) return null;
+    if (runningStage) {
+      const since = detail.stages[runningStage]?.started;
+      return {
+        tone: "text-blue-300",
+        text: `${runningStage} is running in the background${
+          since ? ` since ${new Date(since).toLocaleTimeString()}` : ""
+        } - this page refreshes every 5 s.`,
+      };
+    }
+    const ended = Object.entries(detail.stages)
+      .filter(([, i]) => i.ended)
+      .sort(([, a], [, b]) => (a.ended ?? "").localeCompare(b.ended ?? ""))
+      .pop();
+    if (!ended) return null;
+    const [name, info] = ended;
+    if (info.status === "done")
+      return { tone: "text-slate-300", text: info.message ?? `${name} done.` };
+    return {
+      tone: info.status === "failed" ? "text-red-400" : "text-amber-400",
+      text: `${name} ${info.status}: ${info.error ?? ""} Advance to retry.`,
+    };
+  })();
 
   return (
     <div className="space-y-6" data-testid="gym-page">
@@ -257,6 +315,11 @@ export function Gym() {
                 }`}
               >
                 {r.id} · {r.target}
+                {r.running && (
+                  <span className="ml-2 text-xs text-blue-300">
+                    {r.running}…
+                  </span>
+                )}
               </button>
             ))}
           </CardContent>
@@ -281,14 +344,11 @@ export function Gym() {
                       <span
                         key={s}
                         title={`${s}: ${st}`}
+                        data-testid={`gym-stage-${s}`}
+                        data-status={st}
                         className={`text-sm px-2 py-0.5 rounded border ${
-                          st === "done"
-                            ? "text-emerald-400 bg-emerald-900/30 border-emerald-800/50"
-                            : st === "running"
-                              ? "text-blue-400 bg-blue-900/30 border-blue-800/50"
-                              : st === "failed"
-                                ? "text-red-400 bg-red-900/30 border-red-800/50"
-                                : "text-slate-300 bg-slate-900 border-slate-800"
+                          STAGE_STYLE[st] ??
+                          "text-slate-300 bg-slate-900 border-slate-800"
                         }`}
                       >
                         {s}
@@ -297,16 +357,36 @@ export function Gym() {
                   })}
                 </div>
 
+                {lastNote && (
+                  <p
+                    className={`text-sm ${lastNote.tone}`}
+                    data-testid="gym-stage-note"
+                  >
+                    {lastNote.text}
+                  </p>
+                )}
+
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => advance()}
-                    disabled={busy}
+                    disabled={busy || runningStage !== null}
                     className="text-sm px-4 py-2 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40"
                     data-testid="gym-advance"
                   >
-                    Advance
+                    {runningStage ? `Running ${runningStage}…` : "Advance"}
                   </button>
+                  {runningStage && (
+                    <button
+                      type="button"
+                      onClick={stop}
+                      disabled={busy}
+                      className="text-sm px-4 py-2 rounded-md bg-amber-700 text-white hover:bg-amber-600 disabled:opacity-40"
+                      data-testid="gym-stop"
+                    >
+                      Stop
+                    </button>
+                  )}
                   {awaitingGate && (
                     <>
                       <button
