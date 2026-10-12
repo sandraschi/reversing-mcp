@@ -7,6 +7,7 @@ server separately and connect it in your MCP client. See docs/GHIDRA.md and
 CURSOR_HANDOFF.md in this repository.
 """
 
+import asyncio
 import json
 import os
 import tempfile
@@ -1247,7 +1248,8 @@ try:
     async def _web_tools_status():
         """Engine inventory for Status/Tools pages (backed by check_tools data)."""
         try:
-            tools = analyzer.check_available_tools()
+            # Probes shell out (REA alone ~8s); keep them off the event loop.
+            tools = await asyncio.to_thread(analyzer.check_available_tools)
             ghidra = tools.get("ghidra", {})
             return {
                 "tools": {
@@ -1332,7 +1334,10 @@ try:
         bridge_running = False
         connected_instance = None
         try:
-            g = analyzer.check_available_tools().get("ghidra", {})
+            # Ghidra-only probe, off the event loop: the full inventory blocks ~8s
+            # on the REA probe and froze every request behind the dashboard.
+            g: dict[str, Any] = {}
+            await asyncio.to_thread(analyzer._check_ghidra, g)
             installed = bool(g.get("available"))
             version = g.get("version")
             status = await _ghidra_request("/status")
