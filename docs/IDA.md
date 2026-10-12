@@ -33,20 +33,24 @@ All headless operations output JSON files that the MCP server reads back.
 
 ## 2. Detection
 
-`check_tools()` scans these locations (in order):
+`check_tools()` looks in `%IDA_DIR%` first, then every `IDA*` folder under
+`C:\Program Files` and `C:\Program Files (x86)`, newest folder name first (8.x and 9.x layouts).
 
-| Path | Version |
-|------|---------|
-| `%IDA_DIR%\ida64.exe` | Any (set env var for custom paths) |
-| `C:\Program Files\IDA Pro 8.3\ida64.exe` | 8.3 |
-| `C:\Program Files\IDA Pro 8.3\ida.exe` | 8.3 (32-bit) |
-| `C:\Program Files\IDA Pro 8.2\ida64.exe` | 8.2 |
-| `C:\Program Files\IDA Pro 8.1\ida64.exe` | 8.1 |
+| In each folder, it prefers | Why |
+|----------------------------|-----|
+| `idat64.exe` (8.x), `idat.exe` (9.x) | text-mode IDA: the right binary for `-A -S` batch runs |
+| `ida64.exe`, `ida.exe` | GUI fallback |
 
-Set `IDA_DIR` to your IDA installation root to override, e.g.:
-```powershell
-$env:IDA_DIR = "D:\Tools\IDA Pro 8.3"
-```
+* **Version** is read from the folder name (`IDA Professional 9.1` -> `9.1`). The GUI binary is
+  never launched to ask.
+* **Edition**: a folder containing "Free" (IDA Freeware) is reported with a note and
+  `available: false` - no IDAPython/headless mode. "Home" -> `home`, anything else -> `pro`.
+* Unusual install path: set `IDA_DIR`, e.g. `$env:IDA_DIR = "D:\Tools\IDA Professional 9.1"`.
+
+**Not yet verified against a real install** (no IDA seat on the dev host). Detection and the
+argv are covered by tests against fake install folders (`tests/test_ida_detect.py`). Still to
+check on first real run: the exact installer folder names, and that `ida_scripts/*.py` run
+under IDA 9's IDAPython API.
 
 ---
 
@@ -54,7 +58,7 @@ $env:IDA_DIR = "D:\Tools\IDA Pro 8.3"
 
 Command that runs under the hood:
 ```powershell
-ida64.exe -A -S"ida_scripts\analyze_binary.py <output_json>" "<binary>"
+idat.exe -A -S"ida_scripts\analyze_binary.py <output_json>" "<binary>"
 ```
 
 Flags:
@@ -98,8 +102,9 @@ Scripts use **IDAPython** (Python 3, bundled with IDA 8.x). They run inside IDA'
 | IDA headless hangs | Large binary or slow analysis. Increase timeout in `_analyze_with_ida()`. |
 | `Analyzer is not available` | IDA Pro required. IDA Free has no scripting. |
 | `IDA script ran but produced no output` | IDAPython or import error. Run the script manually from IDA's Script Manager first. |
-| `ida64.exe` not used | The scan list prefers `ida64.exe` over `ida.exe` for 64-bit headless. |
-| IDA 9.x installed but not found | The default scan list only knows `IDA Pro 8.1`-`8.3` folders. Set `IDA_DIR` to the 9.x install root. Not yet tested against a 9.x install (no IDA seat on the dev host). |
+| GUI `ida.exe` used instead of `idat` | That folder has no text-mode binary; headless runs may open a window. Install the full package or point `IDA_DIR` at a folder with `idat(64).exe`. |
+| IDA installed but not found | Folder not named `IDA*` under Program Files. Set `IDA_DIR` to the install root. |
+| `check_tools()` says IDA Free, not usable | Expected: IDA Free has no IDAPython/headless. Install Home or Pro alongside; it is picked over Free. |
 
 ---
 

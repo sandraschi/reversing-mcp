@@ -5,6 +5,7 @@ Binary Analysis Tools for Reverse Engineering
 import json
 import math
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -19,6 +20,10 @@ from .logging_config import get_logger
 from .rea_bridge import check_rea as _rea_probe
 
 logger = get_logger("reversing_mcp.analyzers")
+
+# IDA discovery (see BinaryAnalyzer._check_ida). Text-mode idat first: batch -A -S runs.
+IDA_SEARCH_ROOTS = [Path(r"C:\Program Files"), Path(r"C:\Program Files (x86)")]
+IDA_EXE_PREFERENCE = ("idat64.exe", "idat.exe", "ida64.exe", "ida.exe")
 
 
 class StringResult(BaseModel):
@@ -73,42 +78,38 @@ class BinaryAnalyzer:
         return tools
 
     def _check_ida(self, tool_info: dict[str, Any]):
-        """Check for IDA Pro installation. Prefer ida64.exe for headless."""
-        ida_paths = [
-            Path(r"C:\Program Files\IDA Pro 8.3\ida64.exe"),
-            Path(r"C:\Program Files\IDA Pro 8.3\ida.exe"),
-            Path(r"C:\Program Files\IDA Pro 8.2\ida64.exe"),
-            Path(r"C:\Program Files\IDA Pro 8.2\ida.exe"),
-            Path(r"C:\Program Files\IDA Pro 8.1\ida64.exe"),
-            Path(r"C:\Program Files\IDA Pro 8.1\ida.exe"),
-            Path(r"C:\Program Files (x86)\IDA Pro\ida.exe"),
-        ]
-        # Also check IDA_DIR env var
+        """Find an IDA install usable for headless analysis (8.x and 9.x layouts).
+
+        Search: IDA_DIR, then IDA* folders under IDA_SEARCH_ROOTS, newest name first.
+        Prefers the text-mode idat64/idat for -A -S batch runs. Version comes from the
+        folder name - the GUI binary is never launched to ask. IDA Free/Freeware has no
+        IDAPython/headless mode: reported with a note, available=False.
+        """
+        dirs: list[Path] = []
         ida_dir = os.environ.get("IDA_DIR")
-        if ida_dir:
-            base = Path(ida_dir)
-            for candidate in ("ida64.exe", "ida.exe", "idaq64.exe", "idaq.exe"):
-                p = base / candidate
-                if p.exists():
-                    ida_paths.insert(0, p)
-                    break
-        for path in ida_paths:
-            if path.exists():
-                tool_info["available"] = True
-                tool_info["path"] = str(path)
-                try:
-                    result = subprocess.run(
-                        [str(path), "--version"],
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                        timeout=5,
-                    )
-                    if result.returncode == 0:
-                        tool_info["version"] = result.stdout.strip()
-                except (subprocess.SubprocessError, OSError):
-                    pass
-                break
+        if ida_dir and Path(ida_dir).is_dir():
+            dirs.append(Path(ida_dir))
+        for root in IDA_SEARCH_ROOTS:
+            if root.is_dir():
+                dirs += sorted((d for d in root.glob("IDA*") if d.is_dir()), key=lambda d: d.name, reverse=True)
+        for d in dirs:
+            exe = next((d / n for n in IDA_EXE_PREFERENCE if (d / n).is_file()), None)
+            if exe is None:
+                continue
+            match = re.search(r"(\d+\.\d+)", d.name)
+            tool_info["version"] = match.group(1) if match else None
+            tool_info["path"] = str(exe)
+            tool_info["headless"] = exe.name.lower().startswith("idat")
+            if "free" in d.name.lower():
+                tool_info["edition"] = "free"
+                tool_info["note"] = (
+                    f"IDA Free found at {d}: no IDAPython/headless mode, not usable for automation. "
+                    "Use Ghidra, or IDA Home/Pro."
+                )
+                continue  # keep looking for a licensed install
+            tool_info["edition"] = "home" if "home" in d.name.lower() else "pro"
+            tool_info["available"] = True
+            return
 
     def _check_ghidra(self, tool_info: dict[str, Any]):
         """Check for Ghidra installation. Prefer GHIDRA_HOME env (install dir)."""
@@ -385,12 +386,13 @@ class BinaryAnalyzer:
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 output_json = Path(tmp) / "ida_result.json"
-                # ida64.exe -A -S"<script> <output>" "<binary>"
+                # idat -A -S"<script> <output>" <binary>. argv list: subprocess adds the quoting;
+                # hand-written quotes here would reach IDA as literal " characters.
                 cmd = [
                     str(ida_exe),
                     "-A",
-                    f'-S"{script_path} {output_json}"',
-                    f'"{file_path}"',
+                    f"-S{script_path} {output_json}",
+                    file_path,
                 ]
                 logger.info("Running IDA headless: %s", " ".join(str(c) for c in cmd))
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, check=False)

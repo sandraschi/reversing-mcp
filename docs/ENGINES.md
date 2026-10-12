@@ -11,7 +11,7 @@ state: webapp **Help -> Engines** tab (reads `GET /tools/status`), or the `check
 | **REA** (rea-agents) | agent RE sidecar (JS/.NET/APK/native) | free (MIT) | `rea_investigate` -> `npx rea-agents` | Implemented | [REA.md](REA.md) |
 | **radare2** | disassembler | free | subprocess `r2 -A -q -c <cmd>` | Implemented, unverified on this host | [RADARE2.md](RADARE2.md) |
 | **binwalk** | firmware / embedded-file scan | free | subprocess `binwalk -J` | Implemented, unverified on this host | [BINWALK.md](BINWALK.md) |
-| **IDA Pro / Home** | disassembler + decompiler | EUR 365+/yr | headless `ida64.exe -A -S<script>` | Implemented, never run against a real install | [IDA.md](IDA.md) |
+| **IDA Pro / Home** | disassembler + decompiler | EUR 365+/yr | headless `idat -A -S<script>`; finds 8.x/9.x installs, rejects IDA Free | Implemented, tested against fake installs only (no seat yet) | [IDA.md](IDA.md) |
 | **IDA Free** | disassembler (GUI) | free | not wired - no IDAPython / headless | Not supported | [IDA.md](IDA.md#edition-comparison-2026-pricing) |
 | **Hopper** | disassembler + decompiler | ~USD 100 | only as an REA provider (`provider="hopper"`) | macOS/Linux only - not on Windows | [HOPPER.md](HOPPER.md) |
 | **Detect It Easy** | compiler / packer ID | free | `engine(operation="die")` -> `diec -j` | Implemented, verified | [DIE.md](DIE.md) |
