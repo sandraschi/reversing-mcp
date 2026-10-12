@@ -91,6 +91,10 @@ the hard cases:
    clicker captures what it shows, and that is compared with what it showed for its own
    output. Pass = the original cannot tell the difference.
 
+   Every failure at any level emits an **expert-ready gap report** (failing input, both
+   outputs, traces, format-stub section) into the run directory: a domain expert picks it
+   up with zero project context. See ELICITATION_AND_CLICKER.md (contributor funnel).
+
 ## 4. Job model
 
 * Backend job runner, one run = one directory `gym/runs/<run-id>/` (gitignored):

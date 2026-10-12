@@ -163,6 +163,60 @@ Reading list (pointers — read before building G3, in this order):
 | `prior-art.md` | A4 | stage 5 (what not to re-derive) |
 | capture bundle | B1–B4 | stage 2 correlation, stage 6 rebuild, stage 8 compare |
 
+## Why no-disassembly can work (and where it stops)
+
+The ArtCraft case forces the question: how far does public sources + behavior get you
+without ever opening a disassembler? Decomposed by knowability:
+
+- **File I/O — public.** PSD is Adobe-published; TIFF/JPEG/PNG open; XLSX/DOCX are
+  ECMA-376 + ISO 29500. The biggest chunk of clone value is just reading.
+- **Algorithms — prior art.** Krita reimplemented most painting behavior; LibreOffice
+  did OOXML; LibRaw did demosaicing. Reading third-party open code is neither
+  disassembly nor legally fraught — it is A4 working as designed.
+- **Topology + workflows — behavioral.** Dialogs, shortcuts, menus: all observable
+  by the clicker. No depth required.
+- **Enumeration — the docs themselves.** Help files list what exists.
+
+That stack reaches an 80% clone with correct round-trips — layouts, sliders, layers,
+all surface. What it cannot yield: proprietary color science, healing/content-aware
+algorithms, resampling edge behavior, GPU tuning, plugin ABI compat, performance
+within 10x, bug-compatibility with the original's quirks. The 2,000-issue tracker is
+the shape of that residue: vectors, feather parity, codecs, flicker — all depth.
+
+Implication for the Gym: stage 1b is the highest-leverage stage (specs + prior art
+first, always); the clicker owns topology, never algorithms; stage 5 exists exactly
+for the residue public sources cannot reach. When a target's depth lives in
+proprietary algorithms with no prior art, say so in the assessment (Logic: red) —
+that honesty is the feature.
+
+## Ghidra or no Ghidra: the evidentiary gradient (legal posture)
+
+Whether a disassembler was ever opened is not just a technical choice — it is evidence:
+
+- **No-disassembly (ArtCraft posture):** checkable clean-room claim. Commit history,
+  tooling, and contributor attestations can show no decompiled code ever entered the
+  repo. Strongest defense against misappropriation claims; trade-dress remains the
+  exposure (Tetris test).
+- **Disassembly for interoperability (our posture):** lawful in the EU (Software
+  Directive art. 6; Austria UrhG section 40e) and defensible in the US under
+  Sega v. Accolade interoperability reasoning — but it is a *defense to raise*, not
+  a claim that needs no defense. Decompiler artifacts in history are discoverable,
+  so stage-5 output must be specs, never pasted code, and the pipeline must enforce it.
+- **Exposure gradient:** private hobby use + friends (no distribution) = no plaintiff,
+  no damages, no case. Public rocket + hundreds of contributors = every commit is
+  discoverable and every gap-fill is attributable. The Gym's isolation, logging, and
+  specs-only rules exist for the second world, not the first.
+
+## The contributor funnel (why popularity compounds depth)
+
+A high-profile clone does not just get bug reports — it recruits the exact people who
+can fix them. Feathering parity stalls an AI and a clicker; a domain expert who knows
+the algorithm closes it in a weekend. The issue tracker is a hiring funnel for depth.
+Design consequence for stage 8: every failed oracle compare emits an **expert-ready
+gap report** (failing input, both outputs, traces, format stub section) that a domain
+expert can pick up with zero project context. Make depth contributions easy and the
+funnel works for us too.
+
 ## Open (carried from GYM_SPEC §10, unchanged)
 
 Clone `--gym-roundtrip` hook design, test-file privacy consent, VM image strategy.
