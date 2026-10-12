@@ -1,4 +1,11 @@
-import { Activity, CheckCircle, Loader2, Search, XCircle } from "lucide-react";
+import {
+  Activity,
+  CheckCircle,
+  Loader2,
+  RefreshCw,
+  Search,
+  XCircle,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getApiBase } from "@/common/api";

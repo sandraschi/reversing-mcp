@@ -35,7 +35,9 @@ export default function Logging() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [userScrolled, setUserScrolled] = useState(false);
   const afterIdRef = useRef<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   const fetchLogs = useCallback(
     async (opts: { tail?: boolean; after_id?: string } = {}) => {
@@ -49,7 +51,7 @@ export default function Logging() {
       if (search) params.set("search", search);
       if (opts.after_id) params.set("after_id", opts.after_id);
       try {
-        const r = await fetch(`${base}/api/logs?${params}`);
+        const r = await fetch(`${getApiBase()}/api/logs?${params}`);
         const d = await r.json();
         if (opts.tail && opts.after_id) {
           setEntries((prev) => [...prev, ...d.entries].slice(-200));

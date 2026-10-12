@@ -254,7 +254,7 @@ export function DigiBib() {
             )}
             Run snapshot
           </Button>
-          {snapResult?.success && (
+          {!!snapResult?.success && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-2">
               <div>
                 <p className="text-slate-300 text-sm">File size</p>
@@ -342,7 +342,7 @@ export function DigiBib() {
             )}
           </div>
 
-          {idrChecked && idrStatus?.installed && (
+          {idrChecked && !!idrStatus?.installed && (
             <div className="text-sm text-emerald-400">
               Installed at {String(idrStatus.path)}
             </div>
@@ -440,7 +440,7 @@ export function DigiBib() {
             )}
             Extract keyword strings
           </Button>
-          {stringsResult?.success && (
+          {!!stringsResult?.success && (
             <div className="max-h-64 overflow-y-auto space-y-1 mt-2 border border-slate-800 rounded-lg p-2">
               {(stringsResult.hits as Array<Record<string, unknown>>)
                 ?.slice(0, 50)
@@ -581,7 +581,7 @@ export function DigiBib() {
                   </p>
                 </div>
               </div>
-              {dkiResult.text_preview && (
+              {!!dkiResult.text_preview && (
                 <div>
                   <p className="text-slate-300 text-sm mb-1">Preview</p>
                   <pre className="text-sm text-slate-300 bg-slate-900 rounded-lg p-3 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">
