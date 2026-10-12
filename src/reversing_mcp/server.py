@@ -22,6 +22,7 @@ from prefab_ui.app import PrefabApp
 from prefab_ui.components import Badge, Card, CardContent, CardHeader, CardTitle, Text
 from pydantic import BaseModel, Field
 
+from . import engines as _engines
 from . import gym as _gym
 from . import rea_bridge
 from .analyzers import BinaryAnalyzer
@@ -436,6 +437,75 @@ async def gym(
     return {
         "success": False,
         "error": f"Unknown gym operation '{operation}'. Valid: start, status, advance, stop, list.",
+    }
+
+
+@mcp.tool(annotations=_MUTATING)
+async def engine(
+    operation: Annotated[str, Field(description="Engine op: die, capa, frida_trace, frida_script.")] = "die",
+    file_path: Annotated[str | None, Field(description="Binary to analyze (die, capa).")] = None,
+    target: Annotated[str | None, Field(description="Executable to spawn (frida_*). Executes it!")] = None,
+    args: Annotated[list[str] | None, Field(description="Command-line args for the spawned target.")] = None,
+    pid: Annotated[int | None, Field(description="Attach to a running process instead of spawning.")] = None,
+    functions: Annotated[
+        list[str] | None, Field(description="Hooks as 'module!export', e.g. 'kernel32.dll!CreateFileW' (frida_trace).")
+    ] = None,
+    arg0_filter: Annotated[
+        str | None, Field(description="Keep only calls whose arg 0 string contains this (frida_trace), e.g. '.dki'.")
+    ] = None,
+    source: Annotated[
+        str | None, Field(description="Frida JS agent source; use send() for results (frida_script).")
+    ] = None,
+    duration_s: Annotated[int, Field(description="Session length 1-120 s (frida_*).")] = 10,
+    max_events: Annotated[int, Field(description="Event cap 1-5000 (frida_*).")] = 2000,
+    timeout_s: Annotated[int, Field(description="Engine timeout (die 5-300 s, capa 30-1800 s).")] = 600,
+    confirm: Annotated[
+        bool, Field(description="Required true for frida_*: spawning/attaching runs or instruments a process.")
+    ] = False,
+) -> dict[str, Any]:
+    """
+    ENGINE - Run an external RE engine: Detect It Easy, capa, or Frida.
+
+    PORTMANTEAU PATTERN RATIONALE: Static identification (DiE: compiler/packer;
+    capa: what the code can do) and dynamic tracing (Frida: what it actually does
+    at runtime) are one triage toolbox. One tool keeps the surface small; each op
+    is a thin wrapper over engines.py, run off the event loop.
+
+    ## Return Format
+    die: `{success, detections[{type,name,version,string}], packed, filetypes, message}`
+    capa: `{success, capabilities[{name,namespace,matches,attack,mbc}], count, top_namespaces, message}`
+    frida_*: `{success, mode, pid, events[], event_count, dropped, hooked, hook_errors, process_exited, elapsed_s}`
+    Failure: `{success: False, error}` (missing engine -> install hint, see docs/ENGINES.md).
+
+    ## Examples
+    `engine(operation="die", file_path="D:/apps/prog.exe")`
+    `engine(operation="capa", file_path="D:/apps/prog.exe", timeout_s=1800)`
+    `engine(operation="frida_trace", target="D:/apps/prog.exe", functions=["kernel32.dll!CreateFileW"], arg0_filter=".dki", confirm=True)`
+
+    ## Notes
+    - capa is slow on large binaries (Digibib5 4.7 MB: ~42 min); raise timeout_s.
+    - frida_* executes the target: VM or a target you trust only (docs/FRIDA.md).
+    """
+    op = (operation or "").lower()
+    if op in ("die", "capa"):
+        if not file_path:
+            return {"success": False, "error": f"{op} requires file_path."}
+        fn = _engines.run_die if op == "die" else _engines.run_capa
+        return await asyncio.to_thread(fn, file_path, timeout_s)
+    if op in ("frida_trace", "frida_script"):
+        if not confirm:
+            return {
+                "success": False,
+                "error": f"{op} spawns or instruments a process. Re-run with confirm=True (VM or trusted target only).",
+            }
+        if op == "frida_trace":
+            return await asyncio.to_thread(
+                _engines.frida_trace, functions or [], target, args, pid, arg0_filter, duration_s, max_events
+            )
+        return await asyncio.to_thread(_engines.frida_script, source or "", target, args, pid, duration_s, max_events)
+    return {
+        "success": False,
+        "error": f"Unknown engine operation '{operation}'. Valid: die, capa, frida_trace, frida_script.",
     }
 
 

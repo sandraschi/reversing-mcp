@@ -281,7 +281,7 @@ def _run_frida(
     status: dict[str, Any] = {"hooked": [], "hook_errors": [], "script_errors": [], "dropped": 0}
     done = threading.Event()
 
-    def on_message(message: dict[str, Any], _data: Any) -> None:
+    def on_message(message: Any, _data: Any) -> None:
         if message.get("type") == "error":
             status["script_errors"].append(message.get("description"))
             return
@@ -305,8 +305,10 @@ def _run_frida(
         if target is not None:
             spawned_pid = frida.spawn([target, *(args or [])])
             session = frida.attach(spawned_pid)
-        else:
+        elif pid is not None:
             session = frida.attach(pid)
+        else:  # unreachable: exactly-one check above
+            return {"success": False, "error": "Pass exactly one of target (spawn) or pid (attach)."}
         session.on("detached", lambda *_a: (exited.set(), done.set()))
         script = session.create_script(source)
         script.on("message", on_message)
