@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Cpu,
+  Dumbbell,
   Grid,
   HelpCircle,
   Inbox as InboxIcon,
@@ -28,6 +29,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navItems = [
     { href: "/", label: "Overview", icon: LayoutDashboard },
     { href: "/analyze", label: "Analyze", icon: Search },
+    { href: "/gym", label: "Gym", icon: Dumbbell },
     { href: "/inbox", label: "Inbox", icon: InboxIcon },
     { href: "/digibib", label: "DigiBib Lab", icon: BookOpen },
     { href: "/tools", label: "Tools", icon: Wrench },

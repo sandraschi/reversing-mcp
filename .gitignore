@@ -287,3 +287,6 @@ reports/
 # on every pack. Never hand-edit, never commit.
 mcpb/src/
 
+# Reversing Gym runs (per-run state, captures, logs - regenerable, may contain target data)
+gym/runs/
+

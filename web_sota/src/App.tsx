@@ -11,6 +11,7 @@ import { Apps } from "@/pages/apps";
 import { Chat } from "@/pages/chat";
 import { Dashboard } from "@/pages/dashboard";
 import { DigiBib } from "@/pages/digibib";
+import { Gym } from "@/pages/gym";
 import { Help } from "@/pages/help";
 import { Inbox } from "@/pages/inbox";
 import Logging from "@/pages/Logging";
@@ -27,6 +28,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/analyze" element={<Analyze />} />
+          <Route path="/gym" element={<Gym />} />
           <Route path="/inbox" element={<Inbox />} />
           <Route path="/digibib" element={<DigiBib />} />
           <Route path="/tools" element={<Tools />} />

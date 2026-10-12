@@ -22,6 +22,7 @@ from prefab_ui.app import PrefabApp
 from prefab_ui.components import Badge, Card, CardContent, CardHeader, CardTitle, Text
 from pydantic import BaseModel, Field
 
+from . import gym as _gym
 from . import rea_bridge
 from .analyzers import BinaryAnalyzer
 from .digibib_research import build_research_snapshot, resolve_digibib_exe
@@ -384,6 +385,57 @@ async def show_tools_card() -> PrefabApp:
                 if detail:
                     Text(str(detail)[:120], css_class="text-xs text-muted-foreground break-all")
     return PrefabApp(view=view, title="Reversing engines")
+
+
+@mcp.tool(annotations=_MUTATING)
+async def gym(
+    operation: Annotated[str, Field(description="Gym op: start, status, advance, stop, list.")] = "list",
+    run_id: Annotated[str | None, Field(description="Run id (status/advance/stop).")] = None,
+    target: Annotated[str | None, Field(description="Local .exe/.lnk path (start).")] = None,
+    test_files: Annotated[list[str] | None, Field(description="Test data files (start).")] = None,
+    notes: Annotated[str, Field(description="Operator notes (start).")] = "",
+    decision: Annotated[str | None, Field(description="Gate decision: go|no-go (advance at gate).")] = None,
+) -> dict[str, Any]:
+    """
+    GYM - Drive a Reversing Gym cloning run (stages 0/1/4 in G1).
+
+    PORTMANTEAU PATTERN RATIONALE: One entry for the whole run lifecycle so agents
+    can triage a clone candidate without learning five endpoints. Blocking engine
+    work runs off the event loop; stages are idempotent and resumable.
+
+    ## Return Format
+    `{"success": bool, "run_id"?, "stage"?, "message"?, ...stage payload}`.
+    Advance past assessment requires `decision="go"|"no-go"`; stages 2,3,5,6,7,8
+    refuse honestly (pending-spec) instead of pretending.
+
+    ## Examples
+    `gym(operation="start", target="D:/apps/prog.exe")`
+    `gym(operation="advance", run_id="abc123")`
+    `gym(operation="status", run_id="abc123")`
+    """
+    op = (operation or "").lower()
+    if op == "start":
+        if not target:
+            return {"success": False, "error": "start requires target (local .exe/.lnk path)."}
+        return await asyncio.to_thread(_gym.create_run, target, test_files, notes)
+    if op == "status":
+        if not run_id:
+            return {"success": False, "error": "status requires run_id."}
+        return await asyncio.to_thread(_gym.get_run, run_id)
+    if op == "advance":
+        if not run_id:
+            return {"success": False, "error": "advance requires run_id."}
+        return await asyncio.to_thread(_gym.advance_run, run_id, decision)
+    if op == "stop":
+        if not run_id:
+            return {"success": False, "error": "stop requires run_id."}
+        return await asyncio.to_thread(_gym.stop_run, run_id)
+    if op == "list":
+        return await asyncio.to_thread(_gym.list_runs)
+    return {
+        "success": False,
+        "error": f"Unknown gym operation '{operation}'. Valid: start, status, advance, stop, list.",
+    }
 
 
 @mcp.tool(annotations=_READ_ONLY)
@@ -1788,6 +1840,52 @@ try:
                 key=lambda d: d["name"],
             ),
         }
+
+    # --- Reversing Gym G1 (stages 0/1/4; blocking work off the event loop) ---
+
+    class _GymStartBody(BaseModel):
+        target: str
+        test_files: list[str] | None = None
+        notes: str = ""
+
+    class _GymAdvanceBody(BaseModel):
+        decision: str | None = None
+
+    @_http_app.post("/api/v1/gym/runs")
+    async def _gym_start(body: _GymStartBody):
+        import asyncio
+
+        return await asyncio.to_thread(_gym.create_run, body.target, body.test_files, body.notes or "")
+
+    @_http_app.get("/api/v1/gym/runs")
+    async def _gym_list():
+        import asyncio
+
+        return await asyncio.to_thread(_gym.list_runs)
+
+    @_http_app.get("/api/v1/gym/runs/{run_id}")
+    async def _gym_get(run_id: str):
+        import asyncio
+
+        return await asyncio.to_thread(_gym.get_run, run_id)
+
+    @_http_app.post("/api/v1/gym/runs/{run_id}/advance")
+    async def _gym_advance(run_id: str, body: _GymAdvanceBody | None = None):
+        import asyncio
+
+        return await asyncio.to_thread(_gym.advance_run, run_id, (body.decision if body else None))
+
+    @_http_app.post("/api/v1/gym/runs/{run_id}/stop")
+    async def _gym_stop(run_id: str):
+        import asyncio
+
+        return await asyncio.to_thread(_gym.stop_run, run_id)
+
+    @_http_app.get("/api/v1/gym/runs/{run_id}/artifacts/{rel_path:path}")
+    async def _gym_artifact(run_id: str, rel_path: str):
+        import asyncio
+
+        return await asyncio.to_thread(_gym.read_artifact, run_id, rel_path)
 
     _http_app.mount("/mcp", mcp.http_app(path="/"))
     app = _http_app
