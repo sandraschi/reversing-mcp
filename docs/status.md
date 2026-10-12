@@ -5,6 +5,28 @@
 
 **Reference volumes (local):** `L:\Multimedia Files\Written Word\Digitale Bibliothek\` — per-volume `Data\` holds `TEXT.DKI` / `Text.dki`, `TREE.DKI`, etc.
 
+## RESOLVED 2026-10-12: TEXT.DKI decoded
+
+**There is no codec.** `TEXT.DKI` is an offset table followed by **uncompressed** token-stream records (CP1252 words,
+spacing, line breaks, layout and metadata tokens). The "packed payload" below was the zero-padded offset table plus a
+token grammar that nobody had sized correctly.
+
+- **Ground truth from this EXE:** Ghidra 12 headless decompile of the line scanner **`FUN_00614bb4`**
+  (`ghidra_scripts/DecompileList.java`). It advances by **`DAT_00763554[op]`**, an `int32[0xB5]` token-size table in
+  the `DATA` section, plus a length byte for a fixed set of opcodes (`01`/`AA` words, `0E` source path, `13` sigil,
+  `0A`/`86`/`80` objects and anchors, ...).
+- **All three header families parse:** A (DB002-DB011, `count` + offsets), M v2 and M v4 (`0x001924CC`). The "open"
+  `0x67200` question below is simply family A: its first dword is the record count, and the first record sits at the
+  fixed offset `0x67200`.
+- **Verified:** 2,281,483 of 2,281,484 records in 73 volumes parse to their exact boundary. 6-word shingle recall
+  against TextGrid's independent transcriptions is 98.1% (DB005, Minna von Barnhelm) and 97.9% (DB074, Max und Moritz).
+- **TOC:** `TREE.DKI` = indented CP1252 lines; `TREE.DKA` holds a block of 1-based end records per line (72 volumes).
+  DB050 and DB125 use a different large-tree layout that is still open.
+- **Implementation and spec:** directmedia-mcp `src/directmedia_mcp/dki_text.py`, `dki_tree.py`, `docs/DKI_FORMAT.md`,
+  gate `scripts/dki_gate.py`. directmedia-mcp's webapp is now a working alternative reader.
+
+The notes below are the historical ReVa trail that led there.
+
 ## Clarification / goals
 
 **End goal:** Build an **independent DKI viewer** that outputs **plain book text** (and minimal structure for navigation), **not** full-text search, RAG, or Fundstellen-style workflows. **RAG** and **advanced search** are **out of scope** for this reversing track; they can consume **exported text + stable IDs** later.
