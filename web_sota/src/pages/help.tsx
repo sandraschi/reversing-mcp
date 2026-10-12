@@ -315,13 +315,40 @@ const ENGINES: EngineDef[] = [
       "On macOS/Linux: just setup-rea can install it. On Windows: use Ghidra.",
   },
   {
+    id: "die",
+    name: "Detect It Easy",
+    probe: "die",
+    cost: "free",
+    wiring:
+      'engine(operation="die") -> diec -j: compiler, linker, packer, libraries',
+    status: "Implemented, verified",
+    doc: "DIE.md",
+    setup:
+      "Extract the DiE portable zip to D:\\Dev\\tools\\die or set DIE_DIR.",
+  },
+  {
+    id: "capa",
+    name: "capa",
+    probe: "capa",
+    cost: "free",
+    wiring:
+      'engine(operation="capa") -> capa -j with rules + signatures; Gym triage',
+    status: "Implemented, verified - slow (~42 min on Digibib5)",
+    doc: "CAPA.md",
+    setup:
+      "uv tool install flare-capa, plus capa-rules and sigs (CAPA_RULES / CAPA_SIGS). The standalone exe is blocked by Defender.",
+  },
+  {
     id: "frida",
     name: "Frida",
+    probe: "frida",
     cost: "free",
-    wiring: "Not wired yet (planned frida_trace / frida_script)",
-    status: "Planned",
+    wiring:
+      'engine(operation="frida_trace" | "frida_script", confirm=True): spawn or attach, hook module!export',
+    status: "Implemented, verified",
     doc: "FRIDA.md",
-    setup: "Manual use today: uv tool install frida-tools.",
+    setup:
+      "uv sync --extra dynamic (Python binding). Executes the target - VM or trusted only.",
   },
 ];
 
@@ -656,6 +683,21 @@ const FIXES: Array<{
     cause:
       "Nothing listening on :8089 - the ReVa bridge is not running. Headless Ghidra still works.",
     fix: "Start Ghidra with ReVa (docs/REVA.md), or point GHIDRA_BRIDGE_URL at the running bridge.",
+    seen: "2026-10-12",
+  },
+  {
+    symptom: 'Gym triage: capa "timed out", Logic dimension unknown',
+    cause:
+      "capa needs minutes on real apps (Digibib5: 2511 s); the triage budget is 300 s by default.",
+    fix: 'Set GYM_CAPA_TIMEOUT_S higher before starting the backend, or run engine(operation="capa", timeout_s=1800) separately.',
+    seen: "2026-10-12",
+  },
+  {
+    symptom:
+      "Defender quarantines the capa Windows release (Trojan:Win32/Suschil!rfn)",
+    cause:
+      "Heuristic hit on the standalone PyInstaller build, which bundles malware-detection rules. Not overridden.",
+    fix: "uv tool install flare-capa, plus capa-rules and sigs in D:\\Dev\\tools (docs/CAPA.md).",
     seen: "2026-10-12",
   },
   {
