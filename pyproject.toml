@@ -26,6 +26,11 @@ dev = ["ruff>=0.16.0,<0.17", "mypy", "pyright", "pre-commit", "bandit", "safety"
 ghidra = [
     "pyghidra>=3.0.2",
 ]
+# Dynamic instrumentation for frida(operation=trace|script). Optional: the tool reports
+# "frida not installed" without it. Spawned targets execute - see docs/FRIDA.md.
+dynamic = [
+    "frida>=17.0",
+]
 
 [project.scripts]
 reversing-mcp = "reversing_mcp.server:main"

@@ -14,6 +14,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from .engines import check_capa, check_die, check_frida
 from .logging_config import get_logger
 from .rea_bridge import check_rea as _rea_probe
 
@@ -64,6 +65,9 @@ class BinaryAnalyzer:
         self._check_strings(tools["strings"])
         self._check_file(tools["file"])
         self._check_rea(tools["rea"])
+        tools["die"] = check_die()
+        tools["capa"] = check_capa()
+        tools["frida"] = check_frida()
 
         self.tools_cache = tools
         return tools
