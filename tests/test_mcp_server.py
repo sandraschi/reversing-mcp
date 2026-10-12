@@ -39,7 +39,8 @@ class TestBinaryAnalysis:
     def test_detect_file_type_pe(self):
         """Test PE file detection"""
         # Create a minimal PE-like file
-        dos_header = b"MZ" + b"\x00" * 58 + b"\x80\x00\x00\x00"  # MZ + padding + PE offset
+        # e_lfanew (0x3C) must point at the PE signature, which follows at 0x40
+        dos_header = b"MZ" + b"\x00" * 58 + b"\x40\x00\x00\x00"
         pe_header = b"PE\x00\x00" + b"\x00" * 20  # PE signature + basic header
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".exe", mode="wb") as f:
@@ -48,8 +49,8 @@ class TestBinaryAnalysis:
 
         try:
             file_type = self.analyzer.detect_file_type(temp_path)
-            # On Windows without 'file' command, it should detect by extension
-            assert "PE executable" in file_type
+            # `file` says "PE ..."; without it the extension fallback says "PE executable"
+            assert "PE" in file_type
         finally:
             os.unlink(temp_path)
 
