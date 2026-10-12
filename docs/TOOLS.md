@@ -36,4 +36,10 @@ Full signatures live in `llms-full.txt`. Every tool returns a `message` key.
 | `check_tools()` | Engine inventory incl. REA (never crashes) |
 | `shutdown(confirm=True)` | Graceful termination (DESTRUCTIVE) |
 | `show_tools_card()` | Engine inventory as in-chat Prefab card |
+
+## Gym (cloning runs — `docs/GYM_SPEC.md`)
+
+| Tool | One line |
+|------|----------|
+| `gym(operation, run_id?, target?, test_files?, notes?, decision?)` | Run lifecycle: start/status/advance/stop/list (stages 0/1/4 in G1) |
 | `help(level?, topic?)` | Leveled docs (basic/intermediate/advanced) |

@@ -1,7 +1,7 @@
 # Reversing MCP Skill
 
 Agent-driven static binary analysis, Directmedia format reversing, and REA sidecar
-delegation. 16 tools. Triage first (`check_tools`, `analyze_binary`), then go targeted.
+delegation. 17 tools. Triage first (`check_tools`, `analyze_binary`), then go targeted.
 Pair with ReVa (separate MCP server) for interactive Ghidra decompilation.
 
 ## Tool Categories
@@ -40,7 +40,9 @@ Pair with ReVa (separate MCP server) for interactive Ghidra decompilation.
 ### System
 
 - `check_tools()` — engine inventory incl. REA sidecar (version, path, node). Never crashes.
-- `shutdown(confirm=True)` — graceful termination. `show_tools_card()` — engine badges in-chat. `help(level?, topic?)` — leveled docs.
+- `shutdown(confirm=True)` — graceful termination. `show_tools_card()` — engine badges in-chat.
+- `gym(operation=...)` — cloning runs: start/status/advance/stop/list (stages 0/1/4 in G1).
+- `help(level?, topic?)` — leveled docs.
 
 **Ghidra interactive is a separate server (ReVa).** This server has no decompile/xref tools.
 Workflows: strings → xrefs → decompile → rename live in ReVa; headless via
