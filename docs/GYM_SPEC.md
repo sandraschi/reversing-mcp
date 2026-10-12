@@ -27,13 +27,57 @@ capture bundle and `scripts/tour/correlate.py` are reused, not reinvented.
 |---|-------|-------|-------------------------------|-------|------|
 | 0 | **Intake** | path to `.exe` or `.lnk`, 1+ test files, notes | `run.json` (target, hashes, test file list) | - | target must be a local file you are entitled to analyze |
 | 1 | **Triage** | target | `triage.json`: compiler/packer (DiE), capabilities (capa), PE sections/imports, entropy, strings, file formats referenced | DiE, capa, built-in static | packed/protected -> warn, continue only on confirm |
+| 1b | **Elicitation** (new) | target + triage | `formats/*.md` stubs: candidate public specs per referenced format; help-file inventory (`.chm`/`.pdf`/Help menu); feature list mined from help TOC; first tour-YAML draft | strings, help parser, web search (REA/browser), spec lookup | specs are leads, not truth — the oracle decides; help features become the clicker target list (§3) |
 | 2 | **Oracle capture** | target + test files, VM | per test file: what the original read and wrote (Frida file-API trace), saved/exported outputs, screenshots | Frida, CUA, VM | - |
-| 3 | **Clicker tour** | target, VM | Tier 3 capture bundle: screens, UIA trees, menu tree, dialogs, flows | CUA (pywinauto), tour YAML | - |
+| 3 | **Clicker tour** | target, VM, stage-1b target list | Tier 3 capture bundle: screens, UIA trees, menu tree, dialogs, flows | CUA (pywinauto), tour YAML | - |
 | 4 | **Assessment** | 1-3 | `assessment.md` + score (section 5) | - | **user go / no-go** |
 | 5 | **Recovery** (only where needed) | formats/logic the clone needs that 2-3 did not explain | format spec (`formats/*.md`), feature-to-code map | Ghidra, IDR, IDA (if licensed), REA, `correlate.py` | specs only - no copied code (section 7) |
 | 6 | **UI build** | 3 + 5 | Tauri app skeleton reproducing screens, menus, dialogs | Tauri, LLM codegen | **user approves before build** |
 | 7 | **Round trip** | clone + test files | clone opens, reads, writes back each test file | clone CLI hook | - |
 | 8 | **Compare** | 2 + 7 | `compare.md`: per test file, byte diff + semantic diff + oracle re-open verdict | VM, CUA, Frida | - |
+
+## 2b. Elicitation detail (stage 1b)
+
+For a new target, cloning starts with reading, not clicking:
+
+1. **Format candidates:** from triage strings (extensions, magic bytes, format names)
+   look up public specs first (vendor docs, RFCs, MS-X status, file-format wikis).
+   Record each as `formats/<ext>.md`: what the spec claims, what the app demonstrably
+   reads/writes (oracle decides on conflicts — specs describe the format, the app
+   describes its dialect).
+2. **The app's own docs:** inventory `.chm`/`.pdf` help, Help-menu contents, tip-of-the-day
+   strings. CHM is itself a parseable container (7-Zip/CHM tooling). The help TOC is mined
+   for a **feature list** — every documented feature becomes a clicker target in §2c.
+   Apps document themselves better than any crawler discovers.
+3. **Prior art:** web search (REA/browser kinds) for existing specs, SDKs, compatible
+   implementations, and teardown write-ups. A found SDK or spec collapses weeks.
+
+## 2c. How the clicker knows where to click
+
+Layered, cheapest reliable signal first — algorithms carry the base, papers inform
+the hard cases:
+
+1. **Algorithmic base (deterministic, offline): GUI ripping.** BFS/DFS over the live UIA
+   tree: every menu item, every toolbar button, every dialog tab, every list row —
+   the classic GUITAR approach (Memon et al., Univ. of Maryland: rip the interface into
+   a model, then walk the model). Complete for standard Win32/Qt widgets, zero model
+   cost, fully reproducible. This is the floor every tour stands on.
+2. **Docs-seeded targets (from §2b):** the help-mined feature list orders the walk —
+   file I/O features first (they feed the oracle), dialogs second, decoration last.
+   The stage-1b tour-YAML draft is generated from this list, not hand-written.
+3. **Screenshot + OCR fallback (custom-rendered UI):** Delphi/Directmedia-style owners
+   draw their own widgets, so UIA sees one blank canvas. Same BFS logic, but over
+   OCR/screenshot regions (the Tier 3 Delphi lesson). Slower, still systematic.
+4. **Learned guidance (optional layer, read before building G3):** when the tree is huge,
+   an LLM prioritizes which branches likely own file I/O. Pointers, not gospel —
+   AppAgent (Zhang et al. 2023: explore-then-deploy with screenshot+XML fusion),
+   UFO (Microsoft 2024: Windows UI-automation-native agent), OmniParser (MSR 2024:
+   screen parsing into structured elements), DroidBot (Li et al. 2017: model-based
+   exploration, the pre-LLM state of the art), OSWorld / WindowsAgentArena (benchmarks
+   to steal task ideas from, not code). For grounding clicks on custom UI: SeeClick /
+   UGround / OS-Atlas line; for judging coverage: ScreenSpot-style element benchmarks.
+   Read the GuI-ripping + AppAgent + UFO trio before writing the G3 driver; the rest
+   on demand when a target resists the first three layers.
 
 ## 3. Compare = three levels
 
@@ -100,6 +144,7 @@ right answer to check the pipeline against.
 | Phase | Delivers | Needs |
 |-------|----------|-------|
 | G1 | Page + job runner + stages 0, 1, 4 (triage-only assessment) | DiE, capa wrappers (done with phase 3 engines) |
+| G1b | Stage 1b elicitation: format-spec stubs, help-file mining, generated tour-YAML draft | strings + help parser + web search; no VM needed |
 | G2 | Stage 2 oracle capture | Frida wrapper, VM plumbing via virtualization-mcp |
 | G3 | Stage 3 clicker tour | Tier 3 live tour runner (pywinauto driver) |
 | G4 | Stage 6 UI build | Tauri template + codegen from capture bundle |
