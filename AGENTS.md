@@ -46,6 +46,7 @@ All registered in `server.py`; implementations in `analyzers.py`, `directmedia_d
 - `docs/REVA.md` — **ReVa MCP guide** (install, assistant/headless modes, client config, two-server workflow)
 - `docs/REA.md` — **REA sidecar guide** (agent-driven native + JS/Electron/.NET/APK/firmware/browser, setup, three-server workflow)
 - `docs/CUA_DISASSEMBLY_COMBO.md` — **Tier 3 spec** (CUA tour + disassembly = feature-to-code maps; spec, not built)
+- `docs/GYM_SPEC.md` — **Reversing Gym product spec** (oracle cloning pipeline, stages 0-8, gates)
 - `docs/ELICITATION_AND_CLICKER.md` — **Gym playbook** (stage-1b format/docs mining + stage-3 clicker layers, algorithms, papers)
 - `docs/GHIDRA.md` — **Ghidra headless guide** (analyzeHeadless, scripts, CLI reference)
 - `docs/DIRECTMEDIA_MISSION.md` — Directmedia / Digibib5 mission scope
@@ -62,6 +63,7 @@ All registered in `server.py`; implementations in `analyzers.py`, `directmedia_d
 server.py (FastMCP 3.4+)
   ├── analyzers.py       — BinaryAnalyzer (Ghidra, radare2, binwalk, PE, entropy, strings)
   ├── rea_bridge.py      — REA sidecar subprocess bridge (find/run/truncate)
+  ├── gym.py             — Gym G1 job runner (intake/triage/assessment, run dirs)
   ├── directmedia_dki.py — DKI decode/decompress
   ├── digibib_research.py — DigiBib research snapshot builder
   ├── transport.py       — Dual transport (stdio/HTTP/SSE)

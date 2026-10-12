@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-10-12)
+- Gym G1: `gym.py` job runner (intake/DiE-capa triage/assessment gate), 6 REST endpoints, `gym` MCP tool (17 tools), `/gym` webapp page with stepper + gate buttons + artifact browser; `PRD.md` names the Gym as the product
+- `show_tools_card` Prefab tool (stdio-verified `$prefab` envelope); all indexes synced
+- Tier 3 static half: `scripts/tour/{README,correlate.py,tour.example.yaml}` + first Digibib5 map (171 hits); `docs/ELICITATION_AND_CLICKER.md` playbook (stage-1b mining, 4-layer clicker strategy, no-disassembly decomposition, evidentiary gradient, contributor funnel)
+- Hopper verdict: unsupported on win32 (verified via REA) — docs updated; `GHIDRA_INSTALL_DIR` set (12.0 present, 12.1 upgrade pending)
+- `certify` recipe; Ctrl+L/H shortcuts; contrast sweep; `/api/llm/gpus` + GPU-aware onboarding; `renovate.json`; `just ci` green end-to-end
+
 ### Added (2026-10-11)
 - Tier 2 REA sidecar bridge: `rea_investigate` MCP tool (9 hermetic tests), `just setup-rea/check-rea/update-rea`, `docs/REA.md`
 - Backend transplant: analyze/ghidra/llm/chat/tools/logs/capabilities REST (36 routes) into `server.py _http_app`; retired Next.js frontend (Vite survives)
