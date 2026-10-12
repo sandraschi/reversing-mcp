@@ -97,7 +97,7 @@ async def analyze_binary(
         return {"error": f"File not found: {file_path}"}
 
     try:
-        results = analyzer.analyze_file(file_path, tools)
+        results = await asyncio.to_thread(analyzer.analyze_file, file_path, tools)
         return {
             "file_path": file_path,
             "file_size": os.path.getsize(file_path),
@@ -135,7 +135,7 @@ async def extract_strings(
         encodings = ["ascii", "utf-8", "utf-16le", "latin-1"]
 
     try:
-        strings = analyzer.extract_strings(file_path, min_length, encodings)
+        strings = await asyncio.to_thread(analyzer.extract_strings, file_path, min_length, encodings)
         return [s.model_dump() for s in strings]
     except Exception as e:
         logger.exception(f"Error extracting strings from {file_path}")
@@ -162,7 +162,7 @@ async def get_hexdump(
         return {"error": f"File not found: {file_path}"}
 
     try:
-        hexdump = analyzer.get_hexdump(file_path, offset, length)
+        hexdump = await asyncio.to_thread(analyzer.get_hexdump, file_path, offset, length)
         return {
             "file_path": file_path,
             "offset": offset,
@@ -194,7 +194,7 @@ async def analyze_entropy(
         return {"error": f"File not found: {file_path}"}
 
     try:
-        entropy_data = analyzer.analyze_entropy(file_path, block_size)
+        entropy_data = await asyncio.to_thread(analyzer.analyze_entropy, file_path, block_size)
         return {
             "file_path": file_path,
             "block_size": block_size,
@@ -229,7 +229,7 @@ async def find_functions(
         return {"error": f"File not found: {file_path}"}
 
     try:
-        functions = analyzer.find_functions(file_path, tool)
+        functions = await asyncio.to_thread(analyzer.find_functions, file_path, tool)
         return {
             "file_path": file_path,
             "tool_used": tool,
@@ -259,16 +259,17 @@ async def get_file_info(
 
     try:
         stat = os.stat(file_path)
+        file_type = await asyncio.to_thread(analyzer.detect_file_type, file_path)
         return {
             "path": file_path,
             "size": stat.st_size,
             "modified": stat.st_mtime,
-            "type": analyzer.detect_file_type(file_path),
+            "type": file_type,
             "permissions": oct(stat.st_mode)[-3:],
             "readable": os.access(file_path, os.R_OK),
             "writable": os.access(file_path, os.W_OK),
             "executable": os.access(file_path, os.X_OK),
-            "message": f"{file_path}: {stat.st_size} bytes, {analyzer.detect_file_type(file_path)}.",
+            "message": f"{file_path}: {stat.st_size} bytes, {file_type}.",
         }
     except Exception as e:
         logger.exception(f"Error getting file info for {file_path}")
@@ -314,7 +315,7 @@ async def check_tools() -> dict[str, Any]:
     check_tools()
     """
     try:
-        available_tools = analyzer.check_available_tools()
+        available_tools = await asyncio.to_thread(analyzer.check_available_tools)
 
         # Add Directmedia status
         available_tools["directmedia"] = {
@@ -370,7 +371,7 @@ async def show_tools_card() -> PrefabApp:
     ## Examples
     `show_tools_card()` -> PrefabApp with available/missing engine badges.
     """
-    tools = analyzer.check_available_tools()
+    tools = await asyncio.to_thread(analyzer.check_available_tools)
     # css_class is a declared Component field (populate_by_name); pyright
     # misresolves the pydantic alias init - verified at runtime. See below.
     with Card(css_class="max-w-xl") as view:  # pyright: ignore[reportCallIssue]
@@ -485,7 +486,9 @@ async def rea_investigate(
     if kind not in rea_bridge.REA_KINDS:
         return {"success": False, "error": f"Unknown kind '{kind}'. Valid: {', '.join(rea_bridge.REA_KINDS)}."}
     try:
-        out = rea_bridge.run_rea(
+        # Blocking subprocess (up to 900 s) - keep it off the event loop.
+        out = await asyncio.to_thread(
+            rea_bridge.run_rea,
             kind,
             target,
             provider=provider,
@@ -533,7 +536,7 @@ async def digibib_research_snapshot(exe_path: str | None = None) -> dict[str, An
             "hint": "Copy Digibib5.exe into tests/fixtures/exe files/ or pass exe_path.",
         }
     try:
-        snap = build_research_snapshot(analyzer, resolved)
+        snap = await asyncio.to_thread(build_research_snapshot, analyzer, resolved)
         snap["message"] = f"Digibib snapshot for {resolved} complete."
         return snap
     except Exception as e:
@@ -558,7 +561,7 @@ async def analyze_pe_file(
         return {"error": f"File not found: {file_path}"}
 
     try:
-        pe_info = analyzer.analyze_pe_file(file_path)
+        pe_info = await asyncio.to_thread(analyzer.analyze_pe_file, file_path)
         return {
             "file_path": file_path,
             "pe_info": pe_info,
@@ -587,7 +590,7 @@ async def decode_dki_file(
     """
     if not os.path.exists(file_path):
         return {"success": False, "error": f"File not found: {file_path}"}
-    r = decode_dki_path(Path(file_path))
+    r = await asyncio.to_thread(decode_dki_path, Path(file_path))
     out = result_to_mcp_dict(file_path, r)
     out["message"] = f"DKI decode of {file_path}: {'success' if out.get('success') else 'failed'}."
     return out
@@ -1126,7 +1129,7 @@ try:
         resolved, tried = resolve_digibib_exe(exe_path)
         if resolved is None:
             return {"success": False, "error": "Digibib5.exe not found", "paths_searched": tried}
-        return build_research_snapshot(analyzer, resolved)
+        return await asyncio.to_thread(build_research_snapshot, analyzer, resolved)
 
     @_http_app.get("/api/v1/digibib/check-idr")
     async def _digibib_check_idr():
@@ -1149,7 +1152,7 @@ try:
     @_http_app.get("/api/v1/digibib/decode-dki")
     async def _digibib_decode_dki(path: str):
         """Decode a DKI file using the heuristic decoder."""
-        r = decode_dki_path(Path(path))
+        r = await asyncio.to_thread(decode_dki_path, Path(path))
         return result_to_mcp_dict(path, r)
 
     @_http_app.get("/api/v1/digibib/directmedia-strings")
@@ -1160,7 +1163,7 @@ try:
         resolved, tried = resolve_digibib_exe(exe_path)
         if resolved is None:
             return {"success": False, "error": "Digibib5.exe not found", "paths_searched": tried}
-        strings = analyzer.extract_strings(str(resolved), min_length=5)
+        strings = await asyncio.to_thread(analyzer.extract_strings, str(resolved), min_length=5)
         hits = filter_directmedia_strings(strings)
         return {"success": True, "hits": hits[:200], "total": len(hits)}
 
@@ -1337,7 +1340,7 @@ try:
             temp_file.write(content)
             temp_file_path = temp_file.name
         try:
-            results = analyzer.analyze_file(temp_file_path, tool_list)
+            results = await asyncio.to_thread(analyzer.analyze_file, temp_file_path, tool_list)
             response = _analysis_response(file.filename, len(content), tool_list, results)
             background_tasks.add_task(os.unlink, temp_file_path)
             return response.model_dump()
@@ -1356,7 +1359,7 @@ try:
             raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
         try:
             tool_list = request.tools or ["file", "strings", "entropy"]
-            results = analyzer.analyze_file(request.file_path, tool_list)
+            results = await asyncio.to_thread(analyzer.analyze_file, request.file_path, tool_list)
             response = _analysis_response(request.file_path, os.path.getsize(request.file_path), tool_list, results)
             return response.model_dump()
         except Exception as e:
@@ -1776,7 +1779,8 @@ try:
         if nvidia_smi is None:
             return []
         try:
-            proc = subprocess.run(
+            proc = await asyncio.to_thread(
+                subprocess.run,
                 [nvidia_smi, "--query-gpu=index,name,memory.total", "--format=csv,noheader,nounits"],
                 check=False,
                 capture_output=True,
