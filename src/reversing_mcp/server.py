@@ -1264,7 +1264,9 @@ try:
                         "note": f"Bridge: {_GHIDRA_BRIDGE_URL}",
                     },
                     "rea": tools.get("rea", {"available": False}),
-                }
+                },
+                # Full check_tools() inventory (ida/r2/binwalk too) for Help -> Engines.
+                "engines": tools,
             }
         except Exception as e:
             logger.exception("Error checking tools status")
@@ -1781,6 +1783,10 @@ try:
                 "rea_sidecar": True,
             },
             "tools": sorted([t.name for t in tools]),
+            "tool_docs": sorted(
+                ({"name": t.name, "description": t.description or ""} for t in tools),
+                key=lambda d: d["name"],
+            ),
         }
 
     _http_app.mount("/mcp", mcp.http_app(path="/"))
