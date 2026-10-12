@@ -16,6 +16,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import os
 import re
 import uuid
 from pathlib import Path
@@ -40,6 +41,10 @@ STAGES = [
 ]
 G1_STAGES = ["intake", "triage", "assessment"]
 PENDING_SPEC = [s for s in STAGES if s not in G1_STAGES]
+
+# capa is slow on real apps (Digibib5, 4.7 MB Delphi: 2511 s on 2026-10-12). Default keeps
+# triage interactive; raise via env for a full capa pass.
+CAPA_TIMEOUT_S = int(os.environ.get("GYM_CAPA_TIMEOUT_S", "300"))
 
 _runs_dir: Path | None = None
 
@@ -173,12 +178,15 @@ def _stage_triage(run_path: Path, state: dict) -> dict[str, Any]:
     analyzer = BinaryAnalyzer()
     triage: dict[str, Any] = {"target": target}
 
+    # engines.run_* contract: success / error; DiE adds detections + packed, capa adds capabilities.
     die = engines.run_die(target, timeout_s=120)
+    die["available"] = bool(die.get("success"))
     triage["die"] = die
-    capa = engines.run_capa(target, timeout_s=300)
+    capa = engines.run_capa(target, timeout_s=CAPA_TIMEOUT_S)
+    capa["available"] = bool(capa.get("success"))
     triage["capa"] = {
-        "summary": capa.get("summary", []),
-        "available": capa.get("available", False),
+        "summary": capa.get("capabilities", []),
+        "available": capa["available"],
         "error": capa.get("error"),
     }
     try:
@@ -229,7 +237,7 @@ def _stage_assessment(run_path: Path, state: dict) -> dict[str, Any]:
 
     die = triage.get("die", {})
     die_text = json.dumps(die).lower()
-    if any(w in die_text for w in ["upx", "aspack", "themida", "vmprotect", "obsidium", "enigma"]):
+    if die.get("packed") or any(w in die_text for w in ["upx", "aspack", "themida", "vmprotect", "obsidium", "enigma"]):
         binary = _assess_dimension("Binary", "amber", "Packer/protector indicated by DiE — confirm before cloning.")
     elif die.get("available"):
         binary = _assess_dimension("Binary", "green", "Unpacked, compiler identified by DiE.")
@@ -242,7 +250,24 @@ def _stage_assessment(run_path: Path, state: dict) -> dict[str, Any]:
     elif capa.get("available"):
         logic = _assess_dimension("Logic", "green", "capa answered with no red-flag capabilities.")
     else:
-        logic = _assess_dimension("Logic", "unknown", "capa absent — effort unknown, needs stage 5.")
+        why = capa.get("error") or "capa absent"
+        logic = _assess_dimension("Logic", "unknown", f"{why} — effort unknown, needs stage 5.")
+
+    anti_vm = sorted(
+        {
+            r.get("name", "")
+            for r in capa.get("summary", [])
+            if str(r.get("namespace") or "").startswith("anti-analysis/anti-vm")
+        }
+    )
+    if anti_vm:
+        oracle = _assess_dimension(
+            "Oracle",
+            "amber",
+            f"capa found anti-VM checks ({'; '.join(anti_vm[:3])}) — the VM clicker may be detected.",
+        )
+    else:
+        oracle = _assess_dimension("Oracle", "unknown", "VM plumbing unverified (stage 2).")
 
     fmt = triage.get("formats_referenced", [])
     if fmt:
@@ -256,7 +281,7 @@ def _stage_assessment(run_path: Path, state: dict) -> dict[str, Any]:
         _assess_dimension("UI coverage", "unknown", "Needs clicker tour (stage 3)."),
         format_d,
         logic,
-        _assess_dimension("Oracle", "unknown", "VM plumbing unverified (stage 2)."),
+        oracle,
     ]
     reds = sum(1 for d in dims if d["status"] == "red")
     ambers = sum(1 for d in dims if d["status"] in ("amber", "unknown"))

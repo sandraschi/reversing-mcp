@@ -66,8 +66,8 @@ def test_full_g1_flow_to_gate(runs_root: Path) -> None:
 
 
 def test_engines_absent_is_honest(runs_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("reversing_mcp.engines.run_die", lambda *a, **k: {"available": False, "error": "no DiE"})
-    monkeypatch.setattr("reversing_mcp.engines.run_capa", lambda *a, **k: {"available": False, "error": "no capa"})
+    monkeypatch.setattr("reversing_mcp.engines.run_die", lambda *a, **k: {"success": False, "error": "no DiE"})
+    monkeypatch.setattr("reversing_mcp.engines.run_capa", lambda *a, **k: {"success": False, "error": "no capa"})
     run_id = _start()["run_id"]
     triage = gym.advance_run(run_id)
     assert triage["success"]
@@ -76,6 +76,32 @@ def test_engines_absent_is_honest(runs_root: Path, monkeypatch: pytest.MonkeyPat
     by_dim = {d["dimension"]: d for d in assess["assessment"]["dimensions"]}
     assert by_dim["Binary"]["status"] == "unknown"
     assert by_dim["Logic"]["status"] == "unknown"
+
+
+def test_engines_present_real_contract(runs_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Shapes as engines.run_die / run_capa actually return them (Digibib5, 2026-10-12)."""
+    die = {
+        "success": True,
+        "packed": False,
+        "detections": [{"type": "compiler", "name": "Borland Delphi", "string": "Compiler: Borland Delphi(7)"}],
+    }
+    capa = {
+        "success": True,
+        "capabilities": [
+            {"name": "check for unmoving mouse cursor", "namespace": "anti-analysis/anti-vm/vm-detection"},
+            {"name": "read file on Windows", "namespace": "host-interaction/file-system/read"},
+        ],
+    }
+    monkeypatch.setattr("reversing_mcp.engines.run_die", lambda *a, **k: dict(die))
+    monkeypatch.setattr("reversing_mcp.engines.run_capa", lambda *a, **k: dict(capa))
+    run_id = _start()["run_id"]
+    triage = gym.advance_run(run_id)
+    assert "DiE: answered" in triage["message"] and "capa: answered" in triage["message"]
+    assert len(triage["triage"]["capa"]["summary"]) == 2
+    by_dim = {d["dimension"]: d for d in gym.advance_run(run_id)["assessment"]["dimensions"]}
+    assert by_dim["Binary"]["status"] == "green"
+    assert by_dim["Logic"]["status"] == "amber"
+    assert by_dim["Oracle"]["status"] == "amber" and "anti-VM" in by_dim["Oracle"]["reason"]
 
 
 def test_artifact_traversal_guard(runs_root: Path) -> None:
