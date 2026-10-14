@@ -19,8 +19,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=8.0", "pytest-asyncio", "httpx"]
-dev = ["ruff>=0.16.0,<0.17", "mypy", "pyright", "pre-commit", "bandit", "safety"]
+  test = ["pytest>=8.0", "pytest-asyncio", "httpx"]
+  dev = ["ruff>=0.16.0,<0.17", "mypy", "pyright", "pre-commit", "bandit", "safety"]
+  # ClickerLab G3 driver (B1 rip + B2 tour + B3 OCR): real dev deps per the fleet
+  # CUA rule (no silent false-pass). Windows-only drivers; harmless elsewhere.
+  clicker = [
+      "pywinauto>=0.6.8",
+      "Pillow>=10.0.0",
+      "pytesseract>=0.3.10",
+  ]
 # Headless Ghidra from Python (DecompInterface, import/analyze). Requires a local Ghidra install;
 # set GHIDRA_INSTALL_DIR if not using the default path in scripts/decompile_pe_pyghidra.py.
 ghidra = [
@@ -30,13 +37,6 @@ ghidra = [
 # "frida not installed" without it. Spawned targets execute - see docs/FRIDA.md.
 dynamic = [
     "frida>=17.0",
-]
-# ClickerLab stage-3 driver (G3): UIA BFS rip + tour executor launch the target,
-# so sessions are confirm-gated. Without it, elicitation still works and live
-# driving refuses honestly. Windows only (pywinauto needs Win32 UIA).
-clicker = [
-    "pywinauto>=0.6.8",
-    "Pillow>=10.0.0",
 ]
 
 [project.scripts]
@@ -74,6 +74,7 @@ ignore = ["S101", "B008", "S106", "RUF012", "S603", "S607", "S324", "E402", "E50
 "tests/fixtures/**/*.py" = ["T201", "S311"]
 # CLI scripts report to stdout by design (exit codes carry status).
 "scripts/tour/*.py" = ["T201"]
+"scripts/cua_tour.py" = ["T201"]
 
 [tool.ruff.format]
 quote-style = "double"

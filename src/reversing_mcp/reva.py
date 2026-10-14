@@ -33,17 +33,27 @@ _PROC: subprocess.Popen[str] | None = None
 _MODE: str | None = None
 
 
+#: Fleet ReVa home (own venv - outside uv-sync reach). See D:/Dev/tools/reva/README.md.
+REVA_HOME = Path(r"D:\Dev\tools\reva")
+REVA_VENV_EXE = REVA_HOME / ".venv" / "Scripts" / "mcp-reva.exe"
+
+
 def find_mcp_reva() -> str | None:
-    """Locate the headless ReVa launcher on PATH."""
-    return shutil.which("mcp-reva")
+    """Locate the headless ReVa launcher: PATH first, then the fleet venv."""
+    exe = shutil.which("mcp-reva")
+    if exe:
+        return exe
+    if REVA_VENV_EXE.is_file():
+        return str(REVA_VENV_EXE)
+    return None
 
 
 def find_ghidra_run() -> dict[str, Any]:
     """Locate Ghidra + its GUI launcher. Never raises."""
     gdir = os.environ.get("GHIDRA_INSTALL_DIR") or os.environ.get("GHIDRA_HOME") or ""
-    run_bat = str(Path(gdir) / "support" / "ghidraRun.bat") if gdir else ""
-    ok = bool(run_bat) and Path(run_bat).is_file()
-    return {"dir": gdir or None, "run_bat": run_bat or None, "gui_available": ok}
+    candidates = [Path(gdir) / "ghidraRun.bat", Path(gdir) / "support" / "ghidraRun.bat"] if gdir else []
+    run_bat = next((str(p) for p in candidates if p.is_file()), "")
+    return {"dir": gdir or None, "run_bat": run_bat or None, "gui_available": bool(run_bat)}
 
 
 def probe_bridge(url: str, timeout_s: float = 5.0) -> dict[str, Any]:
@@ -81,7 +91,7 @@ def probe(bridge_url: str) -> dict[str, Any]:
         "mcp_reva": {
             "available": exe is not None,
             "path": exe,
-            "install_hint": None if exe else "pip install reverse-engineering-assistant (docs/REVA.md section 3)",
+            "install_hint": None if exe else "Fleet venv missing: see D:/Dev/tools/reva/README.md",
         },
         "ghidra": ghidra,
         "managed": _managed(),
@@ -114,8 +124,8 @@ def start(mode: str = "headless", confirm: bool = False, bridge_url: str = "") -
             if not exe:
                 return {
                     "success": False,
-                    "error": "mcp-reva not found on PATH - headless ReVa unavailable.",
-                    "install_hint": "pip install reverse-engineering-assistant (docs/REVA.md section 3)",
+                    "error": "mcp-reva not found (PATH or D:/Dev/tools/reva) - headless ReVa unavailable.",
+                    "install_hint": "Fleet venv missing: see D:/Dev/tools/reva/README.md",
                 }
             env = dict(os.environ)
             if find_ghidra_run()["dir"]:

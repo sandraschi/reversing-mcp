@@ -15,6 +15,11 @@ test:
 install-idr:
     powershell.exe -NoProfile -File scripts/Install-IDR.ps1
 
+# Tier 3 one-shot: intake -> triage -> elicit -> drive -> correlate.
+# Typing this recipe IS the explicit confirm (target executes on this desktop).
+cua-tour target mode="rip" stepcap="200":
+    uv run python scripts/cua_tour.py --target "{{target}}" --mode {{mode}} --step-cap {{stepcap}} --confirm --accept-local
+
 # --- REA sidecar (agent-driven RE: JS/Electron/.NET/APK/firmware + native) ---
 
 # Register REA with your agents (backs up configs, then restart the agent)

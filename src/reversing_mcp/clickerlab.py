@@ -53,6 +53,234 @@ def _atomic_write(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+#: Fleet-standard Tesseract location (mirrors scripts/cua-smoke.py).
+_TESSERACT_EXE = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+#: Tour intents that need credentials, payment or identity - never improvised.
+#: A step matching one of these is recorded as a named skip, never executed.
+FORBIDDEN_INTENT_RES = (
+    r"passw",
+    r"log.?in|sign.?in|logon",
+    r"sign.?up|register|create.?account",
+    r"\bpay\b|payment|purchase|buy\b|checkout|credit.?card|billing",
+    r"license.?key|activation.?key|serial.?key|product.?key",
+    r"\bunlock\b.*\b(paid|license|key)\b",
+)
+
+
+def _tesseract_version() -> str:
+    try:
+        out = subprocess.run([_TESSERACT_EXE, "--version"], capture_output=True, text=True, timeout=10)
+        return (out.stdout.strip().splitlines() or ["?"])[0].split(" ", 1)[-1][:24]
+    except (subprocess.SubprocessError, OSError) as e:
+        logger.debug("tesseract probe failed: %s", e)
+        return "?"
+
+
+def warn_operator(sdir: Path, mode: str, target: str) -> None:
+    """Warn-first banner (fleet CUA rule): the session is about to drive the desktop."""
+    banner = (
+        "CUA AUTOMATION WARNING: ClickerLab takes control of the mouse and keyboard "
+        f"to drive {target} (mode={mode}). Do not touch mouse/keyboard until the session ends."
+    )
+    logger.warning(banner)
+    _slog(sdir, "operator_warning", banner)
+
+
+def release_mouse() -> None:
+    """Release all mouse buttons + dismiss stray context menus (fleet CUA rule).
+
+    UIA click_input() on some controls fires through Invoke rather than a true
+    synthetic click, which can surface as a context menu - Escape clears it.
+    """
+    try:
+        import ctypes
+
+        for flag in (0x0004, 0x0010, 0x0040):  # LEFTUP, RIGHTUP, MIDDLEUP
+            ctypes.windll.user32.mouse_event(flag, 0, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(0x1B, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(0x1B, 0, 0x0002, 0)
+    except Exception as e:
+        logger.debug("release_mouse failed: %s", e)
+
+
+def ocr_image(path: Path) -> str:
+    """OCR one screenshot file. Empty string when OCR is unavailable."""
+    try:
+        import pytesseract
+        from PIL import Image
+
+        pytesseract.pytesseract.tesseract_cmd = _TESSERACT_EXE
+        return pytesseract.image_to_string(Image.open(path))
+    except Exception as e:
+        logger.debug("OCR failed for %s: %s", path.name, e)
+        return ""
+
+
+def ocr_regions(path: Path, min_conf: int = 40) -> list[dict[str, Any]]:
+    """B3 target proposals: text blobs with coordinates (for canvas-rendered UI)."""
+    try:
+        import pytesseract
+        from PIL import Image
+
+        pytesseract.pytesseract.tesseract_cmd = _TESSERACT_EXE
+        data = pytesseract.image_to_data(Image.open(path), output_type=pytesseract.Output.DICT)
+    except Exception as e:
+        logger.debug("OCR regions failed for %s: %s", path.name, e)
+        return []
+    out = []
+    n = len(data.get("text", []))
+    for i in range(n):
+        try:
+            conf = float(data["conf"][i])
+        except (ValueError, TypeError):
+            continue
+        text = (data["text"][i] or "").strip()
+        if conf < min_conf or len(text) < 2:
+            continue
+        out.append(
+            {
+                "text": text[:80],
+                "conf": round(conf, 1),
+                "x": int(data["left"][i]) + int(data["width"][i]) // 2,
+                "y": int(data["top"][i]) + int(data["height"][i]) // 2,
+                "w": int(data["width"][i]),
+                "h": int(data["height"][i]),
+            }
+        )
+    return out
+
+
+def screenshot_diff_regions(before: Path, after: Path, cell: int = 32) -> list[dict[str, int]]:
+    """Changed screen regions between two screenshots (B3 click verification).
+
+    Coarse-cell diff: cells whose mean pixel delta exceeds threshold merge into
+    bounding boxes. Deterministic, dependency-light (Pillow only).
+    """
+    try:
+        from PIL import Image, ImageChops, ImageStat
+    except ImportError as e:
+        logger.debug("Pillow missing for diff: %s", e)
+        return []
+    try:
+        a = Image.open(before).convert("L")
+        b = Image.open(after).convert("L")
+        size = (min(a.width, b.width), min(a.height, b.height))
+        a, b = a.resize(size), b.resize(size)
+        diff = ImageChops.difference(a, b)
+        w, h = size
+        hot: list[tuple[int, int]] = []
+        for cy in range(0, h, cell):
+            for cx in range(0, w, cell):
+                box = (cx, cy, min(cx + cell, w), min(cy + cell, h))
+                if ImageStat.Stat(diff.crop(box)).mean[0] > 12:
+                    hot.append((cx, cy))
+        if not hot:
+            return []
+        # Merge adjacent hot cells into boxes (single-pass union on the grid).
+        boxes: list[list[int]] = []
+        for cx, cy in hot:
+            placed = False
+            for box in boxes:
+                if (
+                    cx <= box[2] + cell
+                    and cy <= box[3] + cell
+                    and cx + cell >= box[0] - cell
+                    and cy + cell >= box[1] - cell
+                ):
+                    box[0] = min(box[0], cx)
+                    box[1] = min(box[1], cy)
+                    box[2] = max(box[2], cx + cell)
+                    box[3] = max(box[3], cy + cell)
+                    placed = True
+                    break
+            if not placed:
+                boxes.append([cx, cy, cx + cell, cy + cell])
+        return [{"x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0} for x0, y0, x1, y1 in boxes]
+    except Exception as e:
+        logger.debug("screenshot diff failed: %s", e)
+        return []
+
+
+def read_clipboard_text() -> str:
+    """Capture text clipboard (per-step capture bundle). Empty when unavailable."""
+    try:
+        import win32clipboard
+
+        win32clipboard.OpenClipboard()
+        try:
+            if win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_UNICODETEXT):
+                return (win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT) or "")[:4000]
+        finally:
+            win32clipboard.CloseClipboard()
+    except Exception as e:
+        logger.debug("clipboard read failed: %s", e)
+    return ""
+
+
+def snapshot_files(dirs: list[Path], max_files: int = 20000) -> dict[str, dict[str, int]]:
+    """File inventory (path -> {size, mtime_ns}) for watch dirs. Session/step diffing.
+
+    Budgeted: stops after max_files entries so a bloated %TEMP% cannot stall a
+    pass (live-fire lesson 2026-10-14: unbounded rglob took ~55 s per rip pass).
+    """
+    snap: dict[str, dict[str, int]] = {}
+    for d in dirs:
+        try:
+            for p in d.rglob("*"):
+                if len(snap) >= max_files:
+                    break
+                try:
+                    if p.is_file() and not p.is_symlink():
+                        st = p.stat()
+                        snap[str(p)] = {"size": st.st_size, "mtime_ns": st.st_mtime_ns}
+                except OSError:
+                    continue
+        except OSError as e:
+            logger.debug("watch dir %s unreadable: %s", d, e)
+    return snap
+
+
+def diff_files(before: dict[str, dict[str, int]], after: dict[str, dict[str, int]]) -> dict[str, list[str]]:
+    """Added / modified / removed files between two snapshots."""
+    added = sorted(p for p in after if p not in before)
+    removed = sorted(p for p in before if p not in after)
+    modified = sorted(p for p in after if p in before and after[p] != before[p])
+    return {"added": added[:100], "modified": modified[:100], "removed": removed[:100]}
+
+
+def snapshot_registry(hive_path: str = r"HKCU\Software") -> Path | None:
+    """Export a registry subtree to a temp .reg file (session-level diffing)."""
+    try:
+        out = Path(os.environ.get("TEMP", r"C:\Windows\Temp")) / f"clickerlab-reg-{uuid.uuid4().hex[:8]}.reg"
+        proc = subprocess.run(["reg", "export", hive_path, str(out), "/y"], capture_output=True, text=True, timeout=120)
+        if proc.returncode == 0 and out.is_file():
+            return out
+        logger.debug("reg export failed: %s", proc.stderr[:200])
+    except (subprocess.SubprocessError, OSError) as e:
+        logger.debug("reg export failed: %s", e)
+    return None
+
+
+def classify_step(step: dict[str, Any]) -> dict[str, Any]:
+    """Tour allowlist gate: forbidden steps become named skips, never execution."""
+    blob = json.dumps(step.get("action", ""), default=str)
+    for pat in FORBIDDEN_INTENT_RES:
+        if re.search(pat, blob, re.IGNORECASE):
+            return {
+                "allowed": False,
+                "skip_name": f"forbidden:{pat}",
+                "reason": "Step needs credentials/payment/identity - improvising is forbidden (Tier 3 section 3).",
+            }
+    return {"allowed": True, "skip_name": None, "reason": None}
+
+
+def jlog(sdir: Path, record: dict[str, Any]) -> None:
+    """Append one JSONL capture record (Tier 3 bundle: one record per step)."""
+    with (sdir / "tour.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"ts": _now(), **record}, default=str) + "\n")
+
+
 def clicker_engines() -> dict[str, Any]:
     """Probe the optional G3 driver stack. Never raises."""
     out: dict[str, Any] = {}
@@ -74,11 +302,26 @@ def clicker_engines() -> dict[str, Any]:
         out["yaml"] = {"available": True}
     except ImportError:  # pragma: no cover - pyyaml ships with most stacks
         out["yaml"] = {"available": False, "install_hint": "pip install pyyaml"}
+    try:
+        import pytesseract
+
+        pytesseract.pytesseract.tesseract_cmd = _TESSERACT_EXE
+        out["ocr"] = {
+            "available": Path(_TESSERACT_EXE).is_file(),
+            "backend": f"pytesseract + Tesseract {_tesseract_version()}",
+        }
+    except ImportError:
+        out["ocr"] = {"available": False, "install_hint": "uv sync --extra clicker  (pytesseract>=0.3.10)"}
     drive_ready = bool(out["pywinauto"]["available"])
+    ocr_ready = bool(out["ocr"]["available"])
+    layers = ["B1 rip" if drive_ready else "B1 rip (needs pywinauto)"]
+    layers.append("B3 OCR" if ocr_ready else "B3 OCR (needs Tesseract binary + pytesseract)")
     return {
         "engines": out,
         "drive_ready": drive_ready,
+        "ocr_ready": ocr_ready,
         "elicitation_ready": True,
+        "layers": layers,
         "message": (
             "Clicker drive ready (pywinauto present)."
             if drive_ready
@@ -557,6 +800,165 @@ def stop_session(run_path: Path, session_id: str) -> dict[str, Any]:
     return {"success": True, "session_id": session_id, "message": f"Session {session_id} stopped; target tree killed."}
 
 
+def correlate_session(run_id: str, session_id: str, with_rea: bool = True, max_seeds: int = 12) -> dict[str, Any]:
+    """Tier 3 section 5 MVP: runtime strings -> static seeds -> code refs -> map rows.
+
+    Reads the session capture bundle (tour.jsonl, uia_tree, OCR text), dedupes
+    against the binary's own strings, and emits per-seed verdicts
+    (mapped / ambiguous / no static trace) into ``map.md``. REA native_search
+    is best-effort per seed; failures stay honest rows, never exceptions.
+    Blocking - call via to_thread.
+    """
+    from . import gym as _gym
+    from .analyzers import BinaryAnalyzer
+
+    run_path, state = _gym._load(run_id)
+    if run_path is None:
+        return {"success": False, "error": state.get("error", f"Unknown run: {run_id}")}
+    sdir = run_path / "clicker" / "sessions" / session_id
+    if not (sdir / "session.json").exists():
+        return {"success": False, "error": f"Unknown session: {session_id}"}
+    target = state["target"]
+
+    # 1. Harvest runtime strings from the bundle. Control names and window
+    #    titles outrank framework plumbing: generic UIA ControlType values
+    #    (Pane, Button) correlate to everything, i.e. to nothing.
+    runtime: dict[str, int] = {}
+
+    def _feed(text: str, weight: int = 1) -> None:
+        for w in re.findall(r"[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß0-9_.\\-]{3,40}", text or ""):
+            runtime[w] = runtime.get(w, 0) + weight
+
+    jsonl = sdir / "tour.jsonl"
+    if jsonl.exists():
+        for line in jsonl.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            _feed(str(rec.get("outcome", "")))
+            _feed(str(rec.get("ocr_text", "")), 3)
+            _feed(str(rec.get("clipboard", "")), 3)
+            _feed(str(rec.get("text", "")), 3)
+    uia = sdir / "uia_tree.json"
+    if uia.exists():
+        try:
+            tree = json.loads(uia.read_text(encoding="utf-8", errors="replace"))
+        except ValueError:
+            tree = []
+        for win in tree if isinstance(tree, list) else []:
+            _feed(str(win.get("window", "")), 3)
+            for node in win.get("nodes", []) or []:
+                _feed(str(node.get("name", "")), 3)
+                # control_type / automation_id deliberately unfed: framework vocabulary.
+    stop_words = {"the", "and", "with", "from", "that", "this", "windows", "microsoft"}
+    ranked = sorted(
+        ((w, c) for w, c in runtime.items() if w.lower() not in stop_words and not w[0].isdigit()),
+        key=lambda kv: -kv[1],
+    )[: max(1, max_seeds * 3)]
+
+    # 2. Baseline: the binary's own strings. Seeds must occur in the binary
+    #    to be statically correlatable; runtime-only strings get honest rows.
+    analyzer = BinaryAnalyzer()
+    raw = analyzer.extract_strings(target, min_length=4)
+    static_texts = [s.string for s in raw if hasattr(s, "string")]
+    static_blob = "\n".join(static_texts)
+    static_low = static_blob.lower()
+    seeds = [w for w, _ in ranked if w.lower() in static_low][:max_seeds]
+    runtime_only = [w for w, _ in ranked[:max_seeds] if w.lower() not in static_low]
+
+    # 3. Static refs per seed: offsets + function inventory + REA native_search.
+    try:
+        funcs = analyzer.find_functions(target, tool="auto")
+        funcs_ok = not (
+            isinstance(funcs, list) and len(funcs) == 1 and isinstance(funcs[0], dict) and "error" in funcs[0]
+        )
+    except Exception as e:
+        logger.debug("function inventory failed: %s", e)
+        funcs, funcs_ok = [], False
+    try:
+        func_names = " ".join(
+            str(f.get("name", "")) for f in (funcs if isinstance(funcs, list) else []) if isinstance(f, dict)
+        ).lower()
+    except Exception:
+        func_names = ""
+
+    rows = []
+    rea_used = 0
+    for seed in seeds:
+        offsets = [m.start() for m in re.finditer(re.escape(seed), static_blob)][:10]
+        in_funcs = seed.lower() in func_names
+        rea_note = "REA skipped (with_rea=False or budget spent)."
+        if with_rea and rea_used < 6:
+            from . import rea_bridge
+
+            rea_used += 1
+            res = rea_bridge.run_rea("native_search", target=target, query=seed, timeout_s=90)
+            if res.get("success"):
+                out = json.dumps(res.get("result") or res)[:600]
+                rea_note = f"REA answered: {out}"
+            else:
+                rea_note = f"REA unavailable: {(res.get('error') or '')[:160]}"
+        verdict = (
+            "mapped"
+            if (offsets and (in_funcs or "REA answered" in rea_note))
+            else ("ambiguous" if offsets else "no static trace")
+        )
+        rows.append(
+            {
+                "seed": seed,
+                "offsets": offsets,
+                "offset_count": len(offsets),
+                "in_function_names": in_funcs,
+                "rea": rea_note,
+                "verdict": verdict,
+            }
+        )
+    for w in runtime_only:
+        rows.append(
+            {
+                "seed": w,
+                "offsets": [],
+                "offset_count": 0,
+                "in_function_names": False,
+                "rea": "Not attempted (absent from binary).",
+                "verdict": "no static trace",
+            }
+        )
+
+    mapped = sum(1 for r in rows if r["verdict"] == "mapped")
+    lines = [
+        f"# Feature-to-code map ({_now()})",
+        f"Target: {target} | run {run_id} | session {session_id}",
+        f"Seeds: {len(rows)} ({mapped} mapped, {sum(1 for r in rows if r['verdict'] == 'ambiguous')} ambiguous, "
+        f"{sum(1 for r in rows if r['verdict'] == 'no static trace')} no static trace). "
+        "Functions inventory: " + ("available" if funcs_ok else "unavailable") + ".",
+        "",
+        "Stated limits: string match is correlation, not proof - identical text can serve",
+        "unrelated features. REA rows carry its evidence verbatim; human reviews every map.",
+        "",
+    ]
+    for r in rows:
+        lines += [
+            f"## {r['seed']} - {r['verdict']}",
+            f"- Static offsets: {r['offsets'][:5]}{'...' if r['offset_count'] > 5 else ''} ({r['offset_count']} hits)",
+            f"- In function names: {r['in_function_names']}",
+            f"- {r['rea']}",
+            "",
+        ]
+    _atomic_write(sdir / "map.md", "\n".join(lines))
+    msg = f"Correlate: {len(rows)} seed(s), {mapped} mapped. Map in clicker/sessions/{session_id}/map.md."
+    _slog(sdir, "correlated", msg)
+    return {
+        "success": True,
+        "run_id": run_id,
+        "session_id": session_id,
+        "seeds": len(rows),
+        "mapped": mapped,
+        "message": msg,
+    }
+
+
 def _snapshot_process_list() -> list[dict[str, Any]]:
     import psutil
 
@@ -615,8 +1017,19 @@ def _session_worker(sdir: Path, state: dict[str, Any], token: str, cancel: threa
         "menus_opened": 0,
         "dialogs_reached": 0,
         "steps": 0,
+        "ocr_regions": 0,
+        "coord_clicks": 0,
+        "named_skips": 0,
     }
+    reg_before: Path | None = None
     try:
+        warn_operator(sdir, state["mode"], state["target"])
+        watch = [Path(os.environ.get("TEMP", r"C:\Windows\Temp"))]
+        watch += [Path(p) for p in state.get("watch_dirs", []) if Path(p).is_dir()]
+        state["watch_dirs"] = [str(p) for p in watch]
+        _save_session(sdir, state)
+        reg_before = snapshot_registry()
+        _slog(sdir, "baselines", f"watch={[str(p) for p in watch]} reg={'ok' if reg_before else 'unavailable'}")
         _slog(sdir, "launch", state["target"])
         proc = subprocess.Popen([state["target"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         target_pid = proc.pid
@@ -652,11 +1065,25 @@ def _session_worker(sdir: Path, state: dict[str, Any], token: str, cancel: threa
         logger.exception("Clicker session %s failed", sid)
         ok, msg = False, str(e)[:500]
     finally:
+        release_mouse()
         if target_pid:
             try:
                 engines.kill_tree(target_pid)
             except Exception as e:
                 logger.debug("target tree kill failed: %s", e)
+        try:
+            reg_after = snapshot_registry()
+            if reg_before and reg_after:
+                before = reg_before.read_text(encoding="utf-8", errors="replace").splitlines()
+                after = reg_after.read_text(encoding="utf-8", errors="replace").splitlines()
+                import difflib
+
+                reg_diff = [ln for ln in difflib.unified_diff(before, after, n=0) if ln[:1] in "+-"][2:200]
+                _atomic_write(sdir / "reg-diff.txt", "\n".join(reg_diff) + "\n")
+                reg_after.unlink(missing_ok=True)
+                reg_before.unlink(missing_ok=True)
+        except Exception as e:
+            logger.debug("registry diff failed: %s", e)
         with _LOCK:
             _WORKERS.pop(token, None)
             _CANCELS.pop(token, None)
@@ -694,6 +1121,106 @@ def _cancelled(cancel: threading.Event, deadline: float) -> bool:
     return False
 
 
+def _target_alive(state: dict[str, Any]) -> bool:
+    """True while the launched target process still runs (psutil, zombie-aware).
+
+    Checked every pass so the driver never pokes dead COM handles - a UIA call
+    against an exited process can block indefinitely (live-fire 2026-10-14).
+    """
+    import psutil
+
+    try:
+        proc = psutil.Process(int(state["target_pid"]))
+        return proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE
+    except (psutil.NoSuchProcess, psutil.AccessDenied, KeyError, ValueError, TypeError) as e:
+        logger.debug("target liveness check failed: %s", e)
+        return False
+
+
+def _shoot(app: Any, sdir: Path, name: str) -> Path | None:
+    """Screenshot the top window into the session dir. None when unavailable."""
+    try:
+        shot = app.top_window().capture_as_image()
+        if shot is None:
+            return None
+        path = sdir / f"{name}.png"
+        shot.save(str(path))
+        return path
+    except Exception as e:
+        logger.debug("screenshot %s failed: %s", name, e)
+        return None
+
+
+def _click_coords(x: int, y: int) -> bool:
+    """Coordinate click (B3/custom UI). Verifies nothing - caller diffs screenshots."""
+    try:
+        import pywinauto.mouse
+
+        pywinauto.mouse.click(button="left", coords=(x, y))
+        time.sleep(0.5)
+        release_mouse()
+        return True
+    except Exception as e:
+        logger.debug("coord click (%s,%s) failed: %s", x, y, e)
+        return False
+
+
+def _drive_canvas(
+    sdir: Path,
+    app: Any,
+    window: Any,
+    coverage: dict[str, Any],
+    visited: set[str],
+    step: int,
+    state: dict[str, Any],
+    cancel: threading.Event,
+    deadline: float,
+) -> int:
+    """B3: OCR one canvas window, click each unvisited text region once, verify by pixels."""
+    try:
+        title = str(window.element_info.name or "")[:80]
+    except Exception:
+        title = "?"
+    shot = _shoot(app, sdir, f"canvas-{step}")
+    if shot is None:
+        return step
+    regions = ocr_regions(shot)
+    coverage["ocr_regions"] = coverage.get("ocr_regions", 0) + len(regions)
+    for reg in regions:
+        _cancelled(cancel, deadline)
+        if step >= state["step_cap"]:
+            break
+        key = f"ocr:{reg['text'].lower()}"
+        if key in visited:
+            continue
+        visited.add(key)
+        before = _shoot(app, sdir, f"canvas-{step}-before")
+        clicked = _click_coords(reg["x"], reg["y"])
+        after = _shoot(app, sdir, f"canvas-{step}-after")
+        changed: list[dict[str, int]] = []
+        if before and after:
+            changed = screenshot_diff_regions(before, after)
+            if not changed:
+                before.unlink(missing_ok=True)
+        coverage["coord_clicks"] = coverage.get("coord_clicks", 0) + (1 if clicked else 0)
+        step += 1
+        jlog(
+            sdir,
+            {
+                "kind": "canvas_click",
+                "window": title,
+                "text": reg["text"],
+                "x": reg["x"],
+                "y": reg["y"],
+                "clicked": clicked,
+                "changed_regions": len(changed),
+                "shot": shot.name,
+            },
+        )
+        _slog(sdir, "canvas_click", f"{title!r} '{reg['text']}' clicked={clicked} changed={len(changed)}")
+    return step
+
+
 def _run_rip(
     sdir: Path,
     state: dict[str, Any],
@@ -706,8 +1233,13 @@ def _run_rip(
     time.sleep(2)  # let the main window appear
     visited: set[str] = set()
     step = 0
+    watch = [Path(p) for p in state.get("watch_dirs", [])]
+    pass_baseline = snapshot_files(watch)
     while step < state["step_cap"]:
         _cancelled(cancel, deadline)
+        if not _target_alive(state):
+            _slog(sdir, "target_exited", "Target process is gone - ending the walk (no dead-COM poking).")
+            break
         try:
             windows = app.windows()
         except Exception:
@@ -739,6 +1271,11 @@ def _run_rip(
                     step += 1
                     if step >= state["step_cap"]:
                         break
+            except engines.Cancelled:
+                raise
+            except TimeoutError:
+                _slog(sdir, "time_cap", "menu walk hit the wall-clock cap.")
+                break
             except Exception as e:
                 logger.debug("menu walk failed: %s", e)
                 continue
@@ -782,13 +1319,42 @@ def _run_rip(
                     break
         except engines.Cancelled:
             raise
+        except TimeoutError:
+            raise
         except Exception as e:
             logger.debug("control walk pass failed: %s", e)
+
+        # B3 escalation: windows with an empty UIA subtree are custom-rendered
+        # (Delphi/Directmedia canvas) - drive them by OCR regions, not blind clicks.
+        try:
+            for w in windows:
+                _cancelled(cancel, deadline)
+                if step >= state["step_cap"]:
+                    break
+                try:
+                    nodes = w.descendants()
+                except Exception as e:
+                    logger.debug("canvas probe failed: %s", e)
+                    continue
+                if len(nodes) > 1:
+                    continue
+                progressed = True
+                step = _drive_canvas(sdir, app, w, coverage, visited, step, state, cancel, deadline)
+        except engines.Cancelled:
+            raise
+        except TimeoutError:
+            raise
+        except Exception as e:
+            logger.debug("canvas pass failed: %s", e)
 
         coverage["steps"] = step
         coverage["nodes_visited"] = len(visited)
         state["coverage"] = dict(coverage)
         _save_session(sdir, state)
+        pass_now = snapshot_files(watch)
+        pass_files = diff_files(pass_baseline, pass_now)
+        pass_baseline = pass_now
+        jlog(sdir, {"kind": "rip_pass", "step": step, "visited": len(visited), "file_diff": pass_files})
         _slog(sdir, "rip_pass", f"step={step} visited={len(visited)} menus={menus_opened}")
         if not progressed:
             break
@@ -822,23 +1388,58 @@ def _run_tour(
     steps = tour.get("steps", [])
     results = []
     step = 0
+    watch = [Path(p) for p in state.get("watch_dirs", [])]
+    file_before = snapshot_files(watch)
     for tstep in steps:
         _cancelled(cancel, deadline)
         if step >= state["step_cap"]:
+            break
+        if not _target_alive(state):
+            _slog(sdir, "target_exited", "Target process is gone - ending the tour.")
             break
         sid_step = str(tstep.get("id", f"s{step}"))
         action = tstep.get("action")
         expect = tstep.get("expect")
         capture = tstep.get("capture", [])
-        outcome = _exec_action(app, action, sdir, sid_step, capture)
+        gate = classify_step(tstep)
+        shot: Path | None = None
+        ocr_text = ""
+        clip = ""
+        file_diff: dict[str, list[str]] = {"added": [], "modified": [], "removed": []}
         ok_expect = True
-        if expect:
-            try:
-                titles = " ".join(w.window_text() for w in app.windows())
-                ok_expect = str(expect).lower() in titles.lower()
-            except Exception:
-                ok_expect = False
-        results.append({"id": sid_step, "action": action, "outcome": outcome, "expect": expect, "expect_ok": ok_expect})
+        if not gate["allowed"]:
+            outcome = f"named skip {gate['skip_name']}: {gate['reason']}"
+            coverage["named_skips"] = coverage.get("named_skips", 0) + 1
+        else:
+            outcome = _exec_action(app, action, sdir, sid_step, capture)
+            # Fleet receipt rule: every behavioral claim needs a captured artifact.
+            shot = _shoot(app, sdir, sid_step)
+            if shot is not None:
+                ocr_text = ocr_image(shot)
+            clip = read_clipboard_text()
+            file_now = snapshot_files(watch)
+            file_diff = diff_files(file_before, file_now)
+            file_before = file_now
+            if expect:
+                try:
+                    titles = " ".join(w.window_text() for w in app.windows())
+                except Exception as e:
+                    logger.debug("title read failed: %s", e)
+                    titles = ""
+                ok_expect = str(expect).lower() in titles.lower() or str(expect).lower() in ocr_text.lower()
+        record = {
+            "id": sid_step,
+            "action": action,
+            "outcome": outcome,
+            "expect": expect,
+            "expect_ok": ok_expect,
+            "shot": shot.name if shot else None,
+            "ocr_text": ocr_text[:2000],
+            "clipboard": clip[:500],
+            "file_diff": {k: v[:20] for k, v in file_diff.items()},
+        }
+        results.append(record)
+        jlog(sdir, {"kind": "tour_step", **record})
         _slog(sdir, "tour_step", f"{sid_step}: {outcome} expect_ok={ok_expect}")
         step += 1
         coverage["steps"] = step
@@ -859,17 +1460,20 @@ def _exec_action(app: Any, action: Any, sdir: Path, sid_step: str, capture: list
             if a == "launch":
                 notes.append("launched (session start)")
             elif isinstance(a, dict) and "intent" in a:
-                notes.append(_resolve_intent(app, str(a["intent"])))
+                notes.append(_resolve_intent(app, str(a["intent"]), sdir))
             elif isinstance(a, dict) and "click_menu" in a:
-                notes.append(_resolve_intent(app, f"{a.get('click_menu', '')} {a.get('click_item', '')}"))
+                notes.append(_resolve_intent(app, f"{a.get('click_menu', '')} {a.get('click_item', '')}", sdir))
             elif isinstance(a, dict) and "hotkey" in a:
                 app.top_window().type_keys(str(a["hotkey"]))
+                release_mouse()
                 notes.append(f"hotkey {a['hotkey']}")
             elif isinstance(a, dict) and "key" in a:
                 app.top_window().type_keys(f"{{{a['key']}}}")
+                release_mouse()
                 notes.append(f"key {a['key']}")
             elif isinstance(a, dict) and "type" in a:
                 app.top_window().type_keys(str(a["type"]), with_spaces=True)
+                release_mouse()
                 notes.append(f"typed {len(str(a['type']))} chars")
             else:
                 notes.append(f"skipped unhandled action {json.dumps(a)[:80]}")
@@ -880,8 +1484,8 @@ def _exec_action(app: Any, action: Any, sdir: Path, sid_step: str, capture: list
         return f"action failed: {e!s}"[:200]
 
 
-def _resolve_intent(app: Any, intent: str) -> str:
-    """B2 resolution: first live control whose name contains an intent keyword wins."""
+def _resolve_intent(app: Any, intent: str, sdir: Path | None = None) -> str:
+    """B2 resolution, cheapest first: live UIA name match, then B3 OCR coordinates."""
     words = [w.lower() for w in re.findall(r"[A-Za-zÄÖÜäöüß]{3,}", intent)]
     try:
         for w in app.windows():
@@ -897,13 +1501,29 @@ def _resolve_intent(app: Any, intent: str) -> str:
                             try:
                                 getattr(d, meth)()
                                 time.sleep(0.5)
+                                release_mouse()
                                 return f"intent '{intent[:40]}' -> '{name[:40]}' via {meth}"
                             except Exception as e:
                                 logger.debug("intent %s via %s failed: %s", intent[:40], meth, e)
                                 continue
     except Exception as e:
         return f"intent resolve failed: {e!s}"[:120]
-    return f"intent '{intent[:40]}' unresolved (no live match)"
+    # B3 coordinate fallback: OCR the top window, click the first matching blob.
+    if sdir is not None:
+        shot = _shoot(app, sdir, "intent-fallback")
+        if shot is not None:
+            for reg in ocr_regions(shot):
+                if any(kw in reg["text"].lower() for kw in words):
+                    before = _shoot(app, sdir, "intent-fallback-before")
+                    clicked = _click_coords(reg["x"], reg["y"])
+                    after = _shoot(app, sdir, "intent-fallback-after")
+                    changed = len(screenshot_diff_regions(before, after)) if before and after else 0
+                    if clicked:
+                        return (
+                            f"intent '{intent[:40]}' -> OCR '{reg['text'][:40]}' "
+                            f"at ({reg['x']},{reg['y']}) changed={changed}"
+                        )
+    return f"intent '{intent[:40]}' unresolved (no live or OCR match)"
 
 
 def elicit_run(run_id: str) -> dict[str, Any]:

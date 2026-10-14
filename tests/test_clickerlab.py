@@ -79,12 +79,19 @@ def test_elicit_needs_known_run_and_triage(runs_root: Path) -> None:
     assert missing["success"] is False and "triage" in missing["error"]
 
 
-def test_clicker_gates_are_honest(runs_root: Path) -> None:
+def test_clicker_gates_are_honest(runs_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     run_id = _run_with_triage(runs_root)
     no_confirm = clickerlab.clicker_start(run_id, confirm=False, accept_local=True)
     assert no_confirm["success"] is False and "confirm" in no_confirm["error"]
     no_local = clickerlab.clicker_start(run_id, confirm=True, accept_local=False)
     assert (no_local["success"] is False and "virtualization-mcp" in no_local["error"]) or "VM" in no_local["error"]
+    # Env-independent: force the no-driver path even where pywinauto is installed.
+    # Without this, the test would spawn the fixture binary for real.
+    monkeypatch.setattr(
+        clickerlab,
+        "clicker_engines",
+        lambda: {"drive_ready": False, "engines": {"pywinauto": {"available": False, "install_hint": "x"}}},
+    )
     no_driver = clickerlab.clicker_start(run_id, confirm=True, accept_local=True)
     assert no_driver["success"] is False and "pywinauto" in no_driver["error"]
     tour_missing = clickerlab.clicker_start(run_id, mode="tour", confirm=True, accept_local=True)
@@ -97,4 +104,99 @@ def test_clicker_gates_are_honest(runs_root: Path) -> None:
 def test_engines_probe_never_raises() -> None:
     probe = clickerlab.clicker_engines()
     assert probe["elicitation_ready"] is True
-    assert set(probe["engines"]) >= {"pywinauto", "pillow", "yaml"}
+    assert set(probe["engines"]) >= {"pywinauto", "pillow", "yaml", "ocr"}
+
+
+def test_allowlist_blocks_credentials_and_payment() -> None:
+    for intent in ("Enter password", "Sign in to continue", "Buy now with credit card", "Paste license key"):
+        gate = clickerlab.classify_step({"id": "x", "action": [{"intent": intent}]})
+        assert gate["allowed"] is False and gate["skip_name"].startswith("forbidden:")
+    ok = clickerlab.classify_step({"id": "y", "action": [{"intent": "Open file"}]})
+    assert ok["allowed"] is True
+
+
+def test_file_diff_and_jsonl(tmp_path: Path) -> None:
+    a = tmp_path / "a.txt"
+    a.write_text("v1")
+    before = clickerlab.snapshot_files([tmp_path])
+    a.write_text("v2 longer")
+    (tmp_path / "b.txt").write_text("new")
+    diff = clickerlab.diff_files(before, clickerlab.snapshot_files([tmp_path]))
+    assert any("b.txt" in p for p in diff["added"])
+    assert any("a.txt" in p for p in diff["modified"])
+    clickerlab.jlog(tmp_path, {"kind": "probe", "ok": True})
+    lines = (tmp_path / "tour.jsonl").read_text().splitlines()
+    assert len(lines) == 1 and '"probe"' in lines[0]
+
+
+def test_screenshot_diff_and_ocr_graceful(tmp_path: Path) -> None:
+    from PIL import Image
+
+    white = tmp_path / "w.png"
+    Image.new("L", (128, 128), 255).save(str(white))
+    assert clickerlab.screenshot_diff_regions(white, white) == []
+    other = tmp_path / "b.png"
+    img = Image.new("L", (128, 128), 255)
+    img.paste(0, (32, 32, 96, 96))
+    img.save(str(other))
+    boxes = clickerlab.screenshot_diff_regions(white, other)
+    assert boxes and all(b["w"] > 0 and b["h"] > 0 for b in boxes)
+    assert clickerlab.ocr_regions(white) == []
+    assert clickerlab.ocr_image(tmp_path / "missing.png") == ""
+    assert clickerlab.read_clipboard_text() is not None
+
+
+def test_time_cap_propagates_instead_of_spinning(tmp_path: Path) -> None:
+    """Live-fire regression: an expired deadline must raise out of _run_rip,
+    never be swallowed by a pass-level except (infinite spin past time_cap)."""
+
+    class _DeadApp:
+        def windows(self) -> list:
+            return []
+
+        def top_window(self):  # pragma: no cover - never reached
+            raise AssertionError("unreachable")
+
+    import threading
+    import time
+
+    state = {"step_cap": 40, "time_cap_s": 300, "coverage": {}, "watch_dirs": []}
+    coverage: dict = {}
+    with pytest.raises(TimeoutError):
+        clickerlab._run_rip(tmp_path, state, _DeadApp(), coverage, threading.Event(), time.monotonic() - 1)
+
+
+def test_target_alive() -> None:
+    import os
+
+    assert clickerlab._target_alive({"target_pid": os.getpid()}) is True
+    assert clickerlab._target_alive({"target_pid": 999999999}) is False
+    assert clickerlab._target_alive({}) is False
+
+
+def test_snapshot_budget(tmp_path: Path) -> None:
+    for i in range(10):
+        (tmp_path / f"f{i}.txt").write_text("x")
+    snap = clickerlab.snapshot_files([tmp_path], max_files=5)
+    assert len(snap) <= 5
+
+
+def test_correlate_writes_map_without_rea(runs_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Function inventory can shell out to slow engines; verdict logic is what's under test.
+    monkeypatch.setattr(
+        "reversing_mcp.analyzers.BinaryAnalyzer.find_functions",
+        lambda self, target, tool="auto": [{"error": "stubbed for speed"}],
+    )
+    run_id = _run_with_triage(runs_root)
+    sdir = runs_root / run_id / "clicker" / "sessions" / "s1"
+    sdir.mkdir(parents=True)
+    (sdir / "session.json").write_text("{}")
+    (sdir / "tour.jsonl").write_text(
+        '{"ts": "t", "kind": "tour_step", "outcome": "opened", "ocr_text": "File Open", "clipboard": "", "text": ""}\n'
+    )
+    out = clickerlab.correlate_session(run_id, "s1", with_rea=False)
+    assert out["success"], out
+    assert (sdir / "map.md").exists()
+    assert out["seeds"] >= 0
+    bad = clickerlab.correlate_session(run_id, "nope", with_rea=False)
+    assert bad["success"] is False

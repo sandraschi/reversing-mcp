@@ -47,7 +47,7 @@ def test_start_needs_confirm() -> None:
 def test_start_headless_without_binary_is_honest(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(reva, "find_mcp_reva", lambda: None)
     out = reva.start(mode="headless", confirm=True)
-    assert out["success"] is False and "pip install" in out["error"]
+    assert out["success"] is False and "README" in out["install_hint"]
 
 
 def test_start_gui_without_ghidra_is_honest(monkeypatch: pytest.MonkeyPatch) -> None:

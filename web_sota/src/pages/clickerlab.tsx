@@ -59,6 +59,7 @@ export function ClickerLab() {
   const [confirm, setConfirm] = useState(false);
   const [acceptLocal, setAcceptLocal] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  const [mapMd, setMapMd] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,6 +120,7 @@ export function ClickerLab() {
     setFeatures(null);
     setTour(null);
     setSession(null);
+    setMapMd(null);
     loadElicitation(selected);
   }, [selected, loadElicitation]);
 
@@ -207,6 +209,28 @@ export function ClickerLab() {
       refreshSession(session.session_id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Stop failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const correlate = async () => {
+    if (!selected || !session?.session_id || busy) return;
+    setBusy(true);
+    setError(null);
+    setMapMd(null);
+    try {
+      const d = await fetch(
+        `${getApiBase()}/api/v1/gym/runs/${selected}/clicker/sessions/${session.session_id}/correlate`,
+        { method: "POST" },
+      ).then((r) => r.json());
+      if (d.success === false) throw new Error(d.error ?? "Correlate failed");
+      const m = await fetch(
+        `${getApiBase()}/api/v1/gym/runs/${selected}/artifacts/clicker/sessions/${session.session_id}/map.md`,
+      ).then((r) => r.json());
+      if (m.success) setMapMd(m.content);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Correlate failed");
     } finally {
       setBusy(false);
     }
@@ -435,6 +459,27 @@ export function ClickerLab() {
                     )}
                   {session.message && (
                     <p className="text-sm text-slate-300">{session.message}</p>
+                  )}
+                  {session.status !== "running" && (
+                    <button
+                      type="button"
+                      onClick={correlate}
+                      disabled={busy}
+                      className="mt-2 text-sm px-4 py-2 rounded-md bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40"
+                      data-testid="clickerlab-correlate"
+                    >
+                      {busy ? "Correlating…" : "Correlate (§5 map)"}
+                    </button>
+                  )}
+                  {mapMd && (
+                    <details data-testid="clickerlab-map" open>
+                      <summary className="text-sm text-slate-200 cursor-pointer mt-2">
+                        map.md (feature → code rows + stated limits)
+                      </summary>
+                      <pre className="mt-2 text-sm text-slate-300 bg-slate-900 rounded-lg p-4 overflow-y-auto max-h-96 whitespace-pre-wrap font-mono">
+                        {mapMd}
+                      </pre>
+                    </details>
                   )}
                 </div>
               )}
