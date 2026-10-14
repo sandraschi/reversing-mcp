@@ -9,6 +9,7 @@ import { useZoom } from "@/hooks/useZoom";
 import { Analyze } from "@/pages/analyze";
 import { Apps } from "@/pages/apps";
 import { Chat } from "@/pages/chat";
+import { ClickerLab } from "@/pages/clickerlab";
 import { Dashboard } from "@/pages/dashboard";
 import { DigiBib } from "@/pages/digibib";
 import { Gym } from "@/pages/gym";
@@ -29,6 +30,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/analyze" element={<Analyze />} />
           <Route path="/gym" element={<Gym />} />
+          <Route path="/clickerlab" element={<ClickerLab />} />
           <Route path="/inbox" element={<Inbox />} />
           <Route path="/digibib" element={<DigiBib />} />
           <Route path="/tools" element={<Tools />} />
