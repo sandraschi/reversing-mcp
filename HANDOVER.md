@@ -118,6 +118,24 @@ Residual slowness: session-final registry export takes minutes on a big hive.
   rebuilt binary. Sandbox detonation approved in principle, not yet run.
 - Casefile: `reports/forensics-crackshash-ida93-2026-10-14.md`.
 
+## Claude-review items 1-2 session (same day)
+
+- **Item 1 (mapped rows) DONE**: root-caused "no function inventory" (auto
+  tried r2 only; .bat+Jython dead on Ghidra 12; stale env pinned 12.0).
+  Fixes: PyGhidra `ghidra_inventory()` (functions+strings+xrefs, JVM once per
+  process, temp project dir), auto fallback r2→ghidra→ida, version-preferring
+  detect, all-encodings string extraction (was ascii-only: hid all wide UI
+  text), menu regex case fix. Live: notepad 499 fns/242 strings/131 xrefs;
+  Digibib5 re-correlate **14 seeds, 5 mapped** (was 0).
+- **Item 2 (hermetic calib) DONE**: `tests/fixtures/calib/` (calib_win32.c +
+  calib_canvas.c + expected.json + built exes), `scripts/build_calib.py`
+  (self-configures MSVC env), `just calib`, `tests/test_calib.py` known-answer
+  tests (elicit features, correlate seeds, Ghidra structure) — all green.
+- Item 3 (stage 2 oracle) NOT started — next.
+- Regression note: an over-broad sed-style regex edit touched 14 unrelated
+  except blocks; reverted via git checkout and re-applied surgically. Lesson
+  kept: no bulk regex on source, ever.
+
 ## Next step
 
 Commit decision (awaiting instruction). Then: B4 LLM layer, VM plumbing,

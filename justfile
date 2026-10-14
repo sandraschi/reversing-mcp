@@ -20,6 +20,11 @@ install-idr:
 cua-tour target mode="rip" stepcap="200":
     uv run python scripts/cua_tour.py --target "{{target}}" --mode {{mode}} --step-cap {{stepcap}} --confirm --accept-local
 
+# Build hermetic calibration targets (MSVC; skips honestly without it).
+# Binaries are committed (like test_pe.exe) so CI stays green everywhere.
+calib:
+    uv run python scripts/build_calib.py
+
 # --- REA sidecar (agent-driven RE: JS/Electron/.NET/APK/firmware + native) ---
 
 # Register REA with your agents (backs up configs, then restart the agent)

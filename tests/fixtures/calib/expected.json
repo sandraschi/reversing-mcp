@@ -1,0 +1,24 @@
+{
+  "_note": "Known right answers for the hermetic calibration targets. CI asserts elicitation + correlate outputs against these; live rip/tour stay local (need a desktop).",
+  "CALIB_WIN32": {
+    "source": "calib_win32.c",
+    "binary": "calib_win32.exe",
+    "menus": ["File", "Open", "Save", "Exit", "Help", "About CalibWin32"],
+    "dialog_text": ["CalibWin32 v1 - calibration target"],
+    "button": "Write file",
+    "file_io": [{"probe": "calib_win32_probe.txt", "body": "calib-win32 says hello"}],
+    "must_elicit_features": ["Open", "Save", "Write file"],
+    "must_correlate_seeds": ["CalibWin32", "Write file"]
+  },
+  "CALIB_CANVAS": {
+    "source": "calib_canvas.c",
+    "binary": "calib_canvas.exe",
+    "uia_shape": "single window, no menu, no child controls (forces B3)",
+    "painted_text": ["CalibCanvas - painted UI calibration", "Save Report", "Export Data"],
+    "click_rects": [
+      {"label": "Save Report", "probe": "calib_canvas_report.txt", "body": "calib-canvas report"},
+      {"label": "Export Data", "probe": "calib_canvas_export.txt", "body": "calib-canvas export"}
+    ],
+    "must_correlate_seeds": ["CalibCanvas", "Export"]
+  }
+}

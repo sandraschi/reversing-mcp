@@ -11,7 +11,7 @@
         UvicornTarget = 'reversing_mcp.server:app'
         WorkDir       = '.'
         PythonPath    = 'src'
-        SyncExtras    = @('dev', 'clicker')
+        SyncExtras    = @('dev', 'clicker', 'ghidra')
         SyncOnStart  = $true
         Env           = @{ WEB_PORT = '10750' }
     }
