@@ -31,6 +31,13 @@ ghidra = [
 dynamic = [
     "frida>=17.0",
 ]
+# ClickerLab stage-3 driver (G3): UIA BFS rip + tour executor launch the target,
+# so sessions are confirm-gated. Without it, elicitation still works and live
+# driving refuses honestly. Windows only (pywinauto needs Win32 UIA).
+clicker = [
+    "pywinauto>=0.6.8",
+    "Pillow>=10.0.0",
+]
 
 [project.scripts]
 reversing-mcp = "reversing_mcp.server:main"
