@@ -27,6 +27,7 @@ from . import engines as _engines
 from . import gym as _gym
 from . import rea_bridge
 from . import reva as _reva
+from . import toolbox as _toolbox
 from .analyzers import BinaryAnalyzer
 from .digibib_research import build_research_snapshot, resolve_digibib_exe
 from .directmedia_dki import (
@@ -396,7 +397,7 @@ async def gym(
     operation: Annotated[
         str,
         Field(
-            description="Gym op: start, status, advance, stop, list, elicit, clicker_start, clicker_status, clicker_stop."
+            description="Gym op: start, status, advance, stop, list, elicit, clicker_start, clicker_status, clicker_stop, correlate."
         ),
     ] = "list",
     run_id: Annotated[str | None, Field(description="Run id (status/advance/stop/elicit/clicker_*).")] = None,
@@ -488,11 +489,15 @@ async def gym(
         if not run_id or not session_id:
             return {"success": False, "error": "clicker_stop requires run_id and session_id."}
         return await asyncio.to_thread(_clickerlab.clicker_stop, run_id, session_id)
+    if op == "correlate":
+        if not run_id or not session_id:
+            return {"success": False, "error": "correlate requires run_id and session_id."}
+        return await asyncio.to_thread(_clickerlab.correlate_session, run_id, session_id)
     return {
         "success": False,
         "error": (
             f"Unknown gym operation '{operation}'. "
-            "Valid: start, status, advance, stop, list, elicit, clicker_start, clicker_status, clicker_stop."
+            "Valid: start, status, advance, stop, list, elicit, clicker_start, clicker_status, clicker_stop, correlate."
         ),
     }
 
@@ -530,6 +535,48 @@ async def reva(
     if op == "stop":
         return await asyncio.to_thread(_reva.stop)
     return {"success": False, "error": f"Unknown reva operation '{operation}'. Valid: probe, start, stop."}
+
+
+@mcp.tool(annotations=_MUTATING)
+async def toolbox(
+    operation: Annotated[str, Field(description="Toolbox op: probe, install, ensure, policy.")] = "probe",
+    name: Annotated[
+        str | None, Field(description="Tool name for install (ghidra, reva, capa, die, frida, r2).")
+    ] = None,
+) -> dict[str, Any]:
+    """
+    TOOLBOX - Autodiscovery, install and autostart for the disassembly toolchain.
+
+    [RATIONALE] One entry so agents stop hand-editing env and hand-installing
+    engines: probe reports ghidra/reva/capa/die/frida/r2/hopper/ida/java/
+    tesseract/node with ready/missing/broken states; install fetches the rest
+    (winget, GitHub releases, pip venv); ensure re-runs boot discovery.
+    IDA/Hopper: running instances are glommed onto; licensing is not checked.
+
+    ## Return Format
+    `{"success": bool, ...}` - probe adds `tools`, `ready`, `total`; install
+    adds `tool` plus outcome.
+
+    ## Examples
+    `toolbox(operation="probe")`
+    `toolbox(operation="install", name="capa")`
+    `toolbox(operation="ensure")`
+    """
+    op = (operation or "").lower()
+    if op == "probe":
+        return await asyncio.to_thread(_toolbox.probe)
+    if op == "install":
+        if not name:
+            return {"success": False, "error": "install requires name."}
+        return await asyncio.to_thread(_toolbox.install, name)
+    if op == "ensure":
+        return await asyncio.to_thread(_toolbox.ensure, True)
+    if op == "policy":
+        return _toolbox.get_policy()
+    return {
+        "success": False,
+        "error": f"Unknown toolbox operation '{operation}'. Valid: probe, install, ensure, policy.",
+    }
 
 
 @mcp.tool(annotations=_MUTATING)
@@ -1645,6 +1692,56 @@ try:
 
         return await asyncio.to_thread(_reva.stop)
 
+    # --- Toolbox: autodiscovery / install / autostart ---
+
+    class _ToolboxInstallBody(BaseModel):
+        name: str
+
+    class _ToolboxPolicyBody(BaseModel):
+        updates: dict = {}
+
+    @_http_app.get("/api/v1/toolbox")
+    async def _toolbox_probe():
+        """Full toolchain inventory (ghidra, reva, capa, die, frida, r2, hopper, ida, java, tesseract, node)."""
+        import asyncio
+
+        return await asyncio.to_thread(_toolbox.probe)
+
+    @_http_app.post("/api/v1/toolbox/rescan")
+    async def _toolbox_rescan():
+        import asyncio
+
+        return await asyncio.to_thread(_toolbox.probe)
+
+    @_http_app.post("/api/v1/toolbox/install")
+    async def _toolbox_install(body: _ToolboxInstallBody):
+        """Install one toolbox entry (winget / GitHub release / pip venv). May take minutes."""
+        import asyncio
+
+        return await asyncio.to_thread(_toolbox.install, body.name)
+
+    @_http_app.get("/api/v1/toolbox/policy")
+    async def _toolbox_policy_get():
+        return _toolbox.get_policy()
+
+    @_http_app.post("/api/v1/toolbox/policy")
+    async def _toolbox_policy_set(body: _ToolboxPolicyBody):
+        return _toolbox.set_policy(body.updates)
+
+    @_http_app.post("/api/v1/toolbox/ensure")
+    async def _toolbox_ensure():
+        """Discover, export env, start policy services. Idempotent."""
+        import asyncio
+
+        return await asyncio.to_thread(_toolbox.ensure, True)
+
+    @_http_app.on_event("startup")
+    async def _toolbox_boot():
+        """Daemon boot only: toolbox ensure (discover + autostart policy services)."""
+        import asyncio
+
+        await asyncio.to_thread(_toolbox.ensure, True)
+
     async def _ollama_tags() -> dict:
         import httpx
 
@@ -1885,6 +1982,28 @@ try:
     _activity_log = _ActivityLog()
     _activity_log.add("INFO", "server", "Reversing MCP HTTP backend started")
 
+    @_http_app.get("/api/docs/{name}")
+    async def _docs_get(name: str):
+        """Serve a repo doc as JSON for the in-app Help viewer (no GitHub round-trip).
+
+        Allowlisted to docs/*.md only: basename match, no separators, resolved
+        path must stay under docs/. Unknown names 404.
+        """
+        import re
+
+        from fastapi.responses import JSONResponse
+
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_\-]*\.md", name or ""):
+            return JSONResponse(status_code=404, content={"success": False, "error": f"Unknown doc: {name}"})
+        docs_dir = Path(__file__).resolve().parents[2] / "docs"
+        target = (docs_dir / name).resolve()
+        if docs_dir not in target.parents or not target.is_file():
+            return JSONResponse(status_code=404, content={"success": False, "error": f"Unknown doc: {name}"})
+        try:
+            return {"success": True, "name": name, "content": target.read_text(encoding="utf-8", errors="replace")}
+        except OSError as e:
+            return JSONResponse(status_code=500, content={"success": False, "error": str(e)[:200]})
+
     @_http_app.get("/api/logs")
     async def _logs(
         limit: int = 50,
@@ -1936,7 +2055,7 @@ try:
     async def _llm_onboarding():
         """Fresh-install starter facts + recommended path (under-hero cue)."""
         disc = await _llm_discover()
-        if disc.get("detected"):
+        if disc.get("detected") and disc.get("models"):
             return {
                 "ready": True,
                 "path": "chat",
@@ -1944,24 +2063,68 @@ try:
                 "default_model": disc.get("default_model"),
                 "models": disc.get("models", []),
             }
-        gpus = await _llm_gpus()
-        if gpus:
-            names = ", ".join(g.get("name", "?") for g in gpus)
+        if disc.get("detected"):
             return {
                 "ready": False,
                 "path": "settings",
-                "reason": f"GPU detected ({names}) but no Ollama. Install Ollama, pull a model, then chat.",
+                "reason": "Ollama is serving but has no models. Pull one, then chat.",
+                "default_model": None,
+                "models": [],
+                "action": "pull",
+                "action_label": "Pull qwen3.8:27b",
+                "action_endpoint": "/api/llm/ollama/pull",
+            }
+        gpus = await _llm_gpus()
+        names = ", ".join(g.get("name", "?") for g in gpus) if gpus else ""
+        ollama = await asyncio.to_thread(_toolbox.detect_ollama)
+        status = ollama.get("status")
+        if status == "installed":
+            return {
+                "ready": False,
+                "path": "settings",
+                "reason": f"Ollama is installed{f' (GPU: {names})' if names else ''} but not serving. Start it, pull a model, then chat.",
                 "default_model": None,
                 "models": [],
                 "gpus": gpus,
+                "action": "start",
+                "action_label": "Start Ollama",
+                "action_endpoint": "/api/llm/ollama/start",
             }
         return {
             "ready": False,
             "path": "settings",
-            "reason": "No Ollama detected. Install Ollama, pull a model (e.g. qwen3.8:27b), then chat.",
+            "reason": f"{'GPU detected (' + names + ') but n' if names else 'N'}o Ollama installed. Install it, pull a model, then chat.",
             "default_model": None,
             "models": [],
+            "gpus": gpus,
+            "action": "install",
+            "action_label": "Install Ollama",
+            "action_endpoint": "/api/llm/ollama/install",
         }
+
+    @_http_app.post("/api/llm/ollama/start")
+    async def _ollama_start():
+        """Launch `ollama serve` detached (installed-but-idle → serving)."""
+        import asyncio
+
+        return await asyncio.to_thread(_toolbox.start_ollama)
+
+    @_http_app.post("/api/llm/ollama/install")
+    async def _ollama_install():
+        """Install Ollama via winget (Ollama.Ollama). Minutes, never silent."""
+        import asyncio
+
+        return await asyncio.to_thread(_toolbox.install, "ollama")
+
+    class _OllamaPullBody(BaseModel):
+        model: str = "qwen3.8:27b"
+
+    @_http_app.post("/api/llm/ollama/pull")
+    async def _ollama_pull(body: _OllamaPullBody):
+        """Pull a model in the background (GBs take minutes; poll /api/llm/discover)."""
+        import asyncio
+
+        return await asyncio.to_thread(_toolbox.pull_ollama_model, body.model)
 
     @_http_app.get("/api/llm/gpus")
     async def _llm_gpus():
@@ -2034,6 +2197,7 @@ try:
                 "elicitation": True,
                 "clicker": True,
                 "reva": True,
+                "toolbox": True,
             },
             "tools": sorted([t.name for t in tools]),
             "tool_docs": sorted(
@@ -2137,6 +2301,13 @@ try:
         import asyncio
 
         return await asyncio.to_thread(_clickerlab.clicker_stop, run_id, session_id)
+
+    @_http_app.post("/api/v1/gym/runs/{run_id}/clicker/sessions/{session_id}/correlate")
+    async def _clicker_session_correlate(run_id: str, session_id: str):
+        """Tier 3 section 5 MVP: bundle strings -> seed map (map.md). May take minutes with REA."""
+        import asyncio
+
+        return await asyncio.to_thread(_clickerlab.correlate_session, run_id, session_id)
 
     _http_app.mount("/mcp", mcp.http_app(path="/"))
     app = _http_app
