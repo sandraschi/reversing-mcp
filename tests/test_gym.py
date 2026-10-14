@@ -2,6 +2,8 @@
 
 Hermetic: tmp_path run roots (monkeypatched), fixture binary only, no live
 engines required (absent DiE/capa is an asserted honest outcome, not a skip).
+Stage-2 oracle never executes here: gate refusals, agent shape, and the
+event-folding are asserted without spawning anything.
 """
 
 from __future__ import annotations
@@ -42,13 +44,38 @@ def test_start_rejects_missing_and_non_exe(tmp_path: Path) -> None:
     assert out["success"] is False and ".exe" in out["error"]
 
 
-def test_full_g1_flow_to_gate(runs_root: Path) -> None:
+CANNED_ORACLE = {
+    "success": True,
+    "events": [
+        {"type": "file_open", "path": "C:/t/a.txt", "handle": "100"},
+        {"type": "file_io", "op": "read", "path": "C:/t/a.txt", "offset": 0, "requested": 16, "head": "aa"},
+        {"type": "file_close", "handle": "100", "path": "C:/t/a.txt"},
+    ],
+    "pid": 1,
+    "elapsed_s": 1.0,
+    "process_exited": True,
+    "hooked": ["kernel32.dll!ReadFile"],
+    "hook_errors": [],
+    "dropped": 0,
+}
+
+
+def test_full_g1_flow_to_gate(runs_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("reversing_mcp.engines.frida_oracle", lambda *a, **k: dict(CANNED_ORACLE))
     run_id = _start()["run_id"]
 
     triage = gym.advance_run(run_id, background=False)
     assert triage["success"], triage
     assert triage["stage"] == "triage"
     assert (runs_root / run_id / "triage" / "triage.json").exists()
+
+    refused = gym.advance_run(run_id, background=False)
+    assert refused["success"] is False and "confirm" in refused["error"]
+
+    oracle = gym.advance_run(run_id, background=False, confirm=True, accept_local=True)
+    assert oracle["success"], oracle
+    assert oracle["stage"] == "oracle_capture"
+    assert (runs_root / run_id / "oracle" / "oracle.json").exists()
 
     assess = gym.advance_run(run_id, background=False)
     assert assess["success"], assess
@@ -75,6 +102,9 @@ def test_engines_absent_is_honest(runs_root: Path, monkeypatch: pytest.MonkeyPat
     triage = gym.advance_run(run_id, background=False)
     assert triage["success"]
     assert triage["triage"]["die"]["available"] is False
+    monkeypatch.setattr("reversing_mcp.engines.frida_oracle", lambda *a, **k: dict(CANNED_ORACLE))
+    oracle = gym.advance_run(run_id, background=False, confirm=True, accept_local=True)
+    assert oracle["success"], oracle
     assess = gym.advance_run(run_id, background=False)
     by_dim = {d["dimension"]: d for d in assess["assessment"]["dimensions"]}
     assert by_dim["Binary"]["status"] == "unknown"
@@ -101,6 +131,8 @@ def test_engines_present_real_contract(runs_root: Path, monkeypatch: pytest.Monk
     triage = gym.advance_run(run_id, background=False)
     assert "DiE: answered" in triage["message"] and "capa: answered" in triage["message"]
     assert len(triage["triage"]["capa"]["summary"]) == 2
+    monkeypatch.setattr("reversing_mcp.engines.frida_oracle", lambda *a, **k: dict(CANNED_ORACLE))
+    assert gym.advance_run(run_id, background=False, confirm=True, accept_local=True)["success"]
     by_dim = {d["dimension"]: d for d in gym.advance_run(run_id, background=False)["assessment"]["dimensions"]}
     assert by_dim["Binary"]["status"] == "green"
     assert by_dim["Logic"]["status"] == "amber"
@@ -174,10 +206,11 @@ def test_advance_returns_immediately_and_completes_in_background(runs_root: Path
     assert state["stages"]["triage"]["status"] == "done"
     assert "Triage complete" in state["stages"]["triage"]["message"]
 
-    assert gym.advance_run(run_id)["stage"] == "assessment"
+    assert gym.advance_run(run_id)["stage"] == "oracle_capture"
     state = _wait_idle(run_id)
-    assert state["stages"]["assessment"]["status"] == "done"
-    assert state["gate"] == {"stage": "assessment", "decision": None, "at": None}
+    assert state["stages"]["oracle_capture"]["status"] == "failed"
+    assert "confirm" in (state["stages"]["oracle_capture"]["error"] or "")
+    assert state["gate"] is None  # gate only exists after assessment completes
 
 
 def test_stop_discards_late_result_and_retry_works(runs_root: Path, gated_capa: threading.Event) -> None:
@@ -253,3 +286,48 @@ def test_stop_cancels_engine_and_worker_ends_promptly(runs_root: Path, monkeypat
     assert state["stages"]["triage"]["status"] == "stopped"
     log = (runs_root / run_id / "log.jsonl").read_text(encoding="utf-8")
     assert "stage_result_discarded" in log
+
+
+def test_oracle_agent_shape() -> None:
+    from reversing_mcp import engines
+
+    src = engines.build_oracle_agent()
+    for token in ("CreateFileW", "ReadFile", "WriteFile", "CloseHandle", "OVERLAPPED", "file_io"):
+        assert token in src, f"oracle agent missing {token}"
+
+
+def test_build_oracle_folds_and_flags() -> None:
+    events = [
+        {"type": "file_open", "path": "C:/t/a.txt", "handle": "100"},
+        {"type": "file_io", "op": "read", "path": "C:/t/a.txt", "offset": 0, "requested": 64, "head": "ab"},
+        {"type": "file_io", "op": "write", "path": "C:/t/evil.exe", "offset": 1024, "requested": 512, "head": "cd"},
+        {"type": "file_close", "handle": "100", "path": "C:/t/a.txt", "known": True},
+        {"type": "file_close", "handle": "999", "path": None, "known": False},
+    ]
+    oracle = gym._build_oracle(events, "t.exe")
+    assert oracle["file_count"] == 2
+    assert oracle["files"]["C:/t/a.txt"]["total_read"] == 64
+    assert oracle["files"]["C:/t/evil.exe"]["total_written"] == 512
+    assert any("evil.exe" in f for f in oracle["flags"])
+
+
+def test_oracle_refuses_without_gates(runs_root: Path) -> None:
+    run_id = _start()["run_id"]
+    run_path = runs_root / run_id
+    state = json.loads((run_path / "run.json").read_text(encoding="utf-8"))
+    no_confirm = gym._stage_oracle(run_path, {**state, "stage_params": {}})
+    assert "confirm" in no_confirm["error"]
+    no_local = gym._stage_oracle(run_path, {**state, "stage_params": {"oracle_capture": {"confirm": True}}})
+    assert "virtualization-mcp" in no_local["error"] or "VM" in no_local["error"]
+
+
+def test_advance_reaches_oracle_with_gates(runs_root: Path) -> None:
+    run_id = _start()["run_id"]
+    run_path = runs_root / run_id
+    # Fake intake+triage done (triage engines stay untouched).
+    state = json.loads((run_path / "run.json").read_text(encoding="utf-8"))
+    for s in ("intake", "triage"):
+        state["stages"][s].update({"status": "done", "ended": "t", "message": "fake"})
+    (run_path / "run.json").write_text(json.dumps(state), encoding="utf-8")
+    refused = gym.advance_run(run_id, background=False)
+    assert refused["success"] is False and "confirm" in refused["error"]

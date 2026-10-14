@@ -47,8 +47,11 @@ STAGES = [
     "round_trip",
     "compare",
 ]
-G1_STAGES = ["intake", "triage", "assessment"]
+G1_STAGES = ["intake", "triage", "oracle_capture", "assessment"]
 PENDING_SPEC = [s for s in STAGES if s not in G1_STAGES]
+
+#: Stage-2 defaults (overridable per advance call, stored in stage_params).
+ORACLE_DEFAULT_DURATION_S = int(os.environ.get("GYM_ORACLE_DURATION_S", "60"))
 
 # capa is slow on real apps (Digibib5, 4.7 MB Delphi: 2511 s on 2026-10-12). Default keeps
 # triage interactive; raise via env for a full capa pass.
@@ -165,9 +168,108 @@ def create_run(target: str, test_files: list[str] | None = None, notes: str = ""
     return _run_stage(run_path, state, "intake")
 
 
+def _build_oracle(events: list[Any], target: str) -> dict[str, Any]:
+    """Fold file_io events into a per-path read/write offset map.
+
+    The map (path -> [{offset, requested, head}]) is the evidence: which file
+    regions the target touched, in what order. Content is head-bytes only
+    (64 B hex), never full buffers.
+    """
+    files: dict[str, dict[str, Any]] = {}
+    opens = closes = 0
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        kind = ev.get("type")
+        if kind == "file_open":
+            opens += 1
+            continue
+        if kind == "file_close":
+            if ev.get("known", True):
+                closes += 1
+            continue
+        if kind != "file_io":
+            continue
+        path = str(ev.get("path") or "(unknown)")
+        slot = files.setdefault(path, {"reads": [], "writes": [], "total_read": 0, "total_written": 0})
+        rec = {"offset": ev.get("offset"), "requested": ev.get("requested"), "head": ev.get("head")}
+        if ev.get("op") == "write":
+            slot["writes"].append(rec)
+            slot["total_written"] += int(ev.get("requested") or 0)
+        else:
+            slot["reads"].append(rec)
+            slot["total_read"] += int(ev.get("requested") or 0)
+    flags = []
+    for path, slot in files.items():
+        low = path.lower()
+        if slot["writes"] and low.endswith((".exe", ".dll", ".sys", ".scr")):
+            flags.append(f"writes executable: {path}")
+        if slot["writes"] and ("\\windows\\" in low or low.startswith("c:\\windows")):
+            flags.append(f"writes into Windows dir: {path}")
+        if "sam" in low or "security" in low.split("\\")[-1:]:
+            flags.append(f"touches credential hive path: {path}")
+    return {
+        "target": target,
+        "files": files,
+        "file_count": len(files),
+        "opens": opens,
+        "closes": closes,
+        "flags": flags,
+        "message": f"Oracle: {len(files)} file(s), "
+        f"{sum(len(s['reads']) for s in files.values())} reads, "
+        f"{sum(len(s['writes']) for s in files.values())} writes." + (f" FLAGS: {'; '.join(flags)}" if flags else ""),
+    }
+
+
+def _stage_oracle(run_path: Path, state: dict, cancel: threading.Event | None = None) -> dict[str, Any]:
+    """Stage 2: execute the target under the Frida file-API oracle.
+
+    Confirm-gated like the clicker (this RUNS the binary): advance must pass
+    confirm=True + accept_local=True (logged VM opt-out), stored in
+    state["stage_params"]["oracle_capture"]. Duration-capped, stop-responsive.
+    """
+    params = (state.get("stage_params") or {}).get("oracle_capture", {})
+    if not params.get("confirm"):
+        return {
+            "refused": True,
+            "error": "Oracle executes the target. Advance with confirm=True (and accept_local=True).",
+        }
+    if not params.get("accept_local"):
+        return {
+            "refused": True,
+            "error": "Spec section 1: detonation belongs in an isolated VM (virtualization-mcp). "
+            "Pass accept_local=True for a logged opt-out to run on this desktop.",
+        }
+    target = state["target"]
+    duration_s = max(5, min(int(params.get("duration_s", ORACLE_DEFAULT_DURATION_S)), 120))
+    _log(run_path, "oracle_start", f"{target} {duration_s}s LOCAL-RUN-OPTOUT (no VM)")
+    res = engines.frida_oracle(target, duration_s=duration_s, cancel=cancel)
+    if res.get("cancelled"):
+        return {"error": "Cancelled by stop."}
+    if not res.get("success"):
+        return {"error": res.get("error", "Oracle failed")}
+    oracle = _build_oracle(res.get("events", []), target)
+    oracle.update(
+        {
+            "pid": res.get("pid"),
+            "elapsed_s": res.get("elapsed_s"),
+            "process_exited": res.get("process_exited"),
+            "hooked": res.get("hooked"),
+            "hook_errors": res.get("hook_errors"),
+            "dropped": res.get("dropped"),
+        }
+    )
+    (run_path / "oracle" / "oracle.json").parent.mkdir(parents=True, exist_ok=True)
+    (run_path / "oracle" / "oracle.json").write_text(json.dumps(oracle, indent=2), encoding="utf-8")
+    _log(run_path, "oracle_done", oracle["message"])
+    oracle["message"] = oracle["message"] + f" Full map in oracle/oracle.json ({res.get('event_count')} events)."
+    return oracle
+
+
 _STAGE_FNS = {
     "intake": lambda run_path, state, _cancel: _stage_intake(run_path, state),
     "triage": lambda run_path, state, cancel: _stage_triage(run_path, state, cancel),
+    "oracle_capture": lambda run_path, state, cancel: _stage_oracle(run_path, state, cancel),
     "assessment": lambda run_path, state, _cancel: _stage_assessment(run_path, state),
 }
 
@@ -191,7 +293,11 @@ def _execute_stage(run_path: Path, stage: str, token: str) -> tuple[bool, dict[s
         state = json.loads((run_path / "run.json").read_text(encoding="utf-8"))
         cancel = _cancels.get(token)
     try:
-        return True, _STAGE_FNS[stage](run_path, state, cancel)
+        result = _STAGE_FNS[stage](run_path, state, cancel)
+        # Gate refusals are routine, not crashes: no traceback, failed status.
+        if isinstance(result, dict) and result.get("refused"):
+            return False, {"error": result.get("error", "Refused.")}
+        return True, result
     except engines.Cancelled:
         return False, {"error": "Cancelled by stop; engine process killed."}
     except Exception as e:
@@ -401,12 +507,21 @@ def _stage_assessment(run_path: Path, state: dict) -> dict[str, Any]:
     return {"assessment": assessment, "message": assessment["message"]}
 
 
-def advance_run(run_id: str, decision: str | None = None, background: bool = True) -> dict[str, Any]:
+def advance_run(
+    run_id: str,
+    decision: str | None = None,
+    background: bool = True,
+    confirm: bool = False,
+    accept_local: bool = False,
+    duration_s: int = ORACLE_DEFAULT_DURATION_S,
+) -> dict[str, Any]:
     """Start the next G1 stage (in a background worker by default) or record the gate decision.
 
     Returns at once with status 'running'; poll get_run() for the outcome. A run with a
     stage still running is busy. Failed / stopped / interrupted stages are retried.
     background=False runs the stage in the calling thread and returns its result.
+    oracle_capture executes the target: pass confirm=True + accept_local=True
+    (logged VM opt-out) or it refuses honestly.
     """
     with _lock:
         run_path, state = _load(run_id)
@@ -422,6 +537,10 @@ def advance_run(run_id: str, decision: str | None = None, background: bool = Tru
                 "error": f"Stage '{running}' is still running in the background. Poll status, or stop the run.",
             }
         next_stage = next((s for s in G1_STAGES if state["stages"][s]["status"] != "done"), None)
+        if next_stage == "oracle_capture":
+            params = state.setdefault("stage_params", {}).setdefault("oracle_capture", {})
+            params.update({"confirm": confirm, "accept_local": accept_local, "duration_s": duration_s})
+            _save(run_path, state)
         if next_stage is None:
             if state.get("gate") and state["gate"].get("decision") is None:
                 if decision in ("go", "no-go"):
@@ -439,7 +558,7 @@ def advance_run(run_id: str, decision: str | None = None, background: bool = Tru
                     "run_id": run_id,
                     "error": "G1 complete. Assessment gate awaits decision: advance with decision='go'|'no-go'.",
                 }
-            return {"success": False, "run_id": run_id, "error": "G1 complete (stages 2,3,5,6,7,8 are pending-spec)."}
+            return {"success": False, "run_id": run_id, "error": "G1 complete (stages 3,5,6,7,8 are pending-spec)."}
         if background:
             token = _begin_stage(run_path, state, next_stage)
             worker = threading.Thread(

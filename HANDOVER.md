@@ -131,7 +131,16 @@ Residual slowness: session-final registry export takes minutes on a big hive.
   calib_canvas.c + expected.json + built exes), `scripts/build_calib.py`
   (self-configures MSVC env), `just calib`, `tests/test_calib.py` known-answer
   tests (elicit features, correlate seeds, Ghidra structure) — all green.
-- Item 3 (stage 2 oracle) NOT started — next.
+- Item 3 (stage 2 oracle) DONE: Frida file-API agent (CreateFileW/ReadFile/
+  WriteFile/CloseHandle, handle-tracked offsets, OVERLAPPED honored, 64 B head
+  samples) + cancellable `frida_oracle()` (one session, per-slice agent reload,
+  stop lands in seconds) + `_stage_oracle` in the G1 flow (confirm + accept_local
+  gates, `refused` results fail quietly without tracebacks) + `advance` params
+  (MCP + REST). Live on calib_win32: 24 events, font-cache read mapped with
+  offset. Two live-fire fixes: CloseHandle counted non-file handles (now
+  `known`-gated), process_exited sampled post-kill (now pre-cleanup).
+- Regression note #2: same bulk-regex lesson re-learned on analyzers.py —
+  reverted, re-applied surgically. Rule stands.
 - Regression note: an over-broad sed-style regex edit touched 14 unrelated
   except blocks; reverted via git checkout and re-applied surgically. Lesson
   kept: no bulk regex on source, ever.

@@ -414,14 +414,18 @@ async def gym(
     step_cap: Annotated[int, Field(description="Max driver actions per clicker session.")] = 200,
     time_cap_s: Annotated[int, Field(description="Wall-clock cap per clicker session (seconds).")] = 600,
     confirm: Annotated[
-        bool, Field(description="Required true for clicker_start: the session executes the target binary.")
+        bool,
+        Field(description="Required true for clicker_start / oracle advance: executes the target binary."),
     ] = False,
     accept_local: Annotated[
         bool,
         Field(
-            description="Required true for clicker_start: logged opt-out from VM isolation (spec section 1) to drive on this desktop."
+            description="Required true for clicker_start / oracle advance: logged opt-out from VM isolation (spec section 1)."
         ),
     ] = False,
+    duration_s: Annotated[
+        int, Field(description="Oracle capture duration in seconds (advance into oracle_capture).")
+    ] = 60,
 ) -> dict[str, Any]:
     """
     GYM - Drive a Reversing Gym cloning run (stages 0/1/4 in G1) + ClickerLab (1b/3).
@@ -442,8 +446,10 @@ async def gym(
     `{"success": bool, "run_id"?, "stage"?, "message"?, ...stage payload}`.
     `advance` while a stage runs -> `{success: False, busy: True, stage}`. `stop` marks the
     running stage stopped and kills the engine's process tree (DiE / capa) within about a
-    second. Advance past assessment requires `decision="go"|"no-go"`; stages
-    2,5,6,7,8 refuse honestly (pending-spec) instead of pretending.
+    second. Advance past assessment requires `decision="go"|"no-go"`. Advancing
+    into oracle_capture executes the target: needs confirm=True +
+    accept_local=True (+duration_s); stages 3,5,6,7,8 refuse honestly
+    (pending-spec) instead of pretending.
 
     ## Examples
     `gym(operation="start", target="D:/apps/prog.exe")`
@@ -464,7 +470,7 @@ async def gym(
     if op == "advance":
         if not run_id:
             return {"success": False, "error": "advance requires run_id."}
-        return await asyncio.to_thread(_gym.advance_run, run_id, decision)
+        return await asyncio.to_thread(_gym.advance_run, run_id, decision, True, confirm, accept_local, duration_s)
     if op == "stop":
         if not run_id:
             return {"success": False, "error": "stop requires run_id."}
@@ -2215,6 +2221,9 @@ try:
 
     class _GymAdvanceBody(BaseModel):
         decision: str | None = None
+        confirm: bool = False
+        accept_local: bool = False
+        duration_s: int = 60
 
     @_http_app.post("/api/v1/gym/runs")
     async def _gym_start(body: _GymStartBody):
@@ -2236,9 +2245,13 @@ try:
 
     @_http_app.post("/api/v1/gym/runs/{run_id}/advance")
     async def _gym_advance(run_id: str, body: _GymAdvanceBody | None = None):
+        """advance_run with oracle gates: confirm + accept_local execute the target."""
         import asyncio
 
-        return await asyncio.to_thread(_gym.advance_run, run_id, (body.decision if body else None))
+        b = body or _GymAdvanceBody()
+        return await asyncio.to_thread(
+            _gym.advance_run, run_id, b.decision, True, b.confirm, b.accept_local, b.duration_s
+        )
 
     @_http_app.post("/api/v1/gym/runs/{run_id}/stop")
     async def _gym_stop(run_id: str):
