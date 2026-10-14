@@ -1,5 +1,9 @@
 # Installation
 
+> First time here? Read [docs/ONBOARDING.md](docs/ONBOARDING.md) first — it
+> takes you from zero to first analysis, and the backend auto-installs every
+> engine, so there is nothing to set up by hand.
+
 ## 🚀 Quick Start (recommended)
 
 ```powershell
