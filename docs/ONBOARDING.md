@@ -1,7 +1,13 @@
 # Onboarding — reversing-mcp
 
-First-timer path from zero to first analysis. No wrappee install is needed for the
-core (static triage works out of the box); each engine below unlocks a deeper tier.
+First-timer path from zero to first analysis. **You never hand-edit env and
+never hand-install engines**: `start.ps1` boots the backend, the backend runs
+the toolbox (`GET /api/v1/toolbox`, `toolbox(operation="probe")`) which
+discovers everything (PATH, env, `D:\Dev\tools`, standard locations), exports
+what it finds into its own environment, installs what is missing, and starts
+policy services. The Status page Toolbox card shows the inventory with
+one-click Install buttons. No wrappee install is needed for the core (static
+triage works out of the box); each engine below unlocks a deeper tier.
 
 ## What this is for
 
@@ -28,13 +34,18 @@ uv run pytest tests/test_mcp_server.py -q
 
 ## Tier unlocks
 
-| Tier | Needs | Gives |
+| Tier | Needs (toolbox handles it) | Gives |
 |------|-------|-------|
 | 1 static triage | nothing (Python stdlib + `file`) | `analyze_binary`, strings, entropy, PE, DKI |
-| 1+ engines | Ghidra (`GHIDRA_INSTALL_DIR`) / radare2 / binwalk | headless decompile, function discovery |
+| 1+ engines | auto: Ghidra (GitHub release to `D:\Dev\tools`), DiE, capa; nothing by hand | headless decompile, function discovery, packer ID, capabilities |
+| 1+ ReVa | auto: pip venv + compat + extension (or Status page Install) | 86 Ghidra tools over MCP; autostarts with backend |
 | 2 REA sidecar | Node 22.19+ → `just setup-rea`, restart agent | `rea_investigate`: JS/Electron/.NET/APK/firmware/browser/native |
-| 2 native providers | Hopper (macOS/Linux only - [HOPPER.md](HOPPER.md); buy, auto-installed) / IDA Pro (own seat + `REA_IDA_MCP_CONFIG`) | deeper native via REA; IDA is bring-your-own-license |
-| Chat | Ollama running | webapp AI Command page |
+| 2 native providers | IDA: start it (or set `IDA_DIR`) — a **running** IDA is glommed onto, licensing is your business; Hopper: macOS/Linux only ([HOPPER.md](HOPPER.md)) | deeper native via REA |
+| Chat | Ollama: dashboard cue offers Start (installed, idle), Install (absent), or Pull (serving, model-less) — no manual steps | webapp AI Command page |
+
+If the toolbox reports a tool `missing` with an Install button, click it.
+If it reports `license`/`platform_blocked`, read the row's note — those are
+the only two cases that need you.
 
 ## Pitfalls
 

@@ -2,12 +2,14 @@
 
 ## Layout
 
-- `src/reversing_mcp/server.py` — 15 MCP tools + FastAPI `_http_app` (36 routes) + `skill://` resources.
-- `src/reversing_mcp/{analyzers,rea_bridge,directmedia_dki,digibib_research,transport,logging_config}.py`
+- `src/reversing_mcp/server.py` - 20 MCP tools + FastAPI `_http_app` (~50 routes) + `skill://` resources.
+- `src/reversing_mcp/{analyzers,engines,toolbox,reva,gym,clickerlab,rea_bridge,directmedia_dki,digibib_research,transport,logging_config}.py`
 - `src/reversing_mcp/skills/primary/SKILL.md` — served via `/api/skills` + `skill://primary`.
 - `web_sota/` — Vite/React dashboard (:10751). LLM state in `src/store/llm.ts` (Zustand);
   vendored `src/lib/model-preference.ts` (canonical: `mcp-central-docs/templates/llm-detect/`).
-- `tests/fixtures/MANIFEST.md` — ground-truth table for reverse targets.
+- `tests/fixtures/MANIFEST.md` - ground-truth table for reverse targets.
+- `scripts/cua_tour.py` - Tier 3 one-shot (`just cua-tour <target>`: intake → triage → elicit → drive → correlate).
+- Third-party homes live outside the repo (`D:\Dev\tools\{reva,ghidra_12.1.3_PUBLIC}`) - never in git, see `D:\Dev\tools\reva\README.md`.
 
 ## Gates (all must pass)
 
