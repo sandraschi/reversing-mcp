@@ -54,6 +54,14 @@ This variable is used by both ReVa and our headless `analyze_binary(..., ['ghidr
 
 ## 3. Install ReVa
 
+Fleet install (done 2026-10-14, verified: 86 tools over stdio): own venv at
+`D:\Dev\tools\reva\.venv` (outside any `uv sync` reach),
+`GHIDRA_INSTALL_DIR=C:\Program Files\ghidra_12.0_PUBLIC` (User env),
+v7.3.1 extension zip in the Ghidra user Extensions dir. Full notes + local
+SDK-2.x patches: `D:\Dev\tools\reva\README.md`.
+
+Fresh install elsewhere:
+
 ```powershell
 pip install reverse-engineering-assistant
 ```

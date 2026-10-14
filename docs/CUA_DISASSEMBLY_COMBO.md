@@ -1,6 +1,8 @@
-# Tier 3 (spec): Disassembly + CUA click-through = feature-to-code maps
+# Tier 3: Disassembly + CUA click-through = feature-to-code maps
 
-**Status: spec, not built.** This doc describes the target; nothing here is implemented yet.
+**Status: tour + capture + correlate MVP built** (`src/reversing_mcp/clickerlab.py`,
+`/clickerlab` page, `just cua-tour`, `gym` op `correlate`). Still open: auto-tour
+discovery, version-diff maps, UIA-to-IPC mapping, VM plumbing (local opt-out only).
 
 ## 1. Thesis
 

@@ -2,7 +2,8 @@
 
 Companion to `docs/GYM_SPEC.md` §§2b–2c. This file is the *how*; the spec holds the
 *what* and the gates. Status: G1b elicitation + G3 clicker built (`src/reversing_mcp/clickerlab.py`,
-`/clickerlab` page, `gym` ops `elicit`/`clicker_*`); B3 OCR + B4 LLM-guidance layers still open.
+`/clickerlab` page, `gym` ops `elicit`/`clicker_*`/`correlate`, `just cua-tour`);
+B3 OCR + coordinate fallback built (Tesseract, fleet path); B4 LLM-guidance layer still open.
 
 ---
 

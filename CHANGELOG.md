@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-10-14)
+- Toolbox (`src/reversing_mcp/toolbox.py`, `toolbox` MCP tool, 6 REST routes, Status page card): autodiscovery (PATH/env/`D:\Dev\tools`/standard paths) for ghidra/reva/capa/die/frida/r2/hopper/ida/java/tesseract/node; installers (GitHub releases, winget, pip venv); boot `ensure()` exports env + autostarts ReVa headless (policy-toggleable); running IDA instances glommed onto, licensing never checked
+- ReVa lifecycle (`src/reversing_mcp/reva.py`, `reva` MCP tool, Status start buttons): probe/start/stop managed child; real install at `D:\Dev\tools\reva\.venv` (7.3.1 + MCP-SDK-2.x compat patches); registered in Claude Desktop + opencode configs (autostart on client launch)
+- Ghidra 12.0 → 12.1.3 (`D:\Dev\tools\ghidra_12.1.3_PUBLIC`, no admin; 12.0 kept as fallback); ReVa extension 7.3.1 (12.0 zip needed dup-jar prune, 12.1.3 zip clean); REA ghidra provider verified on Digibib5
+- ClickerLab G3 full: B3 OCR/coordinate fallback (Tesseract), mouse safety, tour allowlist/named skips, capture bundle (screenshots, tour.jsonl, clipboard, file/registry diffs), §5 correlate MVP (`gym` op `correlate`, map.md with mapped/ambiguous/no-trace verdicts), `just cua-tour` one-shot, `/clickerlab` correlate view; `clicker` extra kept across restarts via fleet config
+- Calibration run `cd4e4b014ae2` (Digibib5): live rip 7/27 nodes + re-correlate (14 seeds, 11 ambiguous, 3 no-trace); 3 live-fire bugs fixed with regression tests (TimeoutError swallow, unbounded snapshots, dead-COM poking)
+- Repo-root `start.ps1` replaced with fleet-engine delegation (was stale Start-Job script)
+- Docs: new `docs/{TOOLBOX,ARCHITECTURE}.md`; TOOLS/DEVELOPMENT/llms-full counts 15/17 → 20 tools; ONBOARDING zero-hand-editing flow; ENGINES toolbox pointer
+
 ### Added (2026-10-12)
 - Gym stop kills the engine: `engines.run_cancellable` (Popen + cancel event + psutil tree kill) backs `run_die` / `run_capa`; stop cancels the attempt, timeouts kill the whole tree too
 - Gym stages run in the background: `advance` returns immediately, a worker thread runs the stage, the page polls (Stop button, running/stopped/interrupted states); attempt tokens discard late results of stopped attempts; atomic `run.json`
