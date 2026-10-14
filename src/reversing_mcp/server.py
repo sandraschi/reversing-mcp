@@ -22,9 +22,11 @@ from prefab_ui.app import PrefabApp
 from prefab_ui.components import Badge, Card, CardContent, CardHeader, CardTitle, Text
 from pydantic import BaseModel, Field
 
+from . import clickerlab as _clickerlab
 from . import engines as _engines
 from . import gym as _gym
 from . import rea_bridge
+from . import reva as _reva
 from .analyzers import BinaryAnalyzer
 from .digibib_research import build_research_snapshot, resolve_digibib_exe
 from .directmedia_dki import (
@@ -391,15 +393,37 @@ async def show_tools_card() -> PrefabApp:
 
 @mcp.tool(annotations=_MUTATING)
 async def gym(
-    operation: Annotated[str, Field(description="Gym op: start, status, advance, stop, list.")] = "list",
-    run_id: Annotated[str | None, Field(description="Run id (status/advance/stop).")] = None,
+    operation: Annotated[
+        str,
+        Field(
+            description="Gym op: start, status, advance, stop, list, elicit, clicker_start, clicker_status, clicker_stop."
+        ),
+    ] = "list",
+    run_id: Annotated[str | None, Field(description="Run id (status/advance/stop/elicit/clicker_*).")] = None,
     target: Annotated[str | None, Field(description="Local .exe/.lnk path (start).")] = None,
     test_files: Annotated[list[str] | None, Field(description="Test data files (start).")] = None,
     notes: Annotated[str, Field(description="Operator notes (start).")] = "",
     decision: Annotated[str | None, Field(description="Gate decision: go|no-go (advance at gate).")] = None,
+    session_id: Annotated[str | None, Field(description="Clicker session id (clicker_status/clicker_stop).")] = None,
+    mode: Annotated[str, Field(description="Clicker mode: rip (B1 BFS) or tour (B2 draft executor).")] = "rip",
+    tour_rel: Annotated[
+        str | None,
+        Field(description="Run-relative tour YAML (clicker_start tour mode, e.g. elicitation/tour-draft.yaml)."),
+    ] = None,
+    step_cap: Annotated[int, Field(description="Max driver actions per clicker session.")] = 200,
+    time_cap_s: Annotated[int, Field(description="Wall-clock cap per clicker session (seconds).")] = 600,
+    confirm: Annotated[
+        bool, Field(description="Required true for clicker_start: the session executes the target binary.")
+    ] = False,
+    accept_local: Annotated[
+        bool,
+        Field(
+            description="Required true for clicker_start: logged opt-out from VM isolation (spec section 1) to drive on this desktop."
+        ),
+    ] = False,
 ) -> dict[str, Any]:
     """
-    GYM - Drive a Reversing Gym cloning run (stages 0/1/4 in G1).
+    GYM - Drive a Reversing Gym cloning run (stages 0/1/4 in G1) + ClickerLab (1b/3).
 
     PORTMANTEAU PATTERN RATIONALE: One entry for the whole run lifecycle so agents
     can triage a clone candidate without learning five endpoints. `advance` starts the
@@ -407,17 +431,25 @@ async def gym(
     `status` until `running_stage` is null. Stages are resumable: failed, stopped or
     interrupted (backend restarted) stages are retried by the next `advance`.
 
+    ClickerLab: `elicit` builds stage-1b artifacts (format stubs, features.json,
+    tour draft, prior-art leads - static, no execution). `clicker_start` launches a
+    stage-3 session (rip = B1 UIA BFS, tour = B2 draft executor); it executes the
+    target, so it needs confirm=True plus accept_local=True (logged VM opt-out),
+    and `clicker_stop` kills the target tree. Needs `uv sync --extra clicker`.
+
     ## Return Format
     `{"success": bool, "run_id"?, "stage"?, "message"?, ...stage payload}`.
     `advance` while a stage runs -> `{success: False, busy: True, stage}`. `stop` marks the
     running stage stopped and kills the engine's process tree (DiE / capa) within about a
     second. Advance past assessment requires `decision="go"|"no-go"`; stages
-    2,3,5,6,7,8 refuse honestly (pending-spec) instead of pretending.
+    2,5,6,7,8 refuse honestly (pending-spec) instead of pretending.
 
     ## Examples
     `gym(operation="start", target="D:/apps/prog.exe")`
     `gym(operation="advance", run_id="abc123")`
     `gym(operation="status", run_id="abc123")`
+    `gym(operation="elicit", run_id="abc123")`
+    `gym(operation="clicker_start", run_id="abc123", mode="rip", confirm=True, accept_local=True)`
     """
     op = (operation or "").lower()
     if op == "start":
@@ -438,10 +470,66 @@ async def gym(
         return await asyncio.to_thread(_gym.stop_run, run_id)
     if op == "list":
         return await asyncio.to_thread(_gym.list_runs)
+    if op == "elicit":
+        if not run_id:
+            return {"success": False, "error": "elicit requires run_id (and triage done)."}
+        return await asyncio.to_thread(_clickerlab.elicit_run, run_id)
+    if op == "clicker_start":
+        if not run_id:
+            return {"success": False, "error": "clicker_start requires run_id."}
+        return await asyncio.to_thread(
+            _clickerlab.clicker_start, run_id, mode, tour_rel, step_cap, time_cap_s, confirm, accept_local
+        )
+    if op == "clicker_status":
+        if not run_id or not session_id:
+            return {"success": False, "error": "clicker_status requires run_id and session_id."}
+        return await asyncio.to_thread(_clickerlab.clicker_status, run_id, session_id)
+    if op == "clicker_stop":
+        if not run_id or not session_id:
+            return {"success": False, "error": "clicker_stop requires run_id and session_id."}
+        return await asyncio.to_thread(_clickerlab.clicker_stop, run_id, session_id)
     return {
         "success": False,
-        "error": f"Unknown gym operation '{operation}'. Valid: start, status, advance, stop, list.",
+        "error": (
+            f"Unknown gym operation '{operation}'. "
+            "Valid: start, status, advance, stop, list, elicit, clicker_start, clicker_status, clicker_stop."
+        ),
     }
+
+
+@mcp.tool(annotations=_MUTATING)
+async def reva(
+    operation: Annotated[str, Field(description="ReVa op: probe, start, stop.")] = "probe",
+    mode: Annotated[str, Field(description="Start mode: headless (mcp-reva) or gui (Ghidra + plugin).")] = "headless",
+    confirm: Annotated[bool, Field(description="Required true for start: spawns a JVM + MCP listener.")] = False,
+) -> dict[str, Any]:
+    """
+    REVA - Probe and manage the ReVa Ghidra MCP server lifecycle.
+
+    ReVa (reverse-engineering-assistant) is a separate server; this tool owns
+    its process lifecycle so agents and the Status page share one path.
+    `probe` reports mcp-reva presence, Ghidra dir, the managed process and
+    bridge reachability (bridge-down is normal, not an error). `start` needs
+    confirm=True; without mcp-reva/Ghidra it refuses with the install hint
+    (docs/REVA.md). `stop` kills the managed tree and is idempotent.
+
+    ## Return Format
+    `{"success": bool, ...probe fields | pid/mode/message}`. Start while
+    running -> `{success: False, busy: True, pid}`.
+
+    ## Examples
+    `reva(operation="probe")`
+    `reva(operation="start", mode="headless", confirm=True)`
+    `reva(operation="stop")`
+    """
+    op = (operation or "").lower()
+    if op == "probe":
+        return await asyncio.to_thread(_reva.status, _GHIDRA_BRIDGE_URL)
+    if op == "start":
+        return await asyncio.to_thread(_reva.start, mode, confirm, _GHIDRA_BRIDGE_URL)
+    if op == "stop":
+        return await asyncio.to_thread(_reva.stop)
+    return {"success": False, "error": f"Unknown reva operation '{operation}'. Valid: probe, start, stop."}
 
 
 @mcp.tool(annotations=_MUTATING)
@@ -1453,8 +1541,9 @@ try:
                     r = await client.post(url, json=data)
                 r.raise_for_status()
                 return r.json()
-            except Exception:
-                logger.exception(f"Ghidra bridge error ({path})")
+            except Exception as e:
+                # Bridge-down is the normal state when ReVa is not running - debug, not error.
+                logger.debug(f"Ghidra bridge down ({path}): {e}")
                 return None
 
     @_http_app.get("/ghidra/status")
@@ -1475,8 +1564,8 @@ try:
             if status:
                 bridge_running = True
                 connected_instance = status.get("connected_instance")
-        except Exception:
-            logger.exception("Ghidra status probe failed; reporting bridge as down")
+        except Exception as e:
+            logger.debug("Ghidra status probe failed (%s); reporting bridge as down", e)
         return _GhidraStatus(
             available=bridge_running,
             installed=installed,
@@ -1523,7 +1612,38 @@ try:
 
     @_http_app.post("/start_ghidra")
     async def _start_ghidra():
-        return {"ok": True, "message": "Start Ghidra from the desktop. The WebApp will connect via the MCP bridge."}
+        # Legacy stub kept for compat; the Status page uses /api/v1/reva/* now.
+        return {
+            "ok": True,
+            "message": "Use POST /api/v1/reva/start (headless mcp-reva or Ghidra GUI) - see docs/REVA.md.",
+        }
+
+    # --- ReVa lifecycle (real start button for the Status page) ---
+
+    class _RevaStartBody(BaseModel):
+        mode: str = "headless"
+        confirm: bool = False
+
+    @_http_app.get("/api/v1/reva")
+    async def _reva_status():
+        """ReVa probe: mcp-reva presence, Ghidra dir, managed process, bridge reachability."""
+        import asyncio
+
+        return await asyncio.to_thread(_reva.status, _GHIDRA_BRIDGE_URL)
+
+    @_http_app.post("/api/v1/reva/start")
+    async def _reva_start(body: _RevaStartBody):
+        """Start ReVa headless (mcp-reva) or the Ghidra GUI. Confirm-gated."""
+        import asyncio
+
+        return await asyncio.to_thread(_reva.start, body.mode, body.confirm, _GHIDRA_BRIDGE_URL)
+
+    @_http_app.post("/api/v1/reva/stop")
+    async def _reva_stop():
+        """Stop the managed ReVa process (whole tree). Idempotent."""
+        import asyncio
+
+        return await asyncio.to_thread(_reva.stop)
 
     async def _ollama_tags() -> dict:
         import httpx
@@ -1911,6 +2031,9 @@ try:
                 "diagnostics": True,
                 "logs": True,
                 "rea_sidecar": True,
+                "elicitation": True,
+                "clicker": True,
+                "reva": True,
             },
             "tools": sorted([t.name for t in tools]),
             "tool_docs": sorted(
@@ -1964,6 +2087,56 @@ try:
         import asyncio
 
         return await asyncio.to_thread(_gym.read_artifact, run_id, rel_path)
+
+    # --- ClickerLab: G1b elicitation + G3 clicker sessions ---
+
+    class _ClickerStartBody(BaseModel):
+        mode: str = "rip"
+        tour_rel: str | None = None
+        step_cap: int = 200
+        time_cap_s: int = 600
+        confirm: bool = False
+        accept_local: bool = False
+
+    @_http_app.post("/api/v1/gym/runs/{run_id}/elicitation")
+    async def _gym_elicit(run_id: str):
+        """Stage 1b: format stubs, features.json, tour draft, prior-art leads (static)."""
+        import asyncio
+
+        return await asyncio.to_thread(_clickerlab.elicit_run, run_id)
+
+    @_http_app.get("/api/v1/clicker/engines")
+    async def _clicker_engines():
+        """G3 driver readiness: pywinauto / Pillow / yaml presence."""
+        return _clickerlab.clicker_engines()
+
+    @_http_app.post("/api/v1/gym/runs/{run_id}/clicker/sessions")
+    async def _clicker_session_start(run_id: str, body: _ClickerStartBody):
+        """Start a clicker session (executes the target - confirm + accept_local gates)."""
+        import asyncio
+
+        return await asyncio.to_thread(
+            _clickerlab.clicker_start,
+            run_id,
+            body.mode,
+            body.tour_rel,
+            body.step_cap,
+            body.time_cap_s,
+            body.confirm,
+            body.accept_local,
+        )
+
+    @_http_app.get("/api/v1/gym/runs/{run_id}/clicker/sessions/{session_id}")
+    async def _clicker_session_get(run_id: str, session_id: str):
+        import asyncio
+
+        return await asyncio.to_thread(_clickerlab.clicker_status, run_id, session_id)
+
+    @_http_app.post("/api/v1/gym/runs/{run_id}/clicker/sessions/{session_id}/stop")
+    async def _clicker_session_stop(run_id: str, session_id: str):
+        import asyncio
+
+        return await asyncio.to_thread(_clickerlab.clicker_stop, run_id, session_id)
 
     _http_app.mount("/mcp", mcp.http_app(path="/"))
     app = _http_app
