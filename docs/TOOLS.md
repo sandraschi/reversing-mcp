@@ -41,7 +41,7 @@ Full signatures live in `llms-full.txt`. Every tool returns a `message` key.
 
 | Tool | One line |
 |------|----------|
-| `gym(operation, run_id?, target?, test_files?, notes?, decision?, session_id?, mode?, tour_rel?, step_cap?, time_cap_s?, confirm?, accept_local?)` | Run lifecycle: start/status/advance/stop/list (G1) + elicit/clicker_start/clicker_status/clicker_stop/correlate (ClickerLab 1b/3/§5). Clicker executes: needs confirm + accept_local |
+| `gym(operation, run_id?, target?, test_files?, notes?, decision?, session_id?, mode?, tour_rel?, step_cap?, time_cap_s?, confirm?, accept_local?)` | Run lifecycle: start/status/advance/stop/list (G1) + elicit/clicker_*/correlate/compare/export (ClickerLab 1b/3/§5 + determinism + map export). Clicker executes: needs confirm + accept_local |
 | `engine(operation, file_path?, target?, args?, pid?, functions?, arg0_filter?, source?, duration_s?, max_events?, timeout_s?, confirm?)` | `die`: compiler/packer ID; `capa`: capabilities (slow on big binaries); `frida_trace` / `frida_script`: runtime hooks, need `confirm=True` |
 | `reva(operation?, mode?, confirm?)` | ReVa lifecycle: probe/start/stop (headless `mcp-reva` or Ghidra GUI). Start needs confirm |
 | `toolbox(operation?, name?)` | Toolchain autodiscovery/install/autostart: probe/install/ensure/policy. See `docs/TOOLBOX.md` |

@@ -145,6 +145,23 @@ Residual slowness: session-final registry export takes minutes on a big hive.
   except blocks; reverted via git checkout and re-applied surgically. Lesson
   kept: no bulk regex on source, ever.
 
+## Claude items 5-6 session (same day)
+
+- **Item 5 (correctness) DONE**: snapshot `(dict, truncated)` tuple carried
+  into every diff record; liveness checks inside menu/control/canvas loops;
+  `compare_sessions()` determinism scorer (timestamps/pids/shots excluded by
+  design) + artifact; live double-run of a 4-step calib tour scored
+  **4/4 identical (1.00)** — intent resolution, OCR reads, probe-file
+  detection all agreed. Tests for truncation, compare/diverge, liveness.
+- **Item 6 (map export) DONE**: `export_map()` — Ghidra plate comments on
+  defined-string addresses (NOT file math: loader rebases, proven live),
+  opt-in FUN_* renames, plus `map_import_ida.py` with a rebase guard
+  (verifies bytes before commenting). Live on calib: **22 Ghidra comments**,
+  IDA script with real VAs. `file_offset_to_va()` kept (struct-only PE
+  parse) for the IDA path; two of its bugs found live (6-byte header read,
+  PE32+ base offset).
+- Item 4 (VM isolation) + item 7 (static depth) still open.
+
 ## Next step
 
 Commit decision (awaiting instruction). Then: B4 LLM layer, VM plumbing,

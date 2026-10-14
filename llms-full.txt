@@ -36,7 +36,7 @@ uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 - `check_tools()` — check which RE tools are available (Ghidra, radare2, binwalk, strings, file, IDA, REA). Returns tools, summary, notes.
 - `shutdown(confirm=False)` — graceful server termination. Requires confirm=True.
 - `show_tools_card()` — engine inventory as an in-chat Prefab card (app=True).
-- `gym(operation="list", ...)` - cloning-run lifecycle (start/status/advance/stop/list) + elicit/clicker_start/clicker_status/clicker_stop/correlate (ClickerLab; clicker executes: confirm + accept_local).
+- `gym(operation="list", ...)` - cloning-run lifecycle (start/status/advance/stop/list) + elicit/clicker_*/correlate/compare/export (ClickerLab; clicker executes: confirm + accept_local).
 - `reva(operation="probe", mode="headless", confirm=False)` - ReVa lifecycle (probe/start/stop).
 - `toolbox(operation="probe", name=None)` - toolchain autodiscovery/install/autostart (ghidra, reva, capa, die, frida, r2, hopper, ida, java, tesseract, node). See docs/TOOLBOX.md.
 - `engine(operation="die"|"capa"|"frida_trace"|"frida_script", ...)` — Detect It Easy compiler/packer ID, capa capabilities, Frida runtime hooks (frida_* need confirm=True; they execute the target).

@@ -397,7 +397,7 @@ async def gym(
     operation: Annotated[
         str,
         Field(
-            description="Gym op: start, status, advance, stop, list, elicit, clicker_start, clicker_status, clicker_stop, correlate."
+            description="Gym op: start, status, advance, stop, list, elicit, clicker_start, clicker_status, clicker_stop, correlate, compare, export."
         ),
     ] = "list",
     run_id: Annotated[str | None, Field(description="Run id (status/advance/stop/elicit/clicker_*).")] = None,
@@ -406,6 +406,7 @@ async def gym(
     notes: Annotated[str, Field(description="Operator notes (start).")] = "",
     decision: Annotated[str | None, Field(description="Gate decision: go|no-go (advance at gate).")] = None,
     session_id: Annotated[str | None, Field(description="Clicker session id (clicker_status/clicker_stop).")] = None,
+    session_id_b: Annotated[str | None, Field(description="Second session id (compare only).")] = None,
     mode: Annotated[str, Field(description="Clicker mode: rip (B1 BFS) or tour (B2 draft executor).")] = "rip",
     tour_rel: Annotated[
         str | None,
@@ -499,11 +500,20 @@ async def gym(
         if not run_id or not session_id:
             return {"success": False, "error": "correlate requires run_id and session_id."}
         return await asyncio.to_thread(_clickerlab.correlate_session, run_id, session_id)
+    if op == "compare":
+        if not run_id or not session_id or not session_id_b:
+            return {"success": False, "error": "compare requires run_id, session_id and session_id_b."}
+        return await asyncio.to_thread(_clickerlab.compare_sessions, run_id, session_id, session_id_b)
+    if op == "export":
+        if not run_id or not session_id:
+            return {"success": False, "error": "export requires run_id and session_id."}
+        return await asyncio.to_thread(_clickerlab.export_map, run_id, session_id)
     return {
         "success": False,
         "error": (
             f"Unknown gym operation '{operation}'. "
-            "Valid: start, status, advance, stop, list, elicit, clicker_start, clicker_status, clicker_stop, correlate."
+            "Valid: start, status, advance, stop, list, elicit, clicker_start, clicker_status, "
+            "clicker_stop, correlate, compare, export."
         ),
     }
 
@@ -2321,6 +2331,23 @@ try:
         import asyncio
 
         return await asyncio.to_thread(_clickerlab.correlate_session, run_id, session_id)
+
+    class _CompareBody(BaseModel):
+        session_b: str
+
+    @_http_app.post("/api/v1/gym/runs/{run_id}/clicker/sessions/{session_id}/compare")
+    async def _clicker_session_compare(run_id: str, session_id: str, body: _CompareBody):
+        """Determinism check between two sessions of one run."""
+        import asyncio
+
+        return await asyncio.to_thread(_clickerlab.compare_sessions, run_id, session_id, body.session_b)
+
+    @_http_app.post("/api/v1/gym/runs/{run_id}/clicker/sessions/{session_id}/export")
+    async def _clicker_session_export(run_id: str, session_id: str):
+        """Export the map: Ghidra plate comments (+opt-in renames) and an IDA import script."""
+        import asyncio
+
+        return await asyncio.to_thread(_clickerlab.export_map, run_id, session_id)
 
     _http_app.mount("/mcp", mcp.http_app(path="/"))
     app = _http_app

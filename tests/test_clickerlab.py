@@ -26,8 +26,11 @@ def runs_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-def _run_with_triage(runs_root: Path) -> str:
-    out = gym.create_run(str(FIXTURE), test_files=[], notes="t")
+CALIB_WIN32 = Path(__file__).parent / "fixtures" / "calib" / "calib_win32.exe"
+
+
+def _run_with_triage(runs_root: Path, target: Path | None = None) -> str:
+    out = gym.create_run(str(target or FIXTURE), test_files=[], notes="t")
     assert out["success"], out
     run_id = out["run_id"]
     triage = {"formats_referenced": [".txt"], "die": {}, "capa": {}}
@@ -118,10 +121,12 @@ def test_allowlist_blocks_credentials_and_payment() -> None:
 def test_file_diff_and_jsonl(tmp_path: Path) -> None:
     a = tmp_path / "a.txt"
     a.write_text("v1")
-    before = clickerlab.snapshot_files([tmp_path])
+    before, trunc_before = clickerlab.snapshot_files([tmp_path])
+    assert trunc_before is False
     a.write_text("v2 longer")
     (tmp_path / "b.txt").write_text("new")
-    diff = clickerlab.diff_files(before, clickerlab.snapshot_files([tmp_path]))
+    after, _ = clickerlab.snapshot_files([tmp_path])
+    diff = clickerlab.diff_files(before, after)
     assert any("b.txt" in p for p in diff["added"])
     assert any("a.txt" in p for p in diff["modified"])
     clickerlab.jlog(tmp_path, {"kind": "probe", "ok": True})
@@ -174,11 +179,86 @@ def test_target_alive() -> None:
     assert clickerlab._target_alive({}) is False
 
 
-def test_snapshot_budget(tmp_path: Path) -> None:
+def test_snapshot_budget_and_truncated_flag(tmp_path: Path) -> None:
     for i in range(10):
         (tmp_path / f"f{i}.txt").write_text("x")
-    snap = clickerlab.snapshot_files([tmp_path], max_files=5)
-    assert len(snap) <= 5
+    snap, truncated = clickerlab.snapshot_files([tmp_path], max_files=5)
+    assert len(snap) <= 5 and truncated is True
+    full, truncated_full = clickerlab.snapshot_files([tmp_path], max_files=100)
+    assert len(full) == 10 and truncated_full is False
+
+
+def test_file_offset_to_va() -> None:
+    target = str(CALIB_WIN32)
+    if not Path(target).is_file():
+        pytest.skip("calibration binaries missing")
+    import struct
+
+    with open(target, "rb") as f:
+        data = f.read(0x1000)
+    (e_lfanew,) = struct.unpack_from("<I", data, 0x3C)
+    (n_sec,) = struct.unpack_from("<H", data, e_lfanew + 6)
+    assert n_sec and n_sec < 96
+    # A mid-.rdata offset must map above the image base; headers must not.
+    assert (clickerlab.file_offset_to_va(target, 0x2000) or 0) > 0x10000
+    assert clickerlab.file_offset_to_va(target, 0) is None
+    assert clickerlab.file_offset_to_va(target, 0xFFFFFF) is None
+    assert clickerlab.file_offset_to_va("D:/nope.exe", 99) is None
+
+
+def test_compare_sessions_scores_and_divergence(runs_root: Path) -> None:
+    run_id = _run_with_triage(runs_root)
+    base = runs_root / run_id / "clicker" / "sessions"
+    for sid in ("a1", "b1"):
+        sdir = base / sid
+        sdir.mkdir(parents=True)
+        (sdir / "session.json").write_text("{}")
+    steps = [
+        {"id": "s1", "action": "launch", "outcome": "launched", "expect": None, "expect_ok": True},
+        {"id": "s2", "action": [{"intent": "open"}], "outcome": "ok", "expect": "win", "expect_ok": True},
+    ]
+    (base / "a1" / "tour-results.json").write_text(json.dumps(steps))
+    (base / "b1" / "tour-results.json").write_text(json.dumps(steps))
+    same = clickerlab.compare_sessions(run_id, "a1", "b1")
+    assert same["success"] and same["deterministic"] is True and same["score"] == 1.0
+    altered = [dict(steps[0]), dict(steps[1], expect_ok=False)]
+    (base / "b1" / "tour-results.json").write_text(json.dumps(altered))
+    diff = clickerlab.compare_sessions(run_id, "a1", "b1")
+    assert diff["success"] and diff["deterministic"] is False and diff["score"] == 0.5
+    assert len(diff["diverged"]) == 1 and diff["diverged"][0]["index"] == 1
+    assert clickerlab.compare_sessions(run_id, "a1", "nope")["success"] is False
+
+
+def test_export_map_writes_ida_script_without_jvm(runs_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    if not CALIB_WIN32.is_file():
+        pytest.skip("calibration binaries missing")
+    run_id = _run_with_triage(runs_root, CALIB_WIN32)
+    sdir = runs_root / run_id / "clicker" / "sessions" / "s1"
+    sdir.mkdir(parents=True)
+    (sdir / "session.json").write_text("{}")
+    va = clickerlab.file_offset_to_va(str(CALIB_WIN32), 0x400)
+    assert va, "calib .text offset must map (else the fixture changed)"
+    (sdir / "map.json").write_text(
+        json.dumps(
+            {
+                "seeds": [{"seed": "Open", "offsets": [0x400], "xref_functions": ["FUN_1"], "verdict": "mapped"}],
+                "mapped": 1,
+                "total": 1,
+            }
+        )
+    )
+    import pyghidra
+
+    from reversing_mcp import analyzers
+
+    monkeypatch.setattr(analyzers, "_JVM_STARTED", True)
+    monkeypatch.setattr(pyghidra, "open_program", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no jvm")))
+    out = clickerlab.export_map(run_id, "s1")
+    assert out["success"] is True
+    assert out["ghidra_error"] is not None
+    script = (sdir / "map_import_ida.py").read_text()
+    assert "Open" in script and str(va) in script
+    assert clickerlab.export_map(run_id, "nosess")["success"] is False
 
 
 def test_correlate_writes_map_without_rea(runs_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:

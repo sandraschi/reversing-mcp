@@ -218,17 +218,21 @@ def read_clipboard_text() -> str:
     return ""
 
 
-def snapshot_files(dirs: list[Path], max_files: int = 20000) -> dict[str, dict[str, int]]:
-    """File inventory (path -> {size, mtime_ns}) for watch dirs. Session/step diffing.
+def snapshot_files(dirs: list[Path], max_files: int = 20000) -> tuple[dict[str, dict[str, int]], bool]:
+    """File inventory (path -> {size, mtime_ns}) for watch dirs + truncated flag.
 
     Budgeted: stops after max_files entries so a bloated %TEMP% cannot stall a
     pass (live-fire lesson 2026-10-14: unbounded rglob took ~55 s per rip pass).
+    The flag is carried into every diff record so a capped snapshot never
+    silently poses as complete.
     """
     snap: dict[str, dict[str, int]] = {}
+    truncated = False
     for d in dirs:
         try:
             for p in d.rglob("*"):
                 if len(snap) >= max_files:
+                    truncated = True
                     break
                 try:
                     if p.is_file() and not p.is_symlink():
@@ -238,7 +242,7 @@ def snapshot_files(dirs: list[Path], max_files: int = 20000) -> dict[str, dict[s
                     continue
         except OSError as e:
             logger.debug("watch dir %s unreadable: %s", d, e)
-    return snap
+    return snap, truncated
 
 
 def diff_files(before: dict[str, dict[str, int]], after: dict[str, dict[str, int]]) -> dict[str, list[str]]:
@@ -959,6 +963,7 @@ def correlate_session(run_id: str, session_id: str, with_rea: bool = True, max_s
             "",
         ]
     _atomic_write(sdir / "map.md", "\n".join(lines))
+    _atomic_write(sdir / "map.json", json.dumps({"seeds": rows, "mapped": mapped, "total": len(rows)}, indent=2))
     msg = f"Correlate: {len(rows)} seed(s), {mapped} mapped. Map in clicker/sessions/{session_id}/map.md."
     _slog(sdir, "correlated", msg)
     return {
@@ -967,6 +972,277 @@ def correlate_session(run_id: str, session_id: str, with_rea: bool = True, max_s
         "session_id": session_id,
         "seeds": len(rows),
         "mapped": mapped,
+        "message": msg,
+    }
+
+
+def _session_steps(sdir: Path) -> list[dict[str, Any]]:
+    """Step records for comparison: tour-results.json preferred, tour.jsonl fallback."""
+    res_file = sdir / "tour-results.json"
+    if res_file.exists():
+        try:
+            data = json.loads(res_file.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                return data
+        except ValueError:
+            pass
+    out = []
+    jsonl = sdir / "tour.jsonl"
+    if jsonl.exists():
+        for line in jsonl.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            if rec.get("kind") in ("tour_step", "canvas_click"):
+                out.append(rec)
+    return out
+
+
+def compare_sessions(run_id: str, session_a: str, session_b: str) -> dict[str, Any]:
+    """Determinism check (spec: two runs of the same build must agree).
+
+    Compares per-step (id, action, outcome, expect_ok) between two sessions of
+    one run. Timestamps, pids, screenshots and OCR text are excluded by design
+    (environment, not behavior). Returns score + diverged list; never raises.
+    """
+    from . import gym as _gym
+
+    run_path, state = _gym._load(run_id)
+    if run_path is None:
+        return {"success": False, "error": state.get("error", f"Unknown run: {run_id}")}
+    base = run_path / "clicker" / "sessions"
+    dirs = {}
+    for sid in (session_a, session_b):
+        sdir = base / sid
+        if not (sdir / "session.json").exists():
+            return {"success": False, "error": f"Unknown session: {sid}"}
+        dirs[sid] = sdir
+    steps_a = _session_steps(dirs[session_a])
+    steps_b = _session_steps(dirs[session_b])
+
+    def _sig(s: dict[str, Any]) -> str:
+        action = json.dumps(s.get("action"), sort_keys=True, default=str)
+        return f"{s.get('id')}|{action}|{s.get('outcome')}|{s.get('expect_ok')}"
+
+    sigs_a = [_sig(s) for s in steps_a]
+    sigs_b = [_sig(s) for s in steps_b]
+    pairs = min(len(sigs_a), len(sigs_b))
+    same = sum(1 for i in range(pairs) if sigs_a[i] == sigs_b[i])
+    diverged = [
+        {"index": i, "a": sigs_a[i][:200], "b": sigs_b[i][:200]} for i in range(pairs) if sigs_a[i] != sigs_b[i]
+    ][:20]
+    length_note = None
+    if len(sigs_a) != len(sigs_b):
+        length_note = f"step counts differ: {session_a}={len(sigs_a)}, {session_b}={len(sigs_b)}"
+    score = (same / pairs) if pairs else 0.0
+    out = {
+        "success": True,
+        "run_id": run_id,
+        "sessions": [session_a, session_b],
+        "steps_compared": pairs,
+        "identical": same,
+        "score": round(score, 3),
+        "deterministic": score == 1.0 and length_note is None,
+        "length_note": length_note,
+        "diverged": diverged,
+        "message": f"Determinism {same}/{pairs} identical steps (score {score:.2f})."
+        + ("" if score == 1.0 and length_note is None else " Divergences are bugs - file them."),
+    }
+    _atomic_write(base / f"determinism-{session_a[:8]}-vs-{session_b[:8]}.json", json.dumps(out, indent=2))
+    return out
+
+
+def file_offset_to_va(target: str, file_offset: int, image_base: int | None = None) -> int | None:
+    """Map a raw file offset to a virtual address via the PE section table.
+
+    Correlate seeds carry FILE offsets (string extraction); Ghidra/IDA want
+    VAs. Returns None when the offset falls in headers or gaps (honest skip,
+    not a zero address). No dependency: struct-only PE parse.
+    """
+    import struct
+
+    try:
+        with open(target, "rb") as f:
+            data = f.read(0x1000)
+        if data[:2] != b"MZ":
+            return None
+        (e_lfanew,) = struct.unpack_from("<I", data, 0x3C)
+        with open(target, "rb") as f:
+            f.seek(e_lfanew)
+            hdr = f.read(8)
+            if hdr[:4] != b"PE\0\0":
+                return None
+            (n_sec,) = struct.unpack_from("<H", hdr, 6)
+            # COFF header is 20 bytes; optional-header size lives at its +16.
+            f.seek(e_lfanew + 4 + 16)
+            (opt_size,) = struct.unpack("<H", f.read(2))
+            if image_base is None:
+                f.seek(e_lfanew + 4 + 20)
+                (magic,) = struct.unpack("<H", f.read(2))
+                # PE32 (0x10b): ImageBase at +28; PE32+ (0x20b): ImageBase at +24.
+                f.seek(e_lfanew + 4 + 20 + (28 if magic == 0x10B else 24))
+                (image_base,) = struct.unpack("<I", f.read(4))
+            f.seek(e_lfanew + 4 + 20 + opt_size)
+            for _ in range(n_sec):
+                sec = f.read(40)
+                if len(sec) < 40:
+                    break
+                _name, _vsize, vaddr, raw_size, raw_ptr = struct.unpack_from("<8sIIII", sec)
+                if raw_ptr <= file_offset < raw_ptr + raw_size:
+                    return image_base + vaddr + (file_offset - raw_ptr)
+    except (OSError, struct.error) as e:
+        logger.debug("offset->VA failed for %s: %s", target, e)
+    return None
+
+
+def export_map(run_id: str, session_id: str, rename: bool = False) -> dict[str, Any]:
+    """Item 6: put the map where analysts look.
+
+    Ghidra: plate comments on every seed string address + (only with
+    rename=True, only on default FUN_* names, only identifier-safe seeds)
+    function renames, in the analyst's project via PyGhidra.
+    IDA: generates ``map_import_ida.py`` (idc.set_cmt + idc.set_name with
+    SN_CHECK) for the analyst to run inside IDA - no seat needed here.
+    Blocking - call via to_thread. Never raises.
+    """
+    from . import gym as _gym
+
+    run_path, state = _gym._load(run_id)
+    if run_path is None:
+        return {"success": False, "error": state.get("error", f"Unknown run: {run_id}")}
+    sdir = run_path / "clicker" / "sessions" / session_id
+    map_file = sdir / "map.json"
+    if not map_file.exists():
+        return {"success": False, "error": f"No map yet - correlate session {session_id} first."}
+    try:
+        seeds = json.loads(map_file.read_text(encoding="utf-8")).get("seeds", [])
+    except ValueError as e:
+        return {"success": False, "error": f"map.json unreadable: {e}"}
+
+    commented, renamed = 0, []
+    ghidra_error = None
+    # Two address sources: file-offset math feeds the IDA script (whose rebase
+    # guard verifies bytes before commenting); Ghidra comments use defined-
+    # string addresses from the live program (loader may rebase - file math
+    # silently misses there, live-fire lesson).
+    va_rows: list[dict[str, Any]] = []
+    for row in seeds:
+        if row.get("verdict") != "mapped":
+            continue
+        vas = []
+        for off in (row.get("offsets") or [])[:5]:
+            try:
+                va = file_offset_to_va(state["target"], int(off))
+            except (ValueError, TypeError):
+                va = None
+            if va is not None:
+                vas.append(va)
+        va_rows.append({**row, "vas": vas})
+    try:
+        from .analyzers import _ensure_jvm
+
+        _ensure_jvm()
+        import tempfile
+
+        import pyghidra
+        from ghidra.program.model.listing import CodeUnit
+        from ghidra.program.model.symbol import SourceType
+
+        with tempfile.TemporaryDirectory(prefix="ghidra-export-") as proj_dir:
+            # analyze=True: comments need defined strings/code, which only
+            # exist after analysis (minutes on big binaries - on-demand).
+            with pyghidra.open_program(state["target"], project_location=proj_dir, analyze=True) as flat_api:
+                program = flat_api.getCurrentProgram()
+                listing, fm = program.getListing(), program.getFunctionManager()
+                defined: list[tuple[Any, str]] = []
+                for data in listing.getDefinedData(True):
+                    try:
+                        dtype = str(data.getDataType().getName()).lower()
+                    except Exception as e:
+                        logger.debug("export dtype probe failed: %s", e)
+                        continue
+                    if dtype not in ("string", "unicode", "utf8", "utf16"):
+                        continue
+                    try:
+                        defined.append((data.getAddress(), str(data.getValue())))
+                    except Exception as e:
+                        logger.debug("export string read failed: %s", e)
+                        continue
+                addr_of: dict[str, list[Any]] = {}
+                for row in va_rows:
+                    hits = [a for a, v in defined if row["seed"].lower() in v.lower()][:5]
+                    row["vas"] = [int(a.getOffset()) for a in hits]
+                    addr_of[row["seed"]] = hits
+                for row in va_rows:
+                    for addr in addr_of.get(row["seed"], []):
+                        try:
+                            cu = listing.getCodeUnitAt(addr)
+                            if cu is None:
+                                continue
+                            cu.setComment(
+                                CodeUnit.PLATE_COMMENT,
+                                f"[ClickerLab] seed {row['seed']!r} "
+                                f"xref: {', '.join((row.get('xref_functions') or [])[:5]) or 'static-only'}",
+                            )
+                            commented += 1
+                        except Exception as e:
+                            logger.debug("comment failed at %s: %s", addr, e)
+                if rename:
+                    for row in seeds:
+                        seed = row.get("seed", "")
+                        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{2,60}", seed):
+                            continue
+                        for fn_name in row.get("xref_functions", [])[:5]:
+                            try:
+                                for fn in fm.getFunctions(True):
+                                    if str(fn.getName()) == fn_name and fn_name.startswith("FUN_"):
+                                        fn.setName("CL_" + seed, SourceType.USER_DEFINED)
+                                        renamed.append(f"{fn_name} -> CL_{seed}")
+                                        break
+                            except Exception as e:
+                                logger.debug("rename failed for %s: %s", fn_name, e)
+    except Exception as e:
+        ghidra_error = str(e)[:300]
+        logger.debug("ghidra export failed: %s", e)
+
+    ida_lines = [
+        "# ClickerLab map import - run inside IDA (File > Script file).",
+        "# VAs verified before commenting: a row whose bytes do not contain the",
+        "# seed is SKIPPED (image may be rebased - silence beats wrong comments).",
+        "import ida_bytes",
+        f"ROWS = {json.dumps([[r.get('seed'), r.get('vas', [])[:3], (r.get('xref_functions') or [])[:5]] for r in va_rows])}",
+        "n = skipped = 0",
+        "for seed, vas, fns in ROWS:",
+        "    for va in vas:",
+        "        try:",
+        "            blob = ida_bytes.get_strlit_contents(va, -1, 0) or b''",
+        "        except Exception:",
+        "            blob = b''",
+        "        if seed.lower().encode() not in blob.lower():",
+        "            skipped += 1",
+        "            continue",
+        "        ida_bytes.set_cmt(va, f'[ClickerLab] {seed} <- {chr(44).join(fns)}', 0)",
+        "        n += 1",
+        "print(f'map_import: {len(ROWS)} seeds, {n} comments, {skipped} skipped (rebase guard)')",
+    ]
+    ida_script = sdir / "map_import_ida.py"
+    _atomic_write(ida_script, "\n".join(ida_lines) + "\n")
+    msg = (
+        f"Export: {commented} Ghidra plate comments, {len(renamed)} renames, "
+        f"IDA script at clicker/sessions/{session_id}/map_import_ida.py."
+    )
+    if ghidra_error:
+        msg += f" Ghidra live export failed (IDA script still written): {ghidra_error}"
+    _slog(sdir, "exported", msg)
+    return {
+        "success": True,
+        "run_id": run_id,
+        "session_id": session_id,
+        "ghidra_comments": commented,
+        "ghidra_renames": renamed,
+        "ghidra_error": ghidra_error,
+        "ida_script": f"clicker/sessions/{session_id}/map_import_ida.py",
         "message": msg,
     }
 
@@ -1246,7 +1522,7 @@ def _run_rip(
     visited: set[str] = set()
     step = 0
     watch = [Path(p) for p in state.get("watch_dirs", [])]
-    pass_baseline = snapshot_files(watch)
+    pass_baseline, _ = snapshot_files(watch)
     while step < state["step_cap"]:
         _cancelled(cancel, deadline)
         if not _target_alive(state):
@@ -1264,11 +1540,16 @@ def _run_rip(
         menus_seen = menus_opened = 0
         progressed = False
         for w in windows:
+            _cancelled(cancel, deadline)
+            if not _target_alive(state):
+                _slog(sdir, "target_exited", "Target died mid menu walk - ending the pass.")
+                break
             try:
                 menu = w.menu()
                 items = menu.items() if menu else []
                 menus_seen += len(items)
                 for item in items[:20]:
+                    _cancelled(cancel, deadline)
                     key = f"menu:{item.text()}"
                     if key in visited:
                         continue
@@ -1299,6 +1580,10 @@ def _run_rip(
         # Walk invokable / expandable / selectable controls, cheapest first.
         try:
             for w in windows:
+                _cancelled(cancel, deadline)
+                if not _target_alive(state):
+                    _slog(sdir, "target_exited", "Target died mid control walk - ending the pass.")
+                    break
                 for d in w.descendants():
                     _cancelled(cancel, deadline)
                     if step >= state["step_cap"]:
@@ -1341,6 +1626,9 @@ def _run_rip(
         try:
             for w in windows:
                 _cancelled(cancel, deadline)
+                if not _target_alive(state):
+                    _slog(sdir, "target_exited", "Target died mid canvas walk - ending the pass.")
+                    break
                 if step >= state["step_cap"]:
                     break
                 try:
@@ -1363,8 +1651,9 @@ def _run_rip(
         coverage["nodes_visited"] = len(visited)
         state["coverage"] = dict(coverage)
         _save_session(sdir, state)
-        pass_now = snapshot_files(watch)
+        pass_now, pass_trunc = snapshot_files(watch)
         pass_files = diff_files(pass_baseline, pass_now)
+        pass_files["truncated"] = pass_trunc
         pass_baseline = pass_now
         jlog(sdir, {"kind": "rip_pass", "step": step, "visited": len(visited), "file_diff": pass_files})
         _slog(sdir, "rip_pass", f"step={step} visited={len(visited)} menus={menus_opened}")
@@ -1401,7 +1690,7 @@ def _run_tour(
     results = []
     step = 0
     watch = [Path(p) for p in state.get("watch_dirs", [])]
-    file_before = snapshot_files(watch)
+    file_before, _ = snapshot_files(watch)
     for tstep in steps:
         _cancelled(cancel, deadline)
         if step >= state["step_cap"]:
@@ -1429,8 +1718,9 @@ def _run_tour(
             if shot is not None:
                 ocr_text = ocr_image(shot)
             clip = read_clipboard_text()
-            file_now = snapshot_files(watch)
+            file_now, file_trunc = snapshot_files(watch)
             file_diff = diff_files(file_before, file_now)
+            file_diff["truncated"] = file_trunc
             file_before = file_now
             if expect:
                 try:
@@ -1448,7 +1738,7 @@ def _run_tour(
             "shot": shot.name if shot else None,
             "ocr_text": ocr_text[:2000],
             "clipboard": clip[:500],
-            "file_diff": {k: v[:20] for k, v in file_diff.items()},
+            "file_diff": {k: (v[:20] if isinstance(v, list) else v) for k, v in file_diff.items()},
         }
         results.append(record)
         jlog(sdir, {"kind": "tour_step", **record})
