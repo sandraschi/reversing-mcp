@@ -1,7 +1,7 @@
 import {
   Book,
+  ChevronDown,
   Cpu,
-  ExternalLink,
   FileQuestion,
   HelpCircle,
   Network,
@@ -9,9 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getApiBase } from "@/common/api";
-
-const REPO = "https://github.com/sandraschi/reversing-mcp";
-const DOC = (name: string) => `${REPO}/blob/master/docs/${name}`;
+import { Markdown } from "@/components/Markdown";
 
 type HelpTab =
   | "overview"
@@ -123,17 +121,56 @@ function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
   );
 }
 
+/**
+ * In-app doc viewer: fetches docs/*.md from the backend (/api/docs/{name})
+ * and renders inline. Guide links never leave the app for GitHub - the
+ * descriptions live in docs/, this only opens them where you stand.
+ */
 function DocLink({ file, label }: { file: string; label?: string }) {
+  const [openFile, setOpenFile] = useState<string | null>(null);
+  const [content, setContent] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async (f: string) => {
+    setOpenFile(f);
+    setContent(null);
+    setError(null);
+    try {
+      const d = await fetch(`${getApiBase()}/api/docs/${f}`).then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)),
+      );
+      if (d.success) setContent(d.content);
+      else setError(d.error ?? "Could not load doc");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load doc");
+    }
+  };
+
   return (
-    <a
-      href={DOC(file)}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex items-center gap-1 text-emerald-400 hover:underline"
-    >
-      {label ?? file}
-      <ExternalLink className="h-3 w-3" />
-    </a>
+    <span className="inline">
+      <button
+        type="button"
+        onClick={() => (openFile ? setOpenFile(null) : load(file))}
+        className="inline-flex items-center gap-1 text-emerald-400 hover:underline"
+        data-testid={`doclink-${file}`}
+      >
+        {label ?? file}
+        <ChevronDown
+          className={`h-3 w-3 transition-transform ${openFile ? "rotate-180" : ""}`}
+        />
+      </button>
+      {openFile && (
+        <span className="block mt-2 rounded-lg border border-slate-800 bg-slate-900/60 p-4 max-h-96 overflow-y-auto">
+          {error && <span className="text-sm text-red-400">{error}</span>}
+          {!error && content === null && (
+            <span className="text-sm text-slate-300">Loading {openFile}…</span>
+          )}
+          {content !== null && (
+            <Markdown text={content} onLocalDoc={(f) => load(f)} />
+          )}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -234,6 +271,8 @@ type EngineDef = {
   name: string;
   probe?: string; // key in /tools/status "engines"
   cost: string;
+  /** What the tool IS and DOES (several lines) - the description lives here, not on GitHub. */
+  blurb: string;
   wiring: string;
   status: string;
   doc: string;
@@ -246,6 +285,11 @@ const ENGINES: EngineDef[] = [
     name: "Ghidra",
     probe: "ghidra",
     cost: "free",
+    blurb:
+      "Ghidra is the NSA's free, open-source reverse-engineering framework: disassembler, decompiler, scriptable analysis, project database. " +
+      "It turns machine code back into readable C-like pseudocode and maps every cross-reference. " +
+      "Here it runs two ways: headless analyzeHeadless for batch jobs (function lists, batch decompile), and the ReVa bridge for interactive work (rename a function, ask for callers). " +
+      "If you do one deep thing to a native binary, it happens in Ghidra.",
     wiring:
       "Headless analyzeHeadless; ReVa MCP bridge on :8089 for interactive work",
     status: "Implemented",
@@ -258,6 +302,11 @@ const ENGINES: EngineDef[] = [
     name: "REA",
     probe: "rea",
     cost: "free (MIT)",
+    blurb:
+      "REA (Reverse Engineer Anything) is an agent-native sidecar: an MCP server plus CLI that opens targets Ghidra alone fumbles — JS/Electron bundles, .NET assemblies, APKs, firmware images, websites. " +
+      "For native code it delegates to a provider (Hopper, Ghidra, IDA) and returns evidence with excerpts. " +
+      "Think of it as the specialist you call when the target is not a plain PE: it picks the right tool and brings back receipts. " +
+      "Separate process (npx rea-agents); this repo shells out to it and truncates large outputs with snapshot hints.",
     wiring:
       "rea_investigate -> npx rea-agents (JS/Electron, .NET, APK, native via provider)",
     status: "Implemented",
@@ -268,6 +317,11 @@ const ENGINES: EngineDef[] = [
     id: "idr",
     name: "IDR",
     cost: "free",
+    blurb:
+      "IDR (Interactive Delphi Reconstructor) decompiles Delphi executables and recovers what generic disassemblers cannot: form layouts, class hierarchies, RTTI symbols, event handlers. " +
+      "Without it, Borland metadata looks like opaque blobs and every function is FUN_00xxxxxx; with it you get TTextReader.ReadLn. " +
+      "It is a manual GUI tool, not an API — open the target, recover structure, import the map into Ghidra. " +
+      "Mandatory reading for the Digibib5 mission (Delphi 7 target).",
     wiring: "Manual GUI; /api/v1/digibib/check-idr probes the install",
     status: "Probe only",
     doc: "IDR.md",
@@ -278,6 +332,11 @@ const ENGINES: EngineDef[] = [
     name: "radare2",
     probe: "r2",
     cost: "free",
+    blurb:
+      "radare2 is a free, scriptable command-line analysis framework: disassemble, list functions and imports, inspect headers, all from flags and one-letter commands. " +
+      "It is the fast, dependency-free complement to Ghidra — no project database, no JVM, answers in milliseconds. " +
+      "Here it runs as a subprocess (r2 -A -q -c i for info, afl for functions) and is the default backend of find_functions auto mode. " +
+      "Best first engine when Ghidra feels like bringing a mainframe.",
     wiring: "Subprocess r2 -A -q -c i / afl",
     status: "Implemented, unverified on dev host",
     doc: "RADARE2.md",
@@ -288,6 +347,11 @@ const ENGINES: EngineDef[] = [
     name: "binwalk",
     probe: "binwalk",
     cost: "free",
+    blurb:
+      "binwalk scans any file for embedded content: compressed streams, filesystems, images, executables hiding inside containers. " +
+      "It answers 'is this data file secretly an archive?' — directly relevant to Directmedia .DKI volumes, which may wrap known formats. " +
+      "This repo wires the signature scan only (binwalk -J, parsed as JSON); extraction (-e) is deliberately not wired. " +
+      "Note the v2/v3 flag split: if a scan returns only raw_output, the -J assumption broke — check binwalk --help first.",
     wiring: "Subprocess binwalk -J (signature scan)",
     status: "Implemented, unverified on dev host",
     doc: "BINWALK.md",
@@ -298,6 +362,11 @@ const ENGINES: EngineDef[] = [
     name: "IDA Pro / Home",
     probe: "ida",
     cost: "EUR 365+/yr",
+    blurb:
+      "IDA Pro is the commercial reference disassembler/decompiler (Hex-Rays): best-in-class decompilation, FLIRT signatures, IDAPython scripting, headless batch mode. " +
+      "This repo drives it headless (idat -A -S script) for analysis and function discovery, and gloms onto a running instance when one exists — licensing is your business, never checked. " +
+      "IDA Free cannot do headless (no IDAPython), so it is detected but not wired. " +
+      "Use it when Ghidra's output is ambiguous and a second decompiler opinion is worth more than the wait.",
     wiring:
       "Headless ida64.exe -A -S<script>; IDA Free cannot run it (no IDAPython)",
     status: "Implemented, never run against a real install",
@@ -308,6 +377,11 @@ const ENGINES: EngineDef[] = [
     id: "hopper",
     name: "Hopper",
     cost: "~USD 100",
+    blurb:
+      "Hopper is a commercial macOS/Linux disassembler with a fast pseudo-code decompiler and a beloved UI — the indie alternative to IDA for Apple platforms. " +
+      "There is no Windows build, so on this host it is reachable only as an REA provider name, never directly. " +
+      "On macOS/Linux it is REA's first-ranked native provider; pass provider=hopper or let auto-select find it. " +
+      "Do not buy it for a Windows-only setup.",
     wiring: "Only as an REA provider (provider=hopper)",
     status: "macOS/Linux only - not available on Windows",
     doc: "HOPPER.md",
@@ -319,6 +393,11 @@ const ENGINES: EngineDef[] = [
     name: "Detect It Easy",
     probe: "die",
     cost: "free",
+    blurb:
+      "Detect It Easy identifies what built a binary — compiler, linker, packer, protector, libraries — from signatures, in well under a second. " +
+      "It is the right first question before any disassembly: a Delphi 7 tag (like Digibib5's) sends you to IDR; a UPX tag sends you to unpack first. " +
+      "The packed flag (packer/protector/cryptor hit) gates the whole pipeline: packed means dynamic analysis, not static. " +
+      "Gym triage runs it automatically on every run.",
     wiring:
       'engine(operation="die") -> diec -j: compiler, linker, packer, libraries',
     status: "Implemented, verified",
@@ -331,6 +410,11 @@ const ENGINES: EngineDef[] = [
     name: "capa",
     probe: "capa",
     cost: "free",
+    blurb:
+      "capa (Mandiant) matches ~1,000 rules against a binary and reports what it can do: file writes, crypto, anti-VM checks — each with ATT&CK/MBC ids. " +
+      "For cloning, its output is a behaviour map: which capabilities exist and roughly where, before you read a single function. " +
+      "It is slow on real targets (Digibib5: 42 minutes, 96 rules incl. anti-VM flags that matter for the clicker-in-VM plan), so Gym triage budgets it and says so on timeout. " +
+      "Raw JSON is never returned whole; you get ranked rule rows.",
     wiring:
       'engine(operation="capa") -> capa -j with rules + signatures; Gym triage',
     status: "Implemented, verified - slow (~42 min on Digibib5)",
@@ -343,6 +427,11 @@ const ENGINES: EngineDef[] = [
     name: "Frida",
     probe: "frida",
     cost: "free",
+    blurb:
+      "Frida is a dynamic instrumentation toolkit: inject a JavaScript agent into a running process and hook functions, read arguments, dump buffers. " +
+      "Static analysis says what code could run; Frida shows what does — for Digibib5 the shortcut is hooking ReadFile filtered on .DKI paths and reading decoded text out of the buffers. " +
+      "It spawns or attaches (pid), so every call needs confirm=True and a trusted-or-VM target. " +
+      "Feeds Gym stage 2 oracle capture: what the original reads and writes.",
     wiring:
       'engine(operation="frida_trace" | "frida_script", confirm=True): spawn or attach, hook module!export',
     status: "Implemented, verified",
@@ -459,6 +548,7 @@ function WrappeeTab() {
           <H>{def.name}</H>
           <LiveBadge def={def} live={live} />
         </div>
+        <P>{def.blurb}</P>
         <Table
           head={["Field", "Value"]}
           rows={[
@@ -858,11 +948,8 @@ export function Help() {
         )}
       </header>
 
-      <div
-        className="border-b border-slate-800 overflow-x-auto"
-        data-testid="help-tabs"
-      >
-        <nav className="flex space-x-6 min-w-max">
+      <div className="border-b border-slate-800 pb-3" data-testid="help-tabs">
+        <nav className="flex flex-wrap gap-2">
           {TABS.map((tab) => {
             const Icon = TAB_ICONS[tab.id];
             const active = activeTab === tab.id;
@@ -871,20 +958,16 @@ export function Help() {
                 key={tab.id}
                 type="button"
                 data-testid={`help-tab-${tab.id}`}
+                title={tab.description}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-1 border-b-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+                className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-2 ${
                   active
-                    ? "border-emerald-500 text-white"
-                    : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600"
+                    ? "border-emerald-500 bg-emerald-500/10 text-white"
+                    : "border-slate-700 text-slate-400 hover:text-slate-200"
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                <span className="text-left">
-                  <span className="block">{tab.name}</span>
-                  <span className="block text-xs font-normal opacity-70">
-                    {tab.description}
-                  </span>
-                </span>
+                {tab.name}
               </button>
             );
           })}

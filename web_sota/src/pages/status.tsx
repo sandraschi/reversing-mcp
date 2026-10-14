@@ -11,6 +11,22 @@ type GhidraStatus = {
   bridge_running?: boolean;
   version?: string;
 };
+type ToolboxEntry = {
+  name?: string;
+  status?: string;
+  path?: string | null;
+  version?: string | null;
+  install?: string | null;
+  note?: string;
+  pid?: number | null;
+};
+type ToolboxStatus = {
+  success?: boolean;
+  tools?: Record<string, ToolboxEntry>;
+  ready?: number;
+  total?: number;
+  message?: string;
+};
 type RevaStatus = {
   success?: boolean;
   mcp_reva?: { available?: boolean; path?: string | null; install_hint?: string | null };
@@ -25,9 +41,11 @@ export function Status() {
   const [tools, setTools] = useState<ToolsStatus | null>(null);
   const [ghidra, setGhidra] = useState<GhidraStatus | null>(null);
   const [reva, setReva] = useState<RevaStatus | null>(null);
+  const [toolbox, setToolbox] = useState<ToolboxStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revaBusy, setRevaBusy] = useState(false);
+  const [installing, setInstalling] = useState<string | null>(null);
 
   const fetchStatus = () => {
     setLoading(true);
@@ -43,14 +61,36 @@ export function Status() {
       fetch(`${base}/api/v1/reva`)
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
+      fetch(`${base}/api/v1/toolbox`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
     ])
-      .then(([toolsRes, ghidraRes, revaRes]) => {
+      .then(([toolsRes, ghidraRes, revaRes, toolboxRes]) => {
         setTools(toolsRes?.tools ?? null);
         setGhidra(ghidraRes ?? null);
         setReva(revaRes ?? null);
+        setToolbox(toolboxRes ?? null);
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
+  };
+
+  const toolboxInstall = async (name: string) => {
+    setInstalling(name);
+    setError(null);
+    try {
+      const d = await fetch(`${getApiBase()}/api/v1/toolbox/install`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      }).then((r) => r.json());
+      if (d.success === false) throw new Error(d.error ?? `Install ${name} failed`);
+      fetchStatus();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `Install ${name} failed`);
+    } finally {
+      setInstalling(null);
+    }
   };
 
   const revaStart = async (mode: string) => {
@@ -205,6 +245,80 @@ export function Status() {
             <p className="text-slate-300 text-sm">
               Could not load Ghidra status
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card
+        className="border-slate-800 bg-slate-950/50"
+        data-testid="status-toolbox"
+      >
+        <CardHeader>
+          <CardTitle className="text-white">
+            Toolbox{" "}
+            {toolbox && (
+              <span className="text-sm font-normal text-slate-300">
+                ({toolbox.ready}/{toolbox.total} ready — auto-discovered, no env edits)
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {toolbox?.tools ? (
+            <div className="space-y-1">
+              {Object.entries(toolbox.tools).map(([name, t]) => (
+                <div
+                  key={name}
+                  className="flex items-center justify-between py-1.5 border-b border-slate-800/50 last:border-0"
+                  data-testid={`toolbox-row-${name}`}
+                >
+                  <div className="min-w-0">
+                    <span className="text-slate-200 font-mono text-sm">{name}</span>
+                    {t.version && (
+                      <span className="text-slate-300 text-sm"> · {t.version}</span>
+                    )}
+                    {t.pid != null && (
+                      <span className="text-slate-300 text-sm"> · pid {t.pid} (attached)</span>
+                    )}
+                    {t.note && (
+                      <p className="text-slate-300 text-sm truncate" title={t.note}>
+                        {t.note}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {t.status === "ready" ? (
+                      <Badge className="bg-emerald-900/50 text-emerald-400 border-emerald-700">
+                        <CheckCircle className="h-3 w-3 mr-1" /> Ready
+                      </Badge>
+                    ) : t.status === "platform_blocked" ? (
+                      <Badge variant="secondary">N/A here</Badge>
+                    ) : (
+                      <>
+                        <Badge variant="secondary">{t.status ?? "unknown"}</Badge>
+                        {t.install &&
+                          (t.install.startsWith("winget:") ||
+                            t.install.startsWith("github:") ||
+                            t.install.startsWith("pip:")) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => toolboxInstall(name)}
+                              disabled={installing !== null}
+                              className="border-slate-700 disabled:opacity-40"
+                              data-testid={`toolbox-install-${name}`}
+                            >
+                              {installing === name ? "Installing…" : "Install"}
+                            </Button>
+                          )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-300 text-sm">Could not load toolbox inventory</p>
           )}
         </CardContent>
       </Card>
