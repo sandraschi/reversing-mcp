@@ -25,6 +25,131 @@ logger = get_logger("reversing_mcp.analyzers")
 IDA_SEARCH_ROOTS = [Path(r"C:\Program Files"), Path(r"C:\Program Files (x86)")]
 IDA_EXE_PREFERENCE = ("idat64.exe", "idat.exe", "ida64.exe", "ida.exe")
 
+_JVM_LOCK = None  # lazy threading.RLock (import threading only when needed)
+_JVM_STARTED = False
+
+
+def _ensure_jvm() -> Path | None:
+    """Start the PyGhidra JVM once per process. Returns install dir or None."""
+    global _JVM_STARTED
+    import threading
+
+    global _JVM_LOCK
+    if _JVM_LOCK is None:
+        _JVM_LOCK = threading.RLock()
+    with _JVM_LOCK:
+        if _JVM_STARTED:
+            return None
+        from .toolbox import _ghidra_candidates
+
+        def _vkey(p: Path) -> tuple[int, ...]:
+            m = re.search(r"ghidra_(\d+)\.(\d+)\.(\d+)_PUBLIC", str(p), re.IGNORECASE)
+            return tuple(int(g) for g in m.groups()) if m else (0,)
+
+        cands = sorted((c for c in _ghidra_candidates() if c.is_dir()), key=_vkey, reverse=True)
+        install_dir = cands[0] if cands else None
+        import pyghidra
+
+        if install_dir is not None:
+            pyghidra.start(install_dir=install_dir)
+        else:
+            pyghidra.start()
+        _JVM_STARTED = True
+        return install_dir
+
+
+def ghidra_inventory(
+    file_path: str, max_strings: int = 2000, max_xrefs_per_string: int = 20, analyze: bool = True
+) -> dict[str, Any]:
+    """Functions + defined strings + string→function xrefs via PyGhidra.
+
+    Ghidra 12 dropped the bundled Jython interpreter, so the legacy
+    ``analyzeHeadless + .py postScript`` path is dead for Python scripts;
+    this is the supported replacement (same JVM, real Python 3 via JPype).
+    Never raises: failures come back as ``{"success": False, ...}``.
+    """
+    try:
+        _ensure_jvm()
+        import tempfile
+
+        import pyghidra
+
+        functions: list[dict[str, Any]] = []
+        strings: list[dict[str, Any]] = []
+        xrefs: dict[str, list[str]] = {}
+        # Never let Ghidra create its project next to the target (System32 is
+        # not writable): dedicated temp project location per call.
+        with tempfile.TemporaryDirectory(prefix="ghidra-inv-") as proj_dir:
+            with pyghidra.open_program(str(file_path), project_location=proj_dir, analyze=analyze) as flat_api:
+                program = flat_api.getCurrentProgram()
+                fm = program.getFunctionManager()
+                for fn in fm.getFunctions(True):
+                    try:
+                        functions.append(
+                            {
+                                "name": str(fn.getName()),
+                                "address": hex(int(fn.getEntryPoint().getOffset())),
+                                "size": int(fn.getBody().getNumAddresses()),
+                                "tool": "ghidra",
+                            }
+                        )
+                    except Exception as e:
+                        logger.debug("function row failed: %s", e)
+                        continue
+                refman = program.getReferenceManager()
+                listing = program.getListing()
+                count = 0
+                for data in listing.getDefinedData(True):
+                    if count >= max_strings:
+                        break
+                    try:
+                        dtype = str(data.getDataType().getName()).lower()
+                    except Exception as e:
+                        logger.debug("datatype probe failed: %s", e)
+                        continue
+                    if dtype not in ("string", "unicode", "utf8", "utf16"):
+                        continue
+                    try:
+                        value = str(data.getValue())
+                        addr = data.getAddress()
+                    except Exception as e:
+                        logger.debug("string read failed: %s", e)
+                        continue
+                    if len(value) < 4:
+                        continue
+                    key = hex(int(addr.getOffset()))
+                    strings.append({"address": key, "value": value[:400]})
+                    count += 1
+                    try:
+                        callers: list[str] = []
+                        for ref in refman.getReferencesTo(addr):
+                            if len(callers) >= max_xrefs_per_string:
+                                break
+                            try:
+                                fn = fm.getFunctionContaining(ref.getFromAddress())
+                                if fn is not None:
+                                    callers.append(str(fn.getName()))
+                            except Exception as e:
+                                logger.debug("caller resolve failed: %s", e)
+                                continue
+                        if callers:
+                            xrefs[key] = sorted(set(callers))
+                    except Exception as e:
+                        logger.debug("xref walk failed: %s", e)
+        return {
+            "success": True,
+            "program": Path(file_path).name,
+            "functions": functions,
+            "function_count": len(functions),
+            "strings": strings,
+            "string_count": len(strings),
+            "xrefs": xrefs,
+            "message": f"Ghidra inventory: {len(functions)} functions, {len(strings)} strings, {len(xrefs)} xref'd.",
+        }
+    except Exception as e:
+        logger.debug("ghidra inventory failed: %s", e)
+        return {"success": False, "error": str(e)[:500]}
+
 
 class StringResult(BaseModel):
     """String extraction result"""
@@ -118,21 +243,34 @@ class BinaryAnalyzer:
         # 1. GHIDRA_HOME (or GHIDRA_INSTALL_DIR) - explicit, recommended
         for env_key in ("GHIDRA_HOME", "GHIDRA_INSTALL_DIR"):
             val = os.environ.get(env_key)
-            if val:
-                base = Path(val).resolve()
-                if base.is_dir():
-                    bat = base / "ghidraRun.bat"
+            if not val:
+                continue
+            base = Path(val).resolve()
+            if not base.is_dir():
+                continue
+            for bat in (base / "ghidraRun.bat", base / "support" / "ghidraRun.bat"):
+                if bat.exists():
+                    ghidra_paths.append(bat)
+                    break
+            else:
+                # Allow base to be repo root with ghidra_*_PUBLIC child
+                for child in base.iterdir():
+                    if child.is_dir() and "ghidra" in child.name.lower() and "PUBLIC" in child.name:
+                        for bat in (child / "ghidraRun.bat", child / "support" / "ghidraRun.bat"):
+                            if bat.exists():
+                                ghidra_paths.append(bat)
+                                break
+            if ghidra_paths:
+                break
+        # 1b. Fleet tools dir (no env needed)
+        try:
+            for child in sorted(Path(r"D:\Dev\tools").glob("ghidra_*_PUBLIC")):
+                for bat in (child / "ghidraRun.bat", child / "support" / "ghidraRun.bat"):
                     if bat.exists():
                         ghidra_paths.append(bat)
                         break
-                    # Allow base to be repo root with ghidra_*_PUBLIC child
-                    for child in base.iterdir():
-                        if child.is_dir() and "ghidra" in child.name.lower() and "PUBLIC" in child.name:
-                            run_bat = child / "ghidraRun.bat"
-                            if run_bat.exists():
-                                ghidra_paths.append(run_bat)
-                                break
-                break
+        except OSError as e:
+            logger.debug("fleet ghidra scan failed: %s", e)
 
         # 2. Common installation directories (avoid temp; prefer stable install)
         ghidra_paths.extend(self._scan_common_ghidra_dirs())
@@ -163,7 +301,15 @@ class BinaryAnalyzer:
         if not unique_paths:
             return
 
-        # Prefer first (env or stable path); temp only if nothing else
+        # Prefer the highest version (a stale GHIDRA_INSTALL_DIR must not pin
+        # an old install when the fleet tools dir holds a newer one).
+        def _vkey(p: Path) -> tuple[int, ...]:
+            m = re.search(r"ghidra_(\d+)\.(\d+)\.(\d+)_PUBLIC", str(p), re.IGNORECASE)
+            if m:
+                return tuple(int(g) for g in m.groups())
+            return (0,)
+
+        unique_paths.sort(key=_vkey, reverse=True)
         path = unique_paths[0]
         tool_info["available"] = True
         tool_info["path"] = str(path)
@@ -618,17 +764,18 @@ class BinaryAnalyzer:
                             )
                     return results
 
-            # Fallback: manual string extraction
+            # Fallback: manual string extraction. Every requested encoding
+            # runs (deduped): stopping at the first success hides all wide
+            # strings, which is most of a Win32/Delphi binary's UI text.
             with Path(file_path).open("rb") as f:
                 data = f.read()
 
+                seen: set[str] = set()
                 for encoding in encodings:
-                    manual_results = self._extract_manual(data, encoding, min_length)
-                    if manual_results:
-                        results.extend(manual_results)
-                        # Only take the first successful encoding for simplicity
-                        # or to avoid duplicates across similar encodings
-                        break
+                    for hit in self._extract_manual(data, encoding, min_length):
+                        if hit.string not in seen:
+                            seen.add(hit.string)
+                            results.append(hit)
 
         except (subprocess.SubprocessError, OSError):
             logger.exception("Subprocess error extracting strings")
@@ -762,9 +909,21 @@ class BinaryAnalyzer:
         return entropy
 
     def find_functions(self, file_path: str, tool: str = "auto", auto_analyze: bool = True) -> list[dict[str, Any]]:
-        """Find functions in binary"""
+        """Find functions in binary.
 
-        if tool == "r2" or tool == "auto":
+        `auto` walks r2 -> ghidra -> ida and returns the first success; every
+        miss is recorded honestly instead of failing on the first absent tool.
+        """
+
+        if tool == "auto":
+            tried: list[str] = []
+            for candidate in ("r2", "ghidra", "ida"):
+                out = self.find_functions(file_path, tool=candidate, auto_analyze=auto_analyze)
+                if out and not (len(out) == 1 and isinstance(out[0], dict) and "error" in out[0]):
+                    return out
+                tried.append(candidate)
+            return [{"error": f"No function engine available (tried {', '.join(tried)}). See docs/ENGINES.md."}]
+        if tool == "r2":
             # r2 logic doesn't use auto_analyze (yet)
             return self._find_functions_r2(file_path)
         if tool == "ida":
@@ -816,11 +975,21 @@ class BinaryAnalyzer:
         return [{"error": result.get("error", "IDA function analysis failed")}]
 
     def _find_functions_ghidra(self, file_path: str, auto_analyze: bool = True) -> list[dict[str, Any]]:
-        """Find functions using Ghidra headless analysis"""
+        """Find functions using Ghidra (PyGhidra first, legacy .bat second).
+
+        The legacy analyzeHeadless + .py postScript path is dead on Ghidra 12
+        (bundled Jython removed); it stays as a fallback only when pyghidra
+        itself is uninstallable.
+        """
         try:
             # Ensure Ghidra is available
             if not (self.tools_cache or {}).get("ghidra", {}).get("available"):
                 return [{"error": "Ghidra not available"}]
+
+            inv = ghidra_inventory(file_path, analyze=auto_analyze)
+            if inv.get("success") and inv.get("functions"):
+                return inv["functions"]
+            legacy_note = inv.get("error", "pyghidra inventory failed")
 
             # Run Ghidra analysis and extract functions from results
             analysis_result = self._analyze_with_ghidra_headless(file_path, auto_analyze=auto_analyze)
@@ -839,7 +1008,11 @@ class BinaryAnalyzer:
                         }
                     )
                 return functions
-            return [{"error": analysis_result.get("error", "Ghidra analysis failed")}]
+            return [
+                {
+                    "error": f"Ghidra analysis failed ({analysis_result.get('error', 'unknown')}; pyghidra: {legacy_note[:160]})"
+                }
+            ]
 
         except (subprocess.SubprocessError, OSError) as e:
             return [{"error": str(e)}]

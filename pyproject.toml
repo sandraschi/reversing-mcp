@@ -75,6 +75,7 @@ ignore = ["S101", "B008", "S106", "RUF012", "S603", "S607", "S324", "E402", "E50
 # CLI scripts report to stdout by design (exit codes carry status).
 "scripts/tour/*.py" = ["T201"]
 "scripts/cua_tour.py" = ["T201"]
+"scripts/build_calib.py" = ["T201"]
 
 [tool.ruff.format]
 quote-style = "double"

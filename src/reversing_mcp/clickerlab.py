@@ -468,7 +468,7 @@ def mine_features(strings: list[str]) -> list[dict[str, Any]]:
         src = None
         if any(w in low for w in _HELP_WORDS):
             src = "help"
-        elif re.search(r"[A-Z][a-z]+(\s+[A-Z][a-z]+){0,3}(\.\.\.)?$", s) and any(
+        elif re.search(r"[A-Z][a-z]+(\s+[A-Za-z][a-z]+){0,3}(\.\.\.)?$", s) and any(
             v in low for v in (*_FILE_IO_VERBS, "edit", "view", "tools", "window")
         ):
             src = "menu"
@@ -867,27 +867,37 @@ def correlate_session(run_id: str, session_id: str, with_rea: bool = True, max_s
     seeds = [w for w, _ in ranked if w.lower() in static_low][:max_seeds]
     runtime_only = [w for w, _ in ranked[:max_seeds] if w.lower() not in static_low]
 
-    # 3. Static refs per seed: offsets + function inventory + REA native_search.
+    # 3. Static refs per seed: offsets + Ghidra inventory (functions + string
+    #    xrefs) + REA native_search. A seed referenced FROM named functions is
+    #    mapped; bare offsets are ambiguous; absence is absence.
     try:
-        funcs = analyzer.find_functions(target, tool="auto")
-        funcs_ok = not (
-            isinstance(funcs, list) and len(funcs) == 1 and isinstance(funcs[0], dict) and "error" in funcs[0]
-        )
+        from .analyzers import ghidra_inventory
+
+        inv = ghidra_inventory(target)
+        funcs_ok = bool(inv.get("success"))
+        func_names = " ".join(str(f.get("name", "")) for f in inv.get("functions", [])).lower()
+        xref_funcs: dict[str, list[str]] = {}
+        for addr, callers in (inv.get("xrefs") or {}).items():
+            xref_funcs[addr] = callers
+        inv_strings = {s.get("value", ""): s.get("address", "") for s in inv.get("strings", [])}
     except Exception as e:
-        logger.debug("function inventory failed: %s", e)
-        funcs, funcs_ok = [], False
-    try:
-        func_names = " ".join(
-            str(f.get("name", "")) for f in (funcs if isinstance(funcs, list) else []) if isinstance(f, dict)
-        ).lower()
-    except Exception:
-        func_names = ""
+        logger.debug("ghidra inventory failed: %s", e)
+        funcs_ok, func_names, xref_funcs, inv_strings = False, "", {}, {}
 
     rows = []
     rea_used = 0
     for seed in seeds:
         offsets = [m.start() for m in re.finditer(re.escape(seed), static_blob)][:10]
         in_funcs = seed.lower() in func_names
+        xref_to = sorted(
+            {
+                fn
+                for addr, fns in xref_funcs.items()
+                for fn in fns
+                if seed.lower() in (inv_strings.get(addr, "") or "").lower()
+            }
+            | {fn for v, a in inv_strings.items() if seed.lower() in v.lower() for fn in xref_funcs.get(a, [])}
+        )
         rea_note = "REA skipped (with_rea=False or budget spent)."
         if with_rea and rea_used < 6:
             from . import rea_bridge
@@ -901,7 +911,7 @@ def correlate_session(run_id: str, session_id: str, with_rea: bool = True, max_s
                 rea_note = f"REA unavailable: {(res.get('error') or '')[:160]}"
         verdict = (
             "mapped"
-            if (offsets and (in_funcs or "REA answered" in rea_note))
+            if (offsets and (xref_to or in_funcs or "REA answered" in rea_note))
             else ("ambiguous" if offsets else "no static trace")
         )
         rows.append(
@@ -910,6 +920,7 @@ def correlate_session(run_id: str, session_id: str, with_rea: bool = True, max_s
                 "offsets": offsets,
                 "offset_count": len(offsets),
                 "in_function_names": in_funcs,
+                "xref_functions": xref_to[:10],
                 "rea": rea_note,
                 "verdict": verdict,
             }
@@ -943,6 +954,7 @@ def correlate_session(run_id: str, session_id: str, with_rea: bool = True, max_s
             f"## {r['seed']} - {r['verdict']}",
             f"- Static offsets: {r['offsets'][:5]}{'...' if r['offset_count'] > 5 else ''} ({r['offset_count']} hits)",
             f"- In function names: {r['in_function_names']}",
+            f"- Xref'd from: {', '.join(r.get('xref_functions', [])[:10]) or '(none)'}",
             f"- {r['rea']}",
             "",
         ]
