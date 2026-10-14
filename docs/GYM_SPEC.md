@@ -1,6 +1,6 @@
 # Reversing Gym (spec)
 
-**Status: spec, not built.** Written 2026-10-12. Build order in section 9.
+**Status: G1 + G1b + G3 built; G2/G4/G5 still spec.** Written 2026-10-12. Build order in section 9.
 
 A webapp page where you hand in a Windows app and a few of its data files, and a staged
 pipeline produces: a compatibility assessment, a behavioral map of the UI, a rebuilt UI,
@@ -156,9 +156,9 @@ right answer to check the pipeline against.
 | Phase | Delivers | Needs |
 |-------|----------|-------|
 | G1 | Page + job runner + stages 0, 1, 4 (triage-only assessment) | DiE, capa wrappers (done with phase 3 engines) |
-| G1b | Stage 1b elicitation: format-spec stubs, help-file mining, generated tour-YAML draft | strings + help parser + web search; no VM needed |
+| G1b | Stage 1b elicitation: format-spec stubs, help-file mining, generated tour-YAML draft | BUILT (`clickerlab.elicit_run`, `/clickerlab` page); web-search prior art still operator step |
 | G2 | Stage 2 oracle capture | Frida wrapper, VM plumbing via virtualization-mcp |
-| G3 | Stage 3 clicker tour | Tier 3 live tour runner (pywinauto driver) |
+| G3 | Stage 3 clicker tour | BUILT (B1 rip + B2 tour driver, `uv sync --extra clicker`); B3 OCR + B4 LLM layers open |
 | G4 | Stage 6 UI build | Tauri template + codegen from capture bundle |
 | G5 | Stages 7-8 round trip + compare | clone CLI hook, recovered format spec |
 

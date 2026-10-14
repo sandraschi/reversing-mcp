@@ -1,7 +1,8 @@
 # Elicitation & Clicker Playbook (Gym stages 1b + 3, detailed)
 
 Companion to `docs/GYM_SPEC.md` §§2b–2c. This file is the *how*; the spec holds the
-*what* and the gates. Status: playbook for G1b/G3 builds — not yet implemented.
+*what* and the gates. Status: G1b elicitation + G3 clicker built (`src/reversing_mcp/clickerlab.py`,
+`/clickerlab` page, `gym` ops `elicit`/`clicker_*`); B3 OCR + B4 LLM-guidance layers still open.
 
 ---
 
