@@ -8,9 +8,10 @@
 - [AGENTS.md](AGENTS.md): Agent context
 - [Install](INSTALL.md): Installation guide
 - [Ghidra Plugin](GHIDRA_PLUGIN_SETUP.md): Ghidra setup
+- [Full Documentation](llms-full.txt): Complete LLM context and tool reference
 - [PRD](PRD.md): Vision - agent-driven feature-to-code-map platform
 
-## Tools (17)
+## Tools (20)
 - [Server](src/reversing_mcp/server.py): FastMCP server with all tools
 - [Analyzers](src/reversing_mcp/analyzers.py): Binary analysis, PE parsing, entropy, string
 - [REA bridge](src/reversing_mcp/rea_bridge.py): REA sidecar subprocess bridge
@@ -34,6 +35,8 @@
 | `decode_dki_file` | Decode DKI file format |
 | `analyze_directmedia_file` | Directmedia format analysis |
 | `decompress_directmedia_library` | Decompress DM library archives |
+| `reva` | Manage ReVa lifecycle (status, start headless/GUI, stop) |
+| `toolbox` | Toolchain inventory probe, package installation, and policies |
 | `shutdown` | Graceful server shutdown |
 | `show_tools_card` | Engine inventory as in-chat Prefab card |
 | `gym` | Cloning-run lifecycle (start/status/advance/stop/list) |
