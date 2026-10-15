@@ -245,7 +245,7 @@ def snapshot_files(dirs: list[Path], max_files: int = 20000) -> tuple[dict[str, 
     return snap, truncated
 
 
-def diff_files(before: dict[str, dict[str, int]], after: dict[str, dict[str, int]]) -> dict[str, list[str]]:
+def diff_files(before: dict[str, dict[str, int]], after: dict[str, dict[str, int]]) -> dict[str, Any]:
     """Added / modified / removed files between two snapshots."""
     added = sorted(p for p in after if p not in before)
     removed = sorted(p for p in before if p not in after)
@@ -1146,8 +1146,8 @@ def export_map(run_id: str, session_id: str, rename: bool = False) -> dict[str, 
         import tempfile
 
         import pyghidra
-        from ghidra.program.model.listing import CodeUnit
-        from ghidra.program.model.symbol import SourceType
+        from ghidra.program.model.listing import CodeUnit  # type: ignore[reportMissingImports]
+        from ghidra.program.model.symbol import SourceType  # type: ignore[reportMissingImports]
 
         with tempfile.TemporaryDirectory(prefix="ghidra-export-") as proj_dir:
             # analyze=True: comments need defined strings/code, which only
@@ -1310,6 +1310,8 @@ def _session_worker(sdir: Path, state: dict[str, Any], token: str, cancel: threa
         "named_skips": 0,
     }
     reg_before: Path | None = None
+    ok: bool = False
+    msg: str = ""
     try:
         warn_operator(sdir, state["mode"], state["target"])
         watch = [Path(os.environ.get("TEMP", r"C:\Windows\Temp"))]
@@ -1706,7 +1708,7 @@ def _run_tour(
         shot: Path | None = None
         ocr_text = ""
         clip = ""
-        file_diff: dict[str, list[str]] = {"added": [], "modified": [], "removed": []}
+        file_diff: dict[str, Any] = {"added": [], "modified": [], "removed": []}
         ok_expect = True
         if not gate["allowed"]:
             outcome = f"named skip {gate['skip_name']}: {gate['reason']}"

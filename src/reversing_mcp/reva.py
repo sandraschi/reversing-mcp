@@ -29,7 +29,7 @@ from .logging_config import get_logger
 logger = get_logger("reversing_mcp.reva")
 
 _LOCK = threading.RLock()
-_PROC: subprocess.Popen[str] | None = None
+_PROC: subprocess.Popen[Any] | None = None
 _MODE: str | None = None
 
 
@@ -154,7 +154,7 @@ def start(mode: str = "headless", confirm: bool = False, bridge_url: str = "") -
         except OSError as e:
             _PROC, _MODE = None, None
             return {"success": False, "error": f"Failed to spawn {' '.join(cmd)}: {e}"}
-        pid = _PROC.pid
+        pid = _PROC.pid if _PROC is not None else None
     logger.info("ReVa started (mode=%s, pid=%s)", mode, pid)
     return {"success": True, "mode": mode, "pid": pid, "status": "starting", "message": note}
 

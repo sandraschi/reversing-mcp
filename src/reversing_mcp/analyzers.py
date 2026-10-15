@@ -48,6 +48,16 @@ def _ensure_jvm() -> Path | None:
 
         cands = sorted((c for c in _ghidra_candidates() if c.is_dir()), key=_vkey, reverse=True)
         install_dir = cands[0] if cands else None
+        # Ghidra 12 officially supports Java 17-21 LTS; Java 25 breaks JPype/Felix reflection
+        adoptium = Path(r"C:\Program Files\Eclipse Adoptium")
+        if adoptium.is_dir():
+            for jdk in sorted(adoptium.glob("jdk-17*"), reverse=True) + sorted(adoptium.glob("jdk-21*"), reverse=True):
+                if jdk.is_dir() and (jdk / "bin" / "java.exe").is_file():
+                    os.environ["JAVA_HOME"] = str(jdk)
+                    os.environ["PATH"] = f"{jdk / 'bin'};{os.environ.get('PATH', '')}"
+                    break
+        if "_JAVA_OPTIONS" not in os.environ and "JAVA_TOOL_OPTIONS" not in os.environ:
+            os.environ["_JAVA_OPTIONS"] = "-Xmx1024m -XX:+UseSerialGC"
         import pyghidra
 
         if install_dir is not None:

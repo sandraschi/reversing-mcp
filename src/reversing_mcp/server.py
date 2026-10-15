@@ -732,7 +732,12 @@ async def rea_investigate(
 
 
 @mcp.tool(annotations=_READ_ONLY)
-async def digibib_research_snapshot(exe_path: str | None = None) -> dict[str, Any]:
+async def digibib_research_snapshot(
+    exe_path: Annotated[
+        str | None,
+        Field(description="Optional path to Digibib5.exe. If omitted, searches tests/fixtures and Program Files."),
+    ] = None,
+) -> dict[str, Any]:
     """
     DIGIBIB_RESEARCH_SNAPSHOT - Static research bundle for Digibib5.exe / Directmedia viewer work.
 
@@ -740,17 +745,13 @@ async def digibib_research_snapshot(exe_path: str | None = None) -> dict[str, An
     file metadata, PE summary, entropy, and keyword-filtered strings (DKI, decompress, …)
     before interactive Ghidra/ReVa decompilation.
 
-    Args:
-        exe_path: Optional absolute path to Digibib5.exe. If omitted, uses repo fixture
-            tests/fixtures/exe files/Digibib5.exe then the standard Program Files install path.
+    ## Return Format
+    Dictionary with status, exe_path, file_info, directmedia_string_hits, counts, entropy, tools,
+    next_steps, viewer_roadmap; or error + paths_searched when not found.
 
-    Returns:
-        success, exe_path, file_info, directmedia_string_hits, counts, entropy, tools,
-        next_steps, viewer_roadmap; or error + paths_searched when not found.
-
-    Examples:
-        digibib_research_snapshot()
-        digibib_research_snapshot("D:\\\\Dev\\\\repos\\\\reversing-mcp\\\\tests\\\\fixtures\\\\exe files\\\\Digibib5.exe")
+    ## Examples
+    `digibib_research_snapshot()` -> research bundle for detected DigiBib5 install.
+    `digibib_research_snapshot("D:\\\\path\\\\to\\\\Digibib5.exe")` -> explicit target analysis.
     """
     resolved, tried = resolve_digibib_exe(exe_path)
     if resolved is None:
@@ -1013,16 +1014,19 @@ async def decompress_directmedia_library(
 
 
 @mcp.tool(annotations=_READ_ONLY)
-async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]:
+async def help(
+    level: Annotated[str, Field(description="Help detail level (basic, intermediate, advanced)")] = "basic",
+    topic: Annotated[str | None, Field(description="Optional specific topic to focus on")] = None,
+) -> dict[str, Any]:
     """
-    Get comprehensive help information about Reversing MCP tools and capabilities.
+    HELP - Get comprehensive help information about Reversing MCP tools and capabilities.
 
-    Args:
-        level: Help detail level ("basic", "intermediate", "advanced")
-        topic: Optional specific topic to focus on
+    ## Return Format
+    Dictionary with level, description, topic guidance, tool workflows, and related resources.
 
-    Returns:
-        Formatted help documentation
+    ## Examples
+    `help()` -> essential tools and quick start overview.
+    `help(level="advanced", topic="ghidra")` -> advanced Ghidra and headless integration workflows.
     """
 
     if level not in ["basic", "intermediate", "advanced"]:
@@ -1122,6 +1126,10 @@ async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]
                         "analyze_binary(..., ['ghidra']) may still use headless Ghidra when installed."
                     ),
                     "Directmedia Decompressor": "Legacy .DKI format reverse engineering",
+                    "Twin Methods": (
+                        "Synthesis of Classical Disassembly (White-Box) with CUA Clickthrough Tours (Black-Box) "
+                        "into Feature-to-Code Maps via ClickerLab / correlate_session."
+                    ),
                 },
                 "tool_detection": {
                     "automatic_discovery": "Scans common installation paths",
@@ -1232,17 +1240,62 @@ async def help(level: str = "basic", topic: str | None = None) -> dict[str, Any]
                 "tools": help_content.get("tool_categories", {}).get("binary_analysis", []),
                 "workflows": help_content.get("workflows", {}),
             }
+        if topic.lower() in ["twin", "twin_methods", "cua", "clickerlab", "architecture"]:
+            return {
+                "topic": "twin_methods",
+                "level": level,
+                "summary": "Synthesis of Conventional Disassembly (White-Box) + CUA Clickthrough (Black-Box).",
+                "white_box": {
+                    "engines": ["Ghidra (PyGhidra/ReVa)", "IDA Pro", "radare2", "Hopper", "capa", "DiE", "Frida"],
+                    "strengths": "Detailed structural inspection, CFGs, decompiled C syntax, string xrefs, API hooks.",
+                    "bottleneck": "Static Blindness: massive stripped binaries contain thousands of unlabeled subroutines without user-context anchors.",
+                },
+                "black_box": {
+                    "engines": ["pywinauto", "Tesseract OCR", "UIA Accessibility Tree"],
+                    "strengths": "Empirical end-to-end execution of user workflows, logging window states, OCR text, and file/registry diffs.",
+                    "bottleneck": "Dynamic Blindness: external observation reveals what happened, but not the internal decompilation or decoding logic.",
+                },
+                "correlation_bridge": {
+                    "engine": "ClickerLab correlate_session (Gym Stage 3)",
+                    "synthesis": "Correlates runtime OCR tokens and UI events with static strings and xrefs to generate Ghidra plate comments and IDA scripts (map_import_ida.py).",
+                    "spec": "docs/CUA_DISASSEMBLY_COMBO.md",
+                    "playbook": "docs/REVERSE_TO_CRAFT_PLAYBOOK.md",
+                },
+            }
+        if topic.lower() in ["playbook", "craft", "reverse_to_craft", "rebuild"]:
+            return {
+                "topic": "reverse_to_craft",
+                "level": level,
+                "summary": "The Reverse-to-Craft Playbook: Rebuilding reversed binaries into agent-native Rust Crafts.",
+                "phases": [
+                    "1. Gym Extraction & Oracle Capture: Triage, Frida tracing, CUA clicker tour, and correlate_session.",
+                    "2. Clean-Room Specification (Stage 5): Deterministic format specs and UI action graphs.",
+                    "3. Scaffolding: FigCraft/CadCraft pure-Rust layout (apps/<name>-cli with rmcp, apps/<name>-desktop, crates/core, crates/format).",
+                    "4. Module Harvesting: Reusing MIT/Apache Craft modules from _upstream/<craft> (rmcp server, command palette, canvas).",
+                    "5. Oracle Verification (Stage 8): Legacy application re-opens clone's output without error (Level 3 verdict).",
+                    "6. Fleet Wireup: Central launcher integration via fleet-start.config.ps1 and starts/<name>-start.bat.",
+                ],
+                "doc": "docs/REVERSE_TO_CRAFT_PLAYBOOK.md",
+            }
 
     help_content["message"] = f"Reversing MCP help ({level} level)."
     return help_content
 
 
 @mcp.tool(annotations=_DESTRUCTIVE)
-async def shutdown(confirm: bool = False) -> dict:
-    """
-    Gracefully shut down the Reversing MCP server.
+async def shutdown(
+    confirm: Annotated[bool, Field(description="Confirm server shutdown.")] = False,
+) -> dict[str, Any]:
+    """Gracefully shut down the Reversing MCP server process.
 
-    Requires confirm=True to prevent accidental termination.
+    Terminates the server process. Requires confirm=True to prevent accidental termination.
+
+    ## Return Format
+    Success: `{"success": True, "message": "Server shutting down"}`
+    Failure: `{"success": False, "message": "Shutdown requires confirm=True"}`
+
+    ## Examples
+    `shutdown(confirm=True)`
     """
     if not confirm:
         return {"success": False, "message": "Shutdown requires confirm=True"}
@@ -1277,13 +1330,28 @@ def main():
 # Mounts MCP at /mcp; add more routes here if needed.
 try:
     import platform
+    from contextlib import asynccontextmanager
 
     from fastapi import BackgroundTasks, File, HTTPException, UploadFile
     from fastapi import FastAPI as _FastAPI
     from fastapi.middleware.cors import CORSMiddleware as _CORSMiddleware
     from fastapi.responses import Response
 
-    _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.4.0")
+    _mcp_app = mcp.http_app(path="/")
+
+    @asynccontextmanager
+    async def _lifespan(app: _FastAPI):
+        """Application lifespan: run FastMCP session manager + toolbox ensure."""
+        import asyncio
+
+        try:
+            await asyncio.to_thread(_toolbox.ensure, True)
+        except Exception as e:
+            logger.warning("Toolbox ensure on startup failed: %s", e)
+        async with _mcp_app.router.lifespan_context(app):
+            yield
+
+    _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.4.0", lifespan=_lifespan)
 
     _http_app.add_middleware(
         _CORSMiddleware,
@@ -1332,11 +1400,21 @@ try:
             "errors": [],
         }
 
+    _background_tasks: set[asyncio.Task[Any]] = set()
+
     @_http_app.post("/api/shutdown")
     async def _shutdown():
+        import asyncio
         import os
 
-        os._exit(0)
+        async def _delayed_exit():
+            await asyncio.sleep(0.5)
+            os._exit(0)
+
+        t = asyncio.create_task(_delayed_exit())
+        _background_tasks.add(t)
+        t.add_done_callback(_background_tasks.discard)
+        return {"success": True, "message": "Server shutting down"}
 
     @_http_app.get("/api/v1/digibib/find")
     async def _digibib_find():
@@ -1750,13 +1828,6 @@ try:
         import asyncio
 
         return await asyncio.to_thread(_toolbox.ensure, True)
-
-    @_http_app.on_event("startup")
-    async def _toolbox_boot():
-        """Daemon boot only: toolbox ensure (discover + autostart policy services)."""
-        import asyncio
-
-        await asyncio.to_thread(_toolbox.ensure, True)
 
     async def _ollama_tags() -> dict:
         import httpx
@@ -2349,7 +2420,7 @@ try:
 
         return await asyncio.to_thread(_clickerlab.export_map, run_id, session_id)
 
-    _http_app.mount("/mcp", mcp.http_app(path="/"))
+    _http_app.mount("/mcp", _mcp_app)
     app = _http_app
 except ImportError:
     pass  # no app when fastapi not installed; uvicorn reversing_mcp.server:app will fail

@@ -557,8 +557,13 @@ def frida_oracle(
         if target is not None:
             spawned_pid = frida.spawn([target, *(args or [])])
             session = frida.attach(spawned_pid)
-        else:
+        elif pid is not None:
             session = frida.attach(pid)
+        else:
+            return {
+                "success": False,
+                "error": "Neither target nor pid provided.",
+            }
         session.on("detached", lambda *_a: exited.set())
         remaining = duration_s
         while remaining > 0:
