@@ -1,7 +1,12 @@
+---
+name: reversing-mcp
+description: Agent-driven static binary analysis, Directmedia format reversing, and REA sidecar delegation (20 tools).
+---
+
 # Reversing MCP Skill
 
 Agent-driven static binary analysis, Directmedia format reversing, and REA sidecar
-delegation. 18 tools. Triage first (`check_tools`, `analyze_binary`), then go targeted.
+delegation. 20 tools. Triage first (`check_tools`, `analyze_binary`), then go targeted.
 Pair with ReVa (separate MCP server) for interactive Ghidra decompilation.
 
 ## Tool Categories
@@ -37,11 +42,13 @@ Pair with ReVa (separate MCP server) for interactive Ghidra decompilation.
   packed stream — follow docs/DIGIBIB_DECOMPILE_PLAN.md (Ghidra/ReVa) before promising
   a decoder. `tree.dki` is often plain CP1252.
 
-### System
+### System & Lifecycle
 
 - `check_tools()` — engine inventory incl. REA sidecar (version, path, node). Never crashes.
 - `shutdown(confirm=True)` — graceful termination. `show_tools_card()` — engine badges in-chat.
 - `gym(operation=...)` — cloning runs: start/status/advance/stop/list (stages 0/1/4 in G1).
+- `reva(operation=...)` — ReVa bridge lifecycle (status, start headless/GUI, stop).
+- `toolbox(operation=...)` — toolchain inventory probe, package installation, and policies.
 - `engine(operation=...)` — die (compiler/packer), capa (capabilities, slow), frida_trace/frida_script (runtime hooks, confirm=True, VM or trusted targets only).
 - `help(level?, topic?)` — leveled docs.
 
