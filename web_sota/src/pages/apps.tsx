@@ -1,7 +1,7 @@
-import { Cpu, Loader2, Server, Wrench } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Cpu, Loader2, Server, Wrench } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 interface Capabilities {
   name: string;

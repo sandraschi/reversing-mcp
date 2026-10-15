@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { getApiBase } from "@/common/api";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type LogEntry = {
   id: string;

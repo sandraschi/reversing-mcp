@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCallback, useEffect, useState } from "react";
 
 const STAGES = [
   "intake",

@@ -1,3 +1,5 @@
+import { getApiBase } from "@/common/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Activity,
   Bot,
@@ -14,8 +16,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getApiBase } from "@/common/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type GhidraStatus = { installed?: boolean; bridge_running?: boolean };
 
@@ -216,7 +216,7 @@ export function Dashboard() {
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2" data-testid="backend-dot">
               {backendOk === true ? (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               ) : null}
               <span
                 className={`relative inline-flex h-2 w-2 rounded-full ${
@@ -226,7 +226,7 @@ export function Dashboard() {
                       ? "bg-red-500"
                       : "bg-gray-500"
                 }`}
-              ></span>
+              />
             </span>
             <span className="text-sm text-slate-300">
               {backendOk === true

@@ -1,5 +1,3 @@
-import { CheckCircle, Loader2, Search, Upload, XCircle } from "lucide-react";
-import { useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { pushInbox } from "@/pages/inbox";
+import { CheckCircle, Loader2, Search, Upload, XCircle } from "lucide-react";
+import { useState } from "react";
 
 const BINARY_EXTS = [
   ".exe",

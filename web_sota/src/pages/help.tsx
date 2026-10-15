@@ -1,3 +1,5 @@
+import { getApiBase } from "@/common/api";
+import { Markdown } from "@/components/Markdown";
 import {
   Book,
   ChevronDown,
@@ -8,8 +10,6 @@ import {
   Wrench,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { getApiBase } from "@/common/api";
-import { Markdown } from "@/components/Markdown";
 
 type HelpTab =
   | "overview"
@@ -105,10 +105,8 @@ function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
         </thead>
         <tbody className="divide-y divide-slate-800">
           {rows.map((r, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static table rows
             <tr key={i}>
               {r.map((c, j) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: static table cells
                 <td key={j} className="py-2 pr-4 align-top">
                   {c}
                 </td>
@@ -246,6 +244,49 @@ function OverviewTab() {
             ],
           ]}
         />
+      </Card>
+      <Card>
+        <H>The Twin Methods: Disassembly + CUA Clickthrough</H>
+        <P>
+          Binary reverse engineering in reversing-mcp unifies two historically
+          separate disciplines:
+        </P>
+        <ul className="list-disc pl-5 text-sm text-slate-300 space-y-1">
+          <li>
+            <strong>Conventional Disassembly (White-Box)</strong>: Ghidra, IDA,
+            radare2, Hopper, capa, DiE, and Frida provide granular inspection of
+            PE sections, decompiled C syntax, cross-references, and API hooks.
+            However, large stripped binaries suffer from{" "}
+            <em>Static Blindness</em> (thousands of unlabeled subroutines
+            without user-context anchors).
+          </li>
+          <li>
+            <strong>CUA Clickthrough &amp; Gym Oracle Loops (Black-Box)</strong>
+            : Computer Use Agents drive the running binary via Windows
+            accessibility (pywinauto) and OCR, recording real user interactions.
+            However, pure UI testing suffers from <em>Dynamic Blindness</em>{" "}
+            (observing external behavior without knowing the internal
+            decompilation or encryption algorithm).
+          </li>
+        </ul>
+        <P>
+          <strong>Feature-to-Code Maps</strong>: Through{" "}
+          <Code>correlate_session</Code> (ClickerLab / Gym Stage 3), runtime UI
+          strings and interaction tokens are correlated with static
+          cross-references in the binary. This automatically generates Ghidra
+          plate comments and IDA import scripts (<Code>map_import_ida.py</Code>
+          ), turning blind disassembly into verified feature maps.
+        </P>
+        <div className="pt-1 flex flex-wrap gap-4">
+          <DocLink
+            file="CUA_DISASSEMBLY_COMBO.md"
+            label="Read Tier 3 CUA Disassembly Combo Spec"
+          />
+          <DocLink
+            file="REVERSE_TO_CRAFT_PLAYBOOK.md"
+            label="Read Reverse-to-Craft Playbook"
+          />
+        </div>
       </Card>
       <Card>
         <H>Pages</H>
@@ -948,8 +989,8 @@ export function Help() {
         )}
       </header>
 
-      <div className="border-b border-slate-800 pb-3" data-testid="help-tabs">
-        <nav className="flex flex-wrap gap-2">
+      <div className="border-b border-slate-800" data-testid="help-tabs">
+        <nav className="flex flex-wrap gap-x-5 gap-y-1">
           {TABS.map((tab) => {
             const Icon = TAB_ICONS[tab.id];
             const active = activeTab === tab.id;
@@ -958,16 +999,20 @@ export function Help() {
                 key={tab.id}
                 type="button"
                 data-testid={`help-tab-${tab.id}`}
-                title={tab.description}
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-2 ${
+                className={`py-2 px-1 border-b-2 text-sm font-medium transition-colors flex items-center gap-2 -mb-px ${
                   active
-                    ? "border-emerald-500 bg-emerald-500/10 text-white"
-                    : "border-slate-700 text-slate-400 hover:text-slate-200"
+                    ? "border-emerald-500 text-white"
+                    : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600"
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                {tab.name}
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="text-left whitespace-nowrap">
+                  {tab.name}{" "}
+                  <span className="font-normal opacity-70 hidden xl:inline">
+                    {tab.description}
+                  </span>
+                </span>
               </button>
             );
           })}

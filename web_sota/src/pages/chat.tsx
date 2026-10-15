@@ -1,16 +1,16 @@
-import { Bot, Download, Loader2, Send, Trash2, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  type ChatMessage as WireMessage,
   buildSystemPrompt,
   fetchDiscovery,
   fetchSkillPreprompt,
   sendChat,
-  type ChatMessage as WireMessage,
 } from "@/lib/llm";
 import { useLlmStore } from "@/store/llm";
+import { Bot, Download, Loader2, Send, Trash2, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const LS_KEY = "reversing-mcp-chat-history";
 const PERS_KEY = "reversing-mcp-chat-personality";
@@ -439,7 +439,6 @@ export function Chat() {
               g.items.map((p, i) => (
                 <button
                   type="button"
-                  // biome-ignore lint/suspicious/noArrayIndexKey: static pill list, never reordered
                   key={`${g.group}-${i}`}
                   onClick={() => setInput(p)}
                   className="text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700 transition-colors"

@@ -1,6 +1,6 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Inbox as InboxIcon, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface InboxEntry {
   id: string;

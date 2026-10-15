@@ -1,3 +1,7 @@
+import { getApiBase } from "@/common/api";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BookOpen,
   CheckCircle2,
@@ -12,10 +16,6 @@ import {
   Terminal,
 } from "lucide-react";
 import { useState } from "react";
-import { getApiBase } from "@/common/api";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type SnapData = Record<string, unknown>;
 
@@ -446,7 +446,6 @@ export function DigiBib() {
                 ?.slice(0, 50)
                 .map((h, i) => (
                   <div
-                    // biome-ignore lint/suspicious/noArrayIndexKey: offset-keyed rows, static snapshot render
                     key={i}
                     className="flex items-start gap-2 text-sm font-mono border-b border-slate-800 py-1"
                   >
