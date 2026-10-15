@@ -3,7 +3,7 @@
 ; stdio backend in detected AI tools (Claude/Cursor/Antigravity/OpenCode).
 !define MCP_REG_NAME "reversing-mcp"
 !define MCP_REG_EXE "reversing-mcp-backend.exe"
-!include "mcp-clients.nsh"
+!include "${__FILEDIR__}\mcp-clients.nsh"
 
 !macro KillProcesses
   DetailPrint "Stopping processes..."

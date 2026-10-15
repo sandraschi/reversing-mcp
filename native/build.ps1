@@ -76,6 +76,17 @@ if (Test-Path $envExample) {
     Write-Host "  WARNING: .env.example not found at repo root" -ForegroundColor DarkYellow
 }
 
+# Step 3b: AI-client registration assets (fleet-canonical; the installed app cannot reach
+# mcp-central-docs, so they are vendored into the installer) + stdio gate on the frozen exe.
+Write-Host "-> [3b] AI-client registration assets + stdio gate..." -ForegroundColor Yellow
+$Central = Join-Path (Split-Path -Parent $Root) 'mcp-central-docs\scripts'
+if (-not (Test-Path $Central)) { throw "mcp-central-docs not found next to this repo: $Central" }
+Copy-Item "$Central\install-mcp-clients.ps1" "$ResourceDir\install-mcp-clients.ps1" -Force
+Copy-Item "$Central\nsis\mcp-clients.nsh" "$PSScriptRoot\windows\mcp-clients.nsh" -Force
+& "$Root\.venv\Scripts\python.exe" "$Central\mcp-stdio-probe.py" "$ResourceDir\${RepoName}-backend.exe"
+if ($LASTEXITCODE -ne 0) { throw "Frozen backend does not serve MCP over stdio - registered AI clients would fail" }
+& "$Central\patch-nsis-template.ps1" -OutFile "$PSScriptRoot\windows\installer.template.nsi"
+
 # Step 4: Single NSIS installer
 Write-Host "-> [4/4] Tauri NSIS bundle..." -ForegroundColor Yellow
 Push-Location $PSScriptRoot
