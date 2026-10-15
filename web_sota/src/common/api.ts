@@ -1,5 +1,14 @@
-const DEFAULT_API_BASE = "http://localhost:10750";
+const TAURI_BACKEND_URL = "http://127.0.0.1:10750";
 const STORAGE_KEY = "reversing_api_base";
+
+function isTauri(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(
+    (window as unknown as { __TAURI__?: unknown }).__TAURI__ ||
+      (window as unknown as { __TAURI_INTERNALS__?: unknown })
+        .__TAURI_INTERNALS__,
+  );
+}
 
 function getEnvApiBase(): string | undefined {
   if (typeof import.meta === "undefined") return undefined;
@@ -10,7 +19,7 @@ function getEnvApiBase(): string | undefined {
 
 /**
  * Backend API base (FastAPI, SOTA port 10750).
- * Order: VITE_API_URL env > localStorage (reversing_api_base) > default.
+ * Order: VITE_API_URL env > localStorage (reversing_api_base) > Tauri check > same-origin relative ("").
  */
 export function getApiBase(): string {
   const env = getEnvApiBase();
@@ -19,7 +28,10 @@ export function getApiBase(): string {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) return stored;
   }
-  return DEFAULT_API_BASE;
+  if (isTauri()) {
+    return TAURI_BACKEND_URL;
+  }
+  return "";
 }
 
 export function setApiBase(url: string): void {
@@ -28,4 +40,4 @@ export function setApiBase(url: string): void {
 }
 
 /** For components that need a stable ref; call getApiBase() when making requests. */
-export const API_BASE = DEFAULT_API_BASE;
+export const API_BASE = getApiBase();

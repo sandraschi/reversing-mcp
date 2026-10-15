@@ -1,11 +1,6 @@
-import {
-  Navigate,
-  Route,
-  BrowserRouter as Router,
-  Routes,
-} from "react-router-dom";
 import { AppLayout } from "@/components/layout/app-layout";
 import { useZoom } from "@/hooks/useZoom";
+import Logging from "@/pages/Logging";
 import { Analyze } from "@/pages/analyze";
 import { Apps } from "@/pages/apps";
 import { Chat } from "@/pages/chat";
@@ -15,11 +10,16 @@ import { DigiBib } from "@/pages/digibib";
 import { Gym } from "@/pages/gym";
 import { Help } from "@/pages/help";
 import { Inbox } from "@/pages/inbox";
-import Logging from "@/pages/Logging";
 import { Settings } from "@/pages/settings";
 import { Skills } from "@/pages/skills";
 import { Status } from "@/pages/status";
 import { Tools } from "@/pages/tools";
+import {
+  Navigate,
+  Route,
+  BrowserRouter as Router,
+  Routes,
+} from "react-router-dom";
 
 function App() {
   const { zoom, reset } = useZoom();

@@ -1,10 +1,10 @@
 "use client";
 
+import { getApiBase } from "@/common/api";
+import { APPS_CATALOG } from "@/common/apps-catalog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ExternalLink, HelpCircle, LayoutGrid } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getApiBase } from "@/common/api";
-import { APPS_CATALOG } from "@/common/apps-catalog";
 
 export function Topbar() {
   const [backendOk, setBackendOk] = useState<boolean | null>(null);
@@ -49,10 +49,10 @@ export function Topbar() {
           <span className="relative flex h-2 w-2">
             <span
               className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${dot}`}
-            ></span>
+            />
             <span
               className={`relative inline-flex h-2 w-2 rounded-full ${dot}`}
-            ></span>
+            />
           </span>
           {label}
         </div>

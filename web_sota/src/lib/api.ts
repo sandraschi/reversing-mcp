@@ -1,1 +1,3 @@
-export const API_BASE = "http://127.0.0.1:10750";
+import { getApiBase } from "@/common/api";
+
+export const API_BASE = getApiBase();
