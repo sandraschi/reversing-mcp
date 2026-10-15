@@ -33,6 +33,8 @@
     { "name": "shutdown", "description": "shutdown" },
     { "name": "show_tools_card", "description": "show_tools_card" },
     { "name": "gym", "description": "gym" },
+    { "name": "reva", "description": "reva" },
+    { "name": "toolbox", "description": "toolbox" },
     { "name": "engine", "description": "engine" },
     { "name": "help", "description": "help" }
   ]
