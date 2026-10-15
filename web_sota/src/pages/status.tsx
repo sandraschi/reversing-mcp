@@ -1,9 +1,9 @@
-import { CheckCircle, Loader2, RefreshCw, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type ToolsStatus = Record<string, { available?: boolean; version?: string }>;
 type GhidraStatus = {
@@ -29,8 +29,16 @@ type ToolboxStatus = {
 };
 type RevaStatus = {
   success?: boolean;
-  mcp_reva?: { available?: boolean; path?: string | null; install_hint?: string | null };
-  ghidra?: { dir?: string | null; run_bat?: string | null; gui_available?: boolean };
+  mcp_reva?: {
+    available?: boolean;
+    path?: string | null;
+    install_hint?: string | null;
+  };
+  ghidra?: {
+    dir?: string | null;
+    run_bat?: string | null;
+    gui_available?: boolean;
+  };
   managed?: { running?: boolean; mode?: string | null; pid?: number | null };
   bridge?: { reachable?: boolean; url?: string };
   message?: string;
@@ -84,7 +92,8 @@ export function Status() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       }).then((r) => r.json());
-      if (d.success === false) throw new Error(d.error ?? `Install ${name} failed`);
+      if (d.success === false)
+        throw new Error(d.error ?? `Install ${name} failed`);
       fetchStatus();
     } catch (e) {
       setError(e instanceof Error ? e.message : `Install ${name} failed`);
@@ -258,7 +267,8 @@ export function Status() {
             Toolbox{" "}
             {toolbox && (
               <span className="text-sm font-normal text-slate-300">
-                ({toolbox.ready}/{toolbox.total} ready — auto-discovered, no env edits)
+                ({toolbox.ready}/{toolbox.total} ready — auto-discovered, no env
+                edits)
               </span>
             )}
           </CardTitle>
@@ -273,15 +283,26 @@ export function Status() {
                   data-testid={`toolbox-row-${name}`}
                 >
                   <div className="min-w-0">
-                    <span className="text-slate-200 font-mono text-sm">{name}</span>
+                    <span className="text-slate-200 font-mono text-sm">
+                      {name}
+                    </span>
                     {t.version && (
-                      <span className="text-slate-300 text-sm"> · {t.version}</span>
+                      <span className="text-slate-300 text-sm">
+                        {" "}
+                        · {t.version}
+                      </span>
                     )}
                     {t.pid != null && (
-                      <span className="text-slate-300 text-sm"> · pid {t.pid} (attached)</span>
+                      <span className="text-slate-300 text-sm">
+                        {" "}
+                        · pid {t.pid} (attached)
+                      </span>
                     )}
                     {t.note && (
-                      <p className="text-slate-300 text-sm truncate" title={t.note}>
+                      <p
+                        className="text-slate-300 text-sm truncate"
+                        title={t.note}
+                      >
                         {t.note}
                       </p>
                     )}
@@ -295,7 +316,9 @@ export function Status() {
                       <Badge variant="secondary">N/A here</Badge>
                     ) : (
                       <>
-                        <Badge variant="secondary">{t.status ?? "unknown"}</Badge>
+                        <Badge variant="secondary">
+                          {t.status ?? "unknown"}
+                        </Badge>
                         {t.install &&
                           (t.install.startsWith("winget:") ||
                             t.install.startsWith("github:") ||
@@ -318,7 +341,9 @@ export function Status() {
               ))}
             </div>
           ) : (
-            <p className="text-slate-300 text-sm">Could not load toolbox inventory</p>
+            <p className="text-slate-300 text-sm">
+              Could not load toolbox inventory
+            </p>
           )}
         </CardContent>
       </Card>
@@ -354,7 +379,9 @@ export function Status() {
                 )}
               </div>
               <div className="flex items-center justify-between py-2">
-                <span className="text-slate-300">Bridge {reva.bridge?.url}</span>
+                <span className="text-slate-300">
+                  Bridge {reva.bridge?.url}
+                </span>
                 {reva.bridge?.reachable ? (
                   <CheckCircle className="h-4 w-4 text-emerald-500" />
                 ) : (
@@ -363,8 +390,8 @@ export function Status() {
               </div>
               {reva.mcp_reva?.install_hint && (
                 <p className="text-sm text-amber-400">
-                  {reva.mcp_reva.install_hint} — headless start unavailable;
-                  GUI mode still works when Ghidra is installed.
+                  {reva.mcp_reva.install_hint} — headless start unavailable; GUI
+                  mode still works when Ghidra is installed.
                 </p>
               )}
               <div className="flex gap-2 pt-2">
@@ -406,9 +433,7 @@ export function Status() {
               </div>
             </div>
           ) : (
-            <p className="text-slate-300 text-sm">
-              Could not load ReVa status
-            </p>
+            <p className="text-slate-300 text-sm">Could not load ReVa status</p>
           )}
         </CardContent>
       </Card>

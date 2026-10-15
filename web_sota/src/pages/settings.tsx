@@ -1,5 +1,3 @@
-import { CheckCircle, Loader2, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
 import { getApiBase, setApiBase } from "@/common/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchDiscovery } from "@/lib/llm";
 import { useLlmStore } from "@/store/llm";
+import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 
 function LLMSettings() {
   const { models, running, provider, model, select, applyDiscovery } =

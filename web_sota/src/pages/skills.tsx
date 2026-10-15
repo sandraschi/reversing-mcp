@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
 import { getApiBase } from "@/common/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 
 export function Skills() {
   const [names, setNames] = useState<string[]>([]);

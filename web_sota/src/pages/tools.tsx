@@ -1,3 +1,5 @@
+import { getApiBase } from "@/common/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CheckCircle,
   Loader2,
@@ -8,8 +10,6 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getApiBase } from "@/common/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type ToolsStatus = Record<string, { available?: boolean; version?: string }>;
 
