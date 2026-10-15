@@ -290,3 +290,7 @@ mcpb/src/
 # Reversing Gym runs (per-run state, captures, logs - regenerable, may contain target data)
 gym/runs/
 
+
+# Object files
+*.obj
+*.o
