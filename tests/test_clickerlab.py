@@ -267,6 +267,10 @@ def test_correlate_writes_map_without_rea(runs_root: Path, monkeypatch: pytest.M
         "reversing_mcp.analyzers.BinaryAnalyzer.find_functions",
         lambda self, target, tool="auto": [{"error": "stubbed for speed"}],
     )
+    monkeypatch.setattr(
+        "reversing_mcp.analyzers.ghidra_inventory",
+        lambda target, **k: {"success": True, "functions": [], "xrefs": {}, "strings": []},
+    )
     run_id = _run_with_triage(runs_root)
     sdir = runs_root / run_id / "clicker" / "sessions" / "s1"
     sdir.mkdir(parents=True)
