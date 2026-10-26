@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-10-26)
+- `ghidra` MCP portmanteau (`src/reversing_mcp/ghidra_bridge.py`): one tool forwarding to ReVa's ~86 Ghidra tools instead of mounting them all. Ops: status/start/stop/tools/describe/call. Two backends — headless (`mcp-reva` over stdio, lazy JVM boot, started on demand with `confirm=True`) and gui (attach over streamable HTTP to a running Ghidra's ReVa plugin). Async-task startup; `call` truncates at `REVA_MAX_TEXT_CHARS`; session torn down on backend shutdown. Replaces the "run ReVa as a second MCP server" workflow for chat clients.
+- `reva(start, headless)` now routes through the bridge (headless ReVa is a stdio server and must be driven over pipes, never spawned bare); GUI spawn no longer inherits stdio.
+- Backend REST: `GET /api/v1/ghidra/session`, `POST /api/v1/ghidra/session/start|stop`, `GET /api/v1/ghidra/tools[/{name}]`, `POST /api/v1/ghidra/call`.
+- Webapp Ghidra section (`/ghidra`): Workbench (session lifecycle + call panel with schema-filled argument skeletons), Tool catalogue (search/filter-by-category/sort/paginate/count), Call history (localStorage, replay). Sidebar entry, dashboard hero CTA + KPI link, Help Overview/API/FAQ coverage.
+- Tests: `tests/test_ghidra_bridge.py` (fake in-memory ReVa, 5 cases: full gui cycle, not-ready guards, unreachable error, missing launcher, transport-construction failure).
+- Config: `opencode-cli-mcp` added to Claude Desktop; `reva` replaced by `reversing-mcp` (stdio via uv).
+
 ### Added (2026-10-14)
 - Toolbox (`src/reversing_mcp/toolbox.py`, `toolbox` MCP tool, 6 REST routes, Status page card): autodiscovery (PATH/env/`D:\Dev\tools`/standard paths) for ghidra/reva/capa/die/frida/r2/hopper/ida/java/tesseract/node; installers (GitHub releases, winget, pip venv); boot `ensure()` exports env + autostarts ReVa headless (policy-toggleable); running IDA instances glommed onto, licensing never checked
 - ReVa lifecycle (`src/reversing_mcp/reva.py`, `reva` MCP tool, Status start buttons): probe/start/stop managed child; real install at `D:\Dev\tools\reva\.venv` (7.3.1 + MCP-SDK-2.x compat patches); registered in Claude Desktop + opencode configs (autostart on client launch)

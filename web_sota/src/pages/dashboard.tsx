@@ -256,6 +256,13 @@ export function Dashboard() {
             Analyze a binary
           </Link>
           <Link
+            to="/ghidra"
+            data-testid="hero-cta-ghidra"
+            className="text-sm px-4 py-2 rounded-md bg-slate-800 text-white hover:bg-slate-700 border border-slate-700 font-medium"
+          >
+            Open Ghidra
+          </Link>
+          <Link
             to="/gym"
             data-testid="hero-cta-gym"
             className="text-sm px-4 py-2 rounded-md bg-slate-800 text-white hover:bg-slate-700 border border-slate-700 font-medium"
@@ -454,7 +461,9 @@ export function Dashboard() {
               {ghidra ? (ghidra.installed ? "Installed" : "Not found") : "—"}
             </div>
             <p className="text-sm text-slate-300">
-              Bridge: {ghidra?.bridge_running ? "Running" : "Stopped"}
+              <Link to="/ghidra" className="text-blue-400 hover:underline">
+                open workbench →
+              </Link>
             </p>
           </CardContent>
         </Card>

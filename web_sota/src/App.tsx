@@ -7,6 +7,9 @@ import { Chat } from "@/pages/chat";
 import { ClickerLab } from "@/pages/clickerlab";
 import { Dashboard } from "@/pages/dashboard";
 import { DigiBib } from "@/pages/digibib";
+import { Ghidra } from "@/pages/ghidra";
+import { GhidraHistory } from "@/pages/ghidra-history";
+import { GhidraTools } from "@/pages/ghidra-tools";
 import { Gym } from "@/pages/gym";
 import { Help } from "@/pages/help";
 import { Inbox } from "@/pages/inbox";
@@ -33,6 +36,9 @@ function App() {
           <Route path="/clickerlab" element={<ClickerLab />} />
           <Route path="/inbox" element={<Inbox />} />
           <Route path="/digibib" element={<DigiBib />} />
+          <Route path="/ghidra" element={<Ghidra />} />
+          <Route path="/ghidra/tools" element={<GhidraTools />} />
+          <Route path="/ghidra/history" element={<GhidraHistory />} />
           <Route path="/tools" element={<Tools />} />
           <Route path="/skills" element={<Skills />} />
           <Route path="/status" element={<Status />} />

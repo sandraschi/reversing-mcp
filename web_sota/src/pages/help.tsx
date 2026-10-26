@@ -191,6 +191,11 @@ const PAGES: Array<[string, string, string]> = [
     "/digibib",
     "Digibib5 / Directmedia DKI research (the reference target)",
   ],
+  [
+    "Ghidra",
+    "/ghidra",
+    "Decompile, xrefs, rename via ReVa behind one session (headless or attach to GUI)",
+  ],
   ["Tools", "/tools", "Engine inventory"],
   ["Skills", "/skills", "Skill packs served to MCP clients (skill://)"],
   ["Status", "/status", "Engine + Ghidra bridge health"],
@@ -768,6 +773,19 @@ function ApiTab() {
             ["GET /tools/status", "Engine inventory (slow: ~20 s, REA probe)"],
             ["GET /ghidra/status", "Ghidra install + bridge state"],
             [
+              "GET /api/v1/ghidra/session",
+              "Forwarding session state (stopped/starting/ready/error)",
+            ],
+            [
+              "POST /api/v1/ghidra/session/start",
+              "Start headless ReVa or attach to a Ghidra GUI",
+            ],
+            [
+              "GET /api/v1/ghidra/tools",
+              "Search ReVa's tool catalogue (paged)",
+            ],
+            ["POST /api/v1/ghidra/call", "Invoke one ReVa tool with arguments"],
+            [
               "POST /analyze/upload",
               "Analyze an uploaded binary (temp file, deleted after)",
             ],
@@ -918,6 +936,14 @@ const FAQS: Array<{ q: string; a: string }> = [
   {
     q: "Where are the logs?",
     a: "Logs page (backend ring buffer, empty after restart). The start.ps1 window shows uvicorn output. Claude Desktop stdio logs: %APPDATA%\\Claude\\logs\\mcp-server-revops.log.",
+  },
+  {
+    q: "What is the Ghidra page, and how is it different from the Status page?",
+    a: "The Ghidra page (Workbench + Tool catalogue + Call history) drives Ghidra interactively through ReVa: start a session (headless mcp-reva, or attach to a running Ghidra GUI), browse the ~86 ReVa tools, and call them (decompile, xrefs, rename, retype). The Status page only reports whether Ghidra and the legacy :8089 bridge are installed and reachable. Note the webapp backend runs its own session, separate from one a chat client (Claude Desktop) started over stdio; GUI mode lets both attach to the same Ghidra.",
+  },
+  {
+    q: "Headless start says mcp-reva not found.",
+    a: "Headless needs the fleet ReVa venv (mcp-reva) and GHIDRA_INSTALL_DIR set. See D:/Dev/tools/reva/README.md. If you cannot install it, use GUI mode: open Ghidra, enable the ReVa plugin server (Edit > Tool Options > ReVa), then Attach to GUI.",
   },
   {
     q: "Can I use IDA Free?",

@@ -149,7 +149,15 @@ def start(mode: str = "headless", confirm: bool = False, bridge_url: str = "") -
                 "enable the ReVa plugin listener (Edit -> Tool Options -> ReVa -> server.enabled)."
             )
         try:
-            _PROC = subprocess.Popen(cmd, env=env)
+            # Never inherit our stdio: under MCP stdio transport any child output
+            # on stdout corrupts the JSON-RPC stream to the client.
+            _PROC = subprocess.Popen(
+                cmd,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             _MODE = mode
         except OSError as e:
             _PROC, _MODE = None, None

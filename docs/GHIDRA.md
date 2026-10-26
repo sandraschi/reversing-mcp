@@ -1,14 +1,68 @@
 # Ghidra Integration Guide
 
-Ghidra is the NSA's free and open-source reverse engineering framework ([Apache 2.0](https://ghidra-sre.org/)). There are two ways to use Ghidra with reversing-mcp.
+Ghidra is the NSA's free and open-source reverse engineering framework ([Apache 2.0](https://ghidra-sre.org/)). There are three ways to use Ghidra with reversing-mcp.
 
 ---
 
-## 1. ReVa MCP (interactive, recommended)
+## 1. The `ghidra` tool (interactive, recommended)
 
-ReVa is a **separate MCP server** that exposes Ghidra's decompiler, xrefs, rename, and 30+ tools over MCP. Run it alongside reversing-mcp.
+reversing-mcp forwards to ReVa through a single portmanteau tool, `ghidra`, so
+you do not add a second MCP server to your client and do not boot a JVM until
+you ask for one. ReVa exposes ~86 Ghidra tools; mounting them directly floods
+the client tool list, so they stay behind one entry here.
 
-**Setup:** See the [dedicated ReVa guide](REVA.md) — covers install, both modes (assistant + headless), MCP client config, and two-server workflow.
+### Operations
+
+| Operation | What it does |
+|-----------|--------------|
+| `status` | Session state: `stopped` / `starting` / `ready` / `error`, mode, tool count |
+| `start` | `mode="headless"` (needs `confirm=True`) spawns `mcp-reva`; `mode="gui"` attaches to a running Ghidra with the ReVa plugin server enabled |
+| `stop` | Ends the session (headless JVM is terminated; GUI keeps running) |
+| `tools` | Search the ReVa catalogue (`query`, `offset`, `limit`); returns `{name, summary}` |
+| `describe` | Full description + input schema of one ReVa tool |
+| `call` | Invoke one ReVa tool with `arguments` (see `describe`) |
+
+### Two backends
+
+- **Headless** (`mode="headless"`, `confirm=True`): spawns `mcp-reva` over
+  stdio with its own Ghidra JVM. ~1-2 min cold boot, ~1-2 GB RAM. No window.
+  Needs `mcp-reva` (fleet venv at `D:/Dev/tools/reva`, see [REVA.md](REVA.md))
+  and `GHIDRA_INSTALL_DIR`. The stdio stream is driven over pipes by the
+  bridge, never spawned bare — a child on our own stdout would corrupt the
+  MCP JSON-RPC stream.
+- **GUI** (`mode="gui"`): attaches over streamable HTTP to the ReVa plugin in
+  a running Ghidra GUI (default `http://127.0.0.1:8080/mcp/message`, override
+  with `url=...` or `REVA_GUI_URL`). You watch renames, comments and bookmarks
+  land live in the window. Enable the plugin at Edit > Tool Options > ReVa.
+
+### Workflow
+
+```
+ghidra(operation="start", mode="headless", confirm=True)
+ghidra(operation="status")                 # poll until state="ready" (~1-2 min)
+ghidra(operation="tools", query="decompil")
+ghidra(operation="describe", tool="get-decompilation")
+ghidra(operation="call", tool="get-functions", arguments={"programPath": "/prog.exe"})
+ghidra(operation="stop")
+```
+
+### Notes
+
+- **One session per process.** The webapp backend and a chat client (e.g.
+  Claude Desktop over stdio) are separate processes, so each has its own
+  session. `gui` mode lets both attach to the same running Ghidra.
+- Long output is truncated at `REVA_MAX_TEXT_CHARS` (default 60000) with a
+  `truncated_from` marker; narrow the query rather than paging blindly.
+- The older `reva` tool still manages ReVa's raw lifecycle (headless now routes
+  through the same bridge; `gui` launches the Ghidra desktop app).
+
+### Webapp
+
+The **Ghidra** section of the web UI (`/ghidra`) mirrors this: a Workbench to
+start/stop a session and call tools, a searchable Tool catalogue, and a
+per-browser Call history. Backend routes: `GET /api/v1/ghidra/session`,
+`POST /api/v1/ghidra/session/start|stop`, `GET /api/v1/ghidra/tools[/{name}]`,
+`POST /api/v1/ghidra/call`.
 
 ---
 

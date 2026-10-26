@@ -35,7 +35,7 @@ powershell -c "irm https://github.com/sandraschi/reversing-mcp/releases/latest/d
 | **Agent RE** (REA sidecar) | `rea_investigate` | [REA sidecar guide](docs/REA.md) |
 | **Gym** (cloning runs + ClickerLab) | `gym` (lifecycle + elicit/clicker_*/correlate) | [Gym spec](docs/GYM_SPEC.md) |
 | **Engines** (DiE / capa / Frida) | `engine` | [Engines](docs/ENGINES.md) |
-| **Ghidra bridge** (ReVa lifecycle) | `reva` | [ReVa guide](docs/REVA.md) |
+| **Ghidra** (ReVa forwarding) | `ghidra` (status/start/stop/tools/describe/call), `reva` (lifecycle) | [Ghidra guide](docs/GHIDRA.md) · [ReVa guide](docs/REVA.md) |
 | **Toolbox** (autodiscovery/install) | `toolbox` | [Toolbox](docs/TOOLBOX.md) |
 | **Directmedia / DKI** | `decode_dki_file`, `analyze_directmedia_file`, `decompress_directmedia_library`, `digibib_research_snapshot` | [Reversing guide](docs/DIGIBIB_REVERSING_GUIDE.md) · [Mission](docs/DIRECTMEDIA_MISSION.md) · [Toolkit](docs/DIRECTMEDIA_REVERSING_TOOLKIT.md) · [Decompile plan](docs/DIGIBIB_DECOMPILE_PLAN.md) |
 | **System** | `check_tools`, `shutdown`, `help`, `show_tools_card` | — |
@@ -81,7 +81,7 @@ Read the complete guide: [docs/REVERSE_TO_CRAFT_PLAYBOOK.md](docs/REVERSE_TO_CRA
 
 | Path | When | Setup |
 |------|------|-------|
-| **Interactive** (ReVa MCP) | You want decompile, xrefs, rename in Ghidra via MCP | [ReVa MCP guide](docs/REVA.md) |
+| **Interactive** (`ghidra` tool) | Decompile, xrefs, rename, retype via ReVa behind one portmanteau — headless `mcp-reva`, or attach to a running Ghidra GUI | [Ghidra guide](docs/GHIDRA.md) |
 | **Agent RE** (REA sidecar) | JS/Electron, .NET, APK, firmware, browser, or agent-driven native via Hopper/Ghidra/IDA | [REA sidecar guide](docs/REA.md) |
 | **Behavioral + static** (Tier 3) | CUA feature tour correlated to disassembly: feature-to-code maps (tour + capture + correlate MVP built; VM + B4 open) | [Combo spec](docs/CUA_DISASSEMBLY_COMBO.md) |
 | **Headless** (`analyzeHeadless`) | Batch/script analysis from `analyze_binary` | Install Ghidra, set `GHIDRA_INSTALL_DIR` |
@@ -96,8 +96,9 @@ All engines, cost and status in one table: [docs/ENGINES.md](docs/ENGINES.md).
 
 SOTA React dashboard on `http://localhost:10751` (backend `:10750`): hero with
 live KPIs (tools, toolbox, runs, models), Analyze uploads, Gym runs with
-ClickerLab, ReVa/toolbox Status, local-LLM Chat, Logs, and a Help center whose
-engine guides open in-app. Port pair claimed in
+ClickerLab, a **Ghidra** section (Workbench + Tool catalogue + Call history
+driving ReVa interactively), ReVa/toolbox Status, local-LLM Chat, Logs, and a
+Help center whose engine guides open in-app. Port pair claimed in
 `mcp-central-docs/operations/WEBAPP_PORTS.md` (BE 10750 / FE 10751).
 
 ## Preview

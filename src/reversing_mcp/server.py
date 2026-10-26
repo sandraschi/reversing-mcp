@@ -2,9 +2,9 @@
 """
 Reversing MCP Server - static binary analysis and Directmedia tools.
 
-For interactive Ghidra analysis over MCP, run the ReVa (reverse-engineering-assistant)
-server separately and connect it in your MCP client. See docs/GHIDRA.md and
-CURSOR_HANDOFF.md in this repository.
+Interactive Ghidra analysis goes through the `ghidra` portmanteau, which forwards to
+ReVa (reverse-engineering-assistant) headless over stdio or to the ReVa plugin in a
+running Ghidra GUI. See ghidra_bridge.py and docs/GHIDRA.md.
 """
 
 import asyncio
@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from . import clickerlab as _clickerlab
 from . import engines as _engines
+from . import ghidra_bridge as _ghidra
 from . import gym as _gym
 from . import rea_bridge
 from . import reva as _reva
@@ -545,12 +546,87 @@ async def reva(
     """
     op = (operation or "").lower()
     if op == "probe":
-        return await asyncio.to_thread(_reva.status, _GHIDRA_BRIDGE_URL)
+        out = await asyncio.to_thread(_reva.status, _GHIDRA_BRIDGE_URL)
+        out["session"] = _ghidra.bridge.status()
+        return out
     if op == "start":
+        if (mode or "headless").lower() == "headless":
+            # Headless ReVa is a stdio MCP server: it must be driven over pipes by
+            # the bridge, never spawned bare (that shared our own stdio stream).
+            return await _ghidra.bridge.start("headless", None, confirm)
         return await asyncio.to_thread(_reva.start, mode, confirm, _GHIDRA_BRIDGE_URL)
     if op == "stop":
-        return await asyncio.to_thread(_reva.stop)
+        session = await _ghidra.bridge.stop()
+        gui = await asyncio.to_thread(_reva.stop)
+        return {"success": True, "session": session, "gui": gui}
     return {"success": False, "error": f"Unknown reva operation '{operation}'. Valid: probe, start, stop."}
+
+
+@mcp.tool(annotations=_MUTATING)
+async def ghidra(
+    operation: Annotated[str, Field(description="Ghidra op: status, start, stop, tools, describe, call.")] = "status",
+    mode: Annotated[
+        str, Field(description="start only: headless (spawn mcp-reva) or gui (attach to running Ghidra).")
+    ] = "headless",
+    confirm: Annotated[bool, Field(description="start headless only: must be true (boots a JVM).")] = False,
+    url: Annotated[
+        str | None, Field(description="start gui only: ReVa plugin MCP URL. Default REVA_GUI_URL or :8080.")
+    ] = None,
+    tool: Annotated[str | None, Field(description="describe/call: ReVa tool name.")] = None,
+    arguments: Annotated[
+        dict[str, Any] | None, Field(description="call: arguments for the ReVa tool (see describe).")
+    ] = None,
+    query: Annotated[str | None, Field(description="tools: space-separated filter terms.")] = None,
+    offset: Annotated[int, Field(description="tools: pagination offset.")] = 0,
+    limit: Annotated[int, Field(description="tools: page size (max 100).")] = 40,
+    timeout_s: Annotated[float | None, Field(description="call: timeout seconds (default 600).")] = None,
+) -> dict[str, Any]:
+    """
+    GHIDRA - Drive Ghidra through ReVa behind one tool (decompile, xrefs, rename, types).
+
+    PORTMANTEAU PATTERN RATIONALE: ReVa exposes ~86 Ghidra tools. Mounting them
+    directly floods the client tool list and boots a JVM at client start. This
+    tool keeps them behind one entry and starts ReVa only on demand.
+
+    Workflow: `start` (headless needs confirm=True; gui attaches to a running
+    Ghidra with the ReVa plugin enabled) -> poll `status` until state='ready'
+    (headless boot ~1-2 min) -> `tools` with a query to find the right tool ->
+    `describe` for its input schema -> `call` with arguments. Typical first
+    calls: import the binary, list functions, get a decompilation. In gui mode
+    the agent's renames, comments and bookmarks appear live in the Ghidra window.
+
+    ## Return Format
+    status/start/stop: `{success, state, mode, target, tool_count, ...}`.
+    tools: `{success, total, next_offset, tools: [{name, summary}]}`.
+    describe: `{success, name, description, input_schema}`.
+    call: `{success, tool, elapsed_s, content: [{type, text}], structured?, note?}`.
+    Not ready: `{success: False, error, state, hint}`.
+
+    ## Examples
+    `ghidra(operation="start", mode="headless", confirm=True)`
+    `ghidra(operation="start", mode="gui")`
+    `ghidra(operation="tools", query="decompil")`
+    `ghidra(operation="describe", tool="get-decompilation")`
+    `ghidra(operation="call", tool="get-functions", arguments={"programPath": "/prog.exe"})`
+    """
+    op = (operation or "").lower()
+    b = _ghidra.bridge
+    if op == "status":
+        return b.status()
+    if op == "start":
+        return await b.start(mode, url, confirm)
+    if op == "stop":
+        return await b.stop()
+    if op == "tools":
+        return b.list_tools(query, offset, limit)
+    if op == "describe":
+        return b.describe(tool)
+    if op == "call":
+        return await b.call(tool, arguments, timeout_s)
+    return {
+        "success": False,
+        "error": f"Unknown ghidra operation '{operation}'. Valid: status, start, stop, tools, describe, call.",
+    }
 
 
 @mcp.tool(annotations=_MUTATING)
@@ -1350,6 +1426,8 @@ try:
             logger.warning("Toolbox ensure on startup failed: %s", e)
         async with _mcp_app.router.lifespan_context(app):
             yield
+        # Do not leave a headless Ghidra JVM orphaned when the backend exits.
+        await _ghidra.bridge.stop()
 
     _http_app = _FastAPI(title="Reversing MCP HTTP", version="0.4.0", lifespan=_lifespan)
 
@@ -1767,24 +1845,75 @@ try:
 
     @_http_app.get("/api/v1/reva")
     async def _reva_status():
-        """ReVa probe: mcp-reva presence, Ghidra dir, managed process, bridge reachability."""
+        """ReVa probe: mcp-reva presence, Ghidra dir, managed GUI, forwarding session."""
         import asyncio
 
-        return await asyncio.to_thread(_reva.status, _GHIDRA_BRIDGE_URL)
+        out = await asyncio.to_thread(_reva.status, _GHIDRA_BRIDGE_URL)
+        out["session"] = _ghidra.bridge.status()
+        return out
 
     @_http_app.post("/api/v1/reva/start")
     async def _reva_start(body: _RevaStartBody):
-        """Start ReVa headless (mcp-reva) or the Ghidra GUI. Confirm-gated."""
+        """Start ReVa: headless boots the forwarding session; gui launches Ghidra. Confirm-gated."""
         import asyncio
 
+        if (body.mode or "headless").lower() == "headless":
+            return await _ghidra.bridge.start("headless", None, body.confirm)
         return await asyncio.to_thread(_reva.start, body.mode, body.confirm, _GHIDRA_BRIDGE_URL)
 
     @_http_app.post("/api/v1/reva/stop")
     async def _reva_stop():
-        """Stop the managed ReVa process (whole tree). Idempotent."""
+        """Stop the forwarding session and any managed Ghidra GUI. Idempotent."""
         import asyncio
 
-        return await asyncio.to_thread(_reva.stop)
+        session = await _ghidra.bridge.stop()
+        gui = await asyncio.to_thread(_reva.stop)
+        return {"success": True, "session": session, "gui": gui}
+
+    # --- Ghidra forwarding session (same bridge as the `ghidra` MCP tool) ---
+    # Note: the webapp backend is its own process, so its session is separate
+    # from one a chat client started over stdio. gui mode lets both attach to
+    # the same running Ghidra.
+
+    class _GhidraStartBody(BaseModel):
+        mode: str = "headless"
+        confirm: bool = False
+        url: str | None = None
+
+    class _GhidraCallBody(BaseModel):
+        tool: str
+        arguments: dict[str, Any] = Field(default_factory=dict)
+        timeout_s: float | None = None
+
+    @_http_app.get("/api/v1/ghidra/session")
+    async def _ghidra_session_status():
+        """Forwarding session state: stopped | starting | ready | error."""
+        return _ghidra.bridge.status()
+
+    @_http_app.post("/api/v1/ghidra/session/start")
+    async def _ghidra_session_start(body: _GhidraStartBody):
+        """Start headless ReVa (confirm required) or attach to a Ghidra GUI."""
+        return await _ghidra.bridge.start(body.mode, body.url, body.confirm)
+
+    @_http_app.post("/api/v1/ghidra/session/stop")
+    async def _ghidra_session_stop():
+        """End the forwarding session (headless JVM is terminated). Idempotent."""
+        return await _ghidra.bridge.stop()
+
+    @_http_app.get("/api/v1/ghidra/tools")
+    async def _ghidra_session_tools(q: str | None = None, offset: int = 0, limit: int = 40):
+        """Search ReVa's tool catalogue (name + summary), paginated."""
+        return _ghidra.bridge.list_tools(q, offset, limit)
+
+    @_http_app.get("/api/v1/ghidra/tools/{name}")
+    async def _ghidra_session_describe(name: str):
+        """Full description and input schema of one ReVa tool."""
+        return _ghidra.bridge.describe(name)
+
+    @_http_app.post("/api/v1/ghidra/call")
+    async def _ghidra_session_call(body: _GhidraCallBody):
+        """Invoke one ReVa tool with arguments."""
+        return await _ghidra.bridge.call(body.tool, body.arguments, body.timeout_s)
 
     # --- Toolbox: autodiscovery / install / autostart ---
 
