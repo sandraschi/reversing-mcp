@@ -5,17 +5,24 @@ straight into a chat client dumps every Ghidra tool into the tool list and boots
 a JVM at client start. This module keeps ReVa behind a single `ghidra` tool on
 reversing-mcp instead, and only starts it when asked.
 
-Two backends, one session at a time:
+The agent always drives through a ``mcp-reva`` child over stdin/stdout pipes:
+no port, no API key, no guessing (mcp-reva manages ReVa's own random HTTP
+port and key internally; we never touch them). One session at a time, two
+modes that differ only in whether a Ghidra window is also opened for you to
+watch:
 
-- ``headless``: spawns ``mcp-reva`` (stdio MCP; PyGhidra JVM, ~1-2 min boot) as
-  a child over stdin/stdout pipes. Its stderr goes to ``logs/reva-headless.log``.
-- ``gui``: attaches to the ReVa plugin inside a running Ghidra GUI over
-  streamable HTTP (default ``http://127.0.0.1:8080/mcp/message``, override with
-  ``REVA_GUI_URL``). You watch Ghidra while the agent drives it.
+- ``headless`` (default): just the stdio ``mcp-reva`` child. No window.
+- ``watch``: the same stdio child, plus the Ghidra desktop GUI launched
+  alongside so you can see a project open. NOTE: mcp-reva runs its own
+  in-process Ghidra, so the window and the agent's session are two separate
+  Ghidra instances -- the window is for looking, not the one being driven.
+  (ReVa has no supported way to attach a second client to a running GUI's
+  plugin without its internal port+key, which we deliberately do not handle.)
 
-Startup runs as a background task so the MCP call that triggers it returns at
-once; poll ``status`` until ``state == "ready"``. Nothing is faked: calls made
-before ready return a structured error with the current state.
+Both boot a JVM (~1-2 min, ~1-2 GB RAM), so start is confirm-gated. Startup
+runs as a background task so the triggering call returns at once; poll
+``status`` until ``state == "ready"``. Nothing is faked: calls made before
+ready return a structured error with the current state.
 """
 
 from __future__ import annotations
@@ -27,14 +34,13 @@ from pathlib import Path
 from typing import Any
 
 from fastmcp import Client
-from fastmcp.client.transports import StdioTransport, StreamableHttpTransport
+from fastmcp.client.transports import StdioTransport
 
 from . import reva as _reva
 from .logging_config import get_logger
 
 logger = get_logger("reversing_mcp.ghidra_bridge")
 
-DEFAULT_GUI_URL = os.getenv("REVA_GUI_URL", "http://127.0.0.1:8080/mcp/message")
 INIT_TIMEOUT_S = float(os.getenv("REVA_INIT_TIMEOUT", "300"))
 CALL_TIMEOUT_S = float(os.getenv("REVA_CALL_TIMEOUT", "600"))
 MAX_TEXT_CHARS = int(os.getenv("REVA_MAX_TEXT_CHARS", "60000"))
@@ -76,6 +82,7 @@ class GhidraBridge:
         self._ready_at: float | None = None
         self._tools: list[dict[str, Any]] = []
         self._log_path: Path | None = None
+        self._gui_launched = False  # watch mode opened a Ghidra window
 
     # ---------------------------------------------------------------- status
 
@@ -95,19 +102,24 @@ class GhidraBridge:
             out["hint"] = "Headless JVM boot takes ~1-2 min. Poll ghidra(operation='status')."
         if self._ready_at and self._started_at:
             out["startup_s"] = round(self._ready_at - self._started_at, 1)
+        out["gui_window"] = self._gui_launched
         if self._state == "stopped":
             out["hint"] = (
-                "ghidra(operation='start', mode='headless', confirm=True) to boot headless ReVa, "
-                "or mode='gui' to attach to a running Ghidra with the ReVa plugin enabled."
+                "ghidra(operation='start', confirm=True) boots a session (headless). "
+                "Add mode='watch' to also open a Ghidra window to look at."
             )
         return out
 
     # ----------------------------------------------------------------- start
 
     async def start(self, mode: str = "headless", url: str | None = None, confirm: bool = False) -> dict[str, Any]:
+        # `url` is accepted for signature stability but ignored: the agent always
+        # drives through a stdio mcp-reva child, never an external HTTP endpoint.
         mode = (mode or "headless").lower()
-        if mode not in ("headless", "gui"):
-            return {"success": False, "error": f"Unknown mode '{mode}'. Valid: headless, gui."}
+        if mode in ("gui", "watch"):
+            mode = "watch"
+        elif mode != "headless":
+            return {"success": False, "error": f"Unknown mode '{mode}'. Valid: headless, watch."}
         async with self._lock:
             if self._state in ("starting", "ready"):
                 return {
@@ -116,58 +128,58 @@ class GhidraBridge:
                     "error": f"Ghidra session already {self._state} (mode={self._mode}). Stop it first.",
                     **{k: v for k, v in self.status().items() if k != "success"},
                 }
-            env: dict[str, str] = {}
-            if mode == "headless":
-                if not confirm:
-                    return {
-                        "success": False,
-                        "error": "Headless start spawns a JVM (~1-2 GB RAM, 1-2 min boot). Re-run with confirm=True.",
-                    }
-                exe = _reva.find_mcp_reva()
-                if not exe:
-                    return {
-                        "success": False,
-                        "error": "mcp-reva not found (PATH or D:/Dev/tools/reva).",
-                        "install_hint": "See D:/Dev/tools/reva/README.md",
-                    }
-                env = dict(os.environ)
-                gdir = _reva.find_ghidra_run()["dir"]
-                if not gdir:
-                    return {"success": False, "error": "GHIDRA_INSTALL_DIR is not set; headless ReVa needs it."}
-                env["GHIDRA_INSTALL_DIR"] = gdir
-                target = exe
-            else:
-                target = url or DEFAULT_GUI_URL
-            try:
-                if mode == "headless":
-                    LOG_DIR.mkdir(parents=True, exist_ok=True)
-                    log_path: Path | None = LOG_DIR / "reva-headless.log"
-                    transport: Any = StdioTransport(
-                        command=target, args=[], env=env, keep_alive=True, log_file=log_path
-                    )
+            if not confirm:
+                return {
+                    "success": False,
+                    "error": "Starting a session spawns a Ghidra JVM (~1-2 GB RAM, 1-2 min boot). Re-run with confirm=True.",
+                }
+            exe = _reva.find_mcp_reva()
+            if not exe:
+                return {
+                    "success": False,
+                    "error": "mcp-reva not found (PATH or D:/Dev/tools/reva).",
+                    "install_hint": "See D:/Dev/tools/reva/README.md",
+                }
+            gdir = _reva.find_ghidra_run()["dir"]
+            if not gdir:
+                return {"success": False, "error": "GHIDRA_INSTALL_DIR is not set; ReVa needs it."}
+            env = dict(os.environ)
+            env["GHIDRA_INSTALL_DIR"] = gdir
+
+            # watch mode: open a Ghidra window alongside (separate instance, for looking).
+            gui_note = ""
+            self._gui_launched = False
+            if mode == "watch":
+                gui = _reva.start("gui", confirm=True, bridge_url="")
+                if gui.get("success"):
+                    self._gui_launched = True
                 else:
-                    log_path = None
-                    transport = StreamableHttpTransport(url=target)
+                    gui_note = f" (Ghidra window did not open: {gui.get('error', 'unknown')})"
+
+            try:
+                LOG_DIR.mkdir(parents=True, exist_ok=True)
+                log_path: Path | None = LOG_DIR / "reva-headless.log"
+                transport = StdioTransport(command=exe, args=[], env=env, keep_alive=True, log_file=log_path)
                 client = Client(transport, init_timeout=INIT_TIMEOUT_S, timeout=CALL_TIMEOUT_S)
             except Exception as e:
                 return {"success": False, "mode": mode, "error": f"{type(e).__name__}: {e}"[:400]}
 
             self._client, self._log_path = client, log_path
-            self._mode, self._target = mode, target
+            self._mode, self._target = mode, exe
             self._state, self._error = "starting", None
             self._started_at, self._ready_at = time.time(), None
             self._tools = []
             self._connect_task = asyncio.create_task(self._connect(self._client))
-        logger.info("Ghidra bridge starting (mode=%s, target=%s)", mode, target)
+        logger.info("Ghidra bridge starting (mode=%s, gui_window=%s)", mode, self._gui_launched)
         return {
             "success": True,
             "state": "starting",
             "mode": mode,
-            "target": target,
+            "gui_window": self._gui_launched,
             "message": (
-                "Headless ReVa booting; poll ghidra(operation='status') until state='ready'."
-                if mode == "headless"
-                else "Attaching to Ghidra GUI ReVa plugin; poll ghidra(operation='status')."
+                "ReVa booting; poll ghidra(operation='status') until state='ready' (~1-2 min)."
+                + (" A Ghidra window is opening to look at (a separate instance)." if self._gui_launched else "")
+                + gui_note
             ),
         }
 
@@ -189,11 +201,10 @@ class GhidraBridge:
             async with self._lock:
                 if self._client is client:
                     self._state, self._error = "error", msg
-                    if self._mode == "gui":
-                        self._error += (
-                            " | Is Ghidra running with a program open and the ReVa server enabled "
-                            "(Edit > Tool Options > ReVa)? Override the URL with url=... or REVA_GUI_URL."
-                        )
+                    self._error += (
+                        " | mcp-reva failed to come up. Check logs/reva-headless.log and that "
+                        "GHIDRA_INSTALL_DIR points at a working Ghidra."
+                    )
             await self._safe_close(client)
 
     # ------------------------------------------------------------------ stop
@@ -201,11 +212,13 @@ class GhidraBridge:
     async def stop(self) -> dict[str, Any]:
         async with self._lock:
             client, task, mode = self._client, self._connect_task, self._mode
+            had_gui = self._gui_launched
             self._client, self._connect_task = None, None
             self._state, self._mode, self._target = "stopped", None, None
             self._tools, self._error = [], None
             self._started_at = self._ready_at = None
-        if client is None:
+            self._gui_launched = False
+        if client is None and not had_gui:
             return {"success": True, "message": "No Ghidra session (nothing to stop)."}
         if task is not None and not task.done():
             task.cancel()
@@ -213,10 +226,15 @@ class GhidraBridge:
                 await task
             except (asyncio.CancelledError, Exception) as e:
                 logger.debug("Ghidra connect task ended on stop: %r", e)
-        await self._safe_close(client)
-        logger.info("Ghidra bridge stopped (mode=%s)", mode)
-        note = "Headless JVM terminated." if mode == "headless" else "Detached; the Ghidra GUI keeps running."
-        return {"success": True, "mode": mode, "message": f"Ghidra session stopped. {note}"}
+        if client is not None:
+            await self._safe_close(client)
+        gui_note = ""
+        if had_gui:
+            # Close the watch-mode window we opened (best effort).
+            g = await asyncio.to_thread(_reva.stop)
+            gui_note = " Ghidra window closed." if g.get("success") else " (Ghidra window may still be open.)"
+        logger.info("Ghidra bridge stopped (mode=%s, had_gui=%s)", mode, had_gui)
+        return {"success": True, "mode": mode, "message": f"Ghidra session stopped (JVM terminated).{gui_note}"}
 
     @staticmethod
     async def _safe_close(client: Client) -> None:

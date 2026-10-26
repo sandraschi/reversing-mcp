@@ -5,11 +5,12 @@ All notable changes to this project are documented here. Format follows [Keep a 
 ## [Unreleased]
 
 ### Added (2026-10-26)
-- `ghidra` MCP portmanteau (`src/reversing_mcp/ghidra_bridge.py`): one tool forwarding to ReVa's ~86 Ghidra tools instead of mounting them all. Ops: status/start/stop/tools/describe/call. Two backends — headless (`mcp-reva` over stdio, lazy JVM boot, started on demand with `confirm=True`) and gui (attach over streamable HTTP to a running Ghidra's ReVa plugin). Async-task startup; `call` truncates at `REVA_MAX_TEXT_CHARS`; session torn down on backend shutdown. Replaces the "run ReVa as a second MCP server" workflow for chat clients.
-- `reva(start, headless)` now routes through the bridge (headless ReVa is a stdio server and must be driven over pipes, never spawned bare); GUI spawn no longer inherits stdio.
+- `ghidra` MCP portmanteau (`src/reversing_mcp/ghidra_bridge.py`): one tool forwarding to ReVa's ~86 Ghidra tools instead of mounting them all. Ops: status/start/stop/tools/describe/call. The agent ALWAYS drives a stdio `mcp-reva` child - no port, no API key, no hunting (mcp-reva manages ReVa's internal random port/key itself). `mode="headless"` is just that child; `mode="watch"` (alias `gui`) also launches a Ghidra desktop window to look at, which is a SEPARATE instance from the one being driven. Both confirm-gated. Async-task startup; `call` truncates at `REVA_MAX_TEXT_CHARS`; session + any watch window torn down on stop and on backend shutdown. Replaces the "run ReVa as a second MCP server" workflow for chat clients.
+- Dropped the earlier "attach to a running Ghidra GUI over an HTTP URL" idea: it needs ReVa's internal port+key, which we do not handle, so it was never a smooth path. Verified live: headless start loaded 86 tools in ~12s warm, search/describe/call/stop all round-trip against real mcp-reva.
+- `reva(start, headless)` routes through the bridge (headless ReVa is a stdio server and must be driven over pipes, never spawned bare); GUI spawn no longer inherits stdio.
 - Backend REST: `GET /api/v1/ghidra/session`, `POST /api/v1/ghidra/session/start|stop`, `GET /api/v1/ghidra/tools[/{name}]`, `POST /api/v1/ghidra/call`.
-- Webapp Ghidra section (`/ghidra`): Workbench (session lifecycle + call panel with schema-filled argument skeletons), Tool catalogue (search/filter-by-category/sort/paginate/count), Call history (localStorage, replay). Sidebar entry, dashboard hero CTA + KPI link, Help Overview/API/FAQ coverage.
-- Tests: `tests/test_ghidra_bridge.py` (fake in-memory ReVa, 5 cases: full gui cycle, not-ready guards, unreachable error, missing launcher, transport-construction failure).
+- Webapp Ghidra section (`/ghidra`): Workbench (one-button start, no ports/programs to pick; call panel with schema-filled argument skeletons), Tool catalogue (search/filter-by-category/sort/paginate/count), Call history (localStorage, replay). Sidebar entry, dashboard hero CTA + KPI link, Help Overview/API/FAQ coverage.
+- Tests: `tests/test_ghidra_bridge.py` (fake in-memory ReVa over stdio, 8 cases: full headless cycle, watch window open/close, watch-window-failure-nonfatal, gui alias, not-ready guards, connect failure, missing launcher, missing GHIDRA_INSTALL_DIR).
 - Config: `opencode-cli-mcp` added to Claude Desktop; `reva` replaced by `reversing-mcp` (stdio via uv).
 
 ### Added (2026-10-14)

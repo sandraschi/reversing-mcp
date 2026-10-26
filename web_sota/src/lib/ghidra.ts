@@ -19,11 +19,12 @@ export type SessionState = "stopped" | "starting" | "ready" | "error";
 export interface GhidraSession {
   success: boolean;
   state: SessionState;
-  mode: "headless" | "gui" | null;
+  mode: "headless" | "watch" | null;
   target: string | null;
   tool_count: number;
   error: string | null;
   log_file: string | null;
+  gui_window?: boolean;
   elapsed_s?: number;
   startup_s?: number;
   hint?: string;
@@ -96,10 +97,10 @@ function postJson<T>(path: string, body: unknown): Promise<T> {
 
 export const ghidraApi = {
   session: () => getJson<GhidraSession>("/api/v1/ghidra/session"),
-  start: (mode: "headless" | "gui", url?: string) =>
+  start: (mode: "headless" | "watch") =>
     postJson<GhidraSession & { message?: string; busy?: boolean }>(
       "/api/v1/ghidra/session/start",
-      { mode, confirm: mode === "headless", url: url || null },
+      { mode, confirm: true },
     ),
   stop: () =>
     postJson<{ success: boolean; message: string }>(

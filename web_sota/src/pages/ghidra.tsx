@@ -22,25 +22,21 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 function StartPanel({ onStarted }: { onStarted: () => void }) {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"headless" | "watch" | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [guiUrl, setGuiUrl] = useState("");
 
-  const start = async (mode: "headless" | "gui") => {
-    setBusy(true);
+  const start = async (mode: "headless" | "watch") => {
+    setBusy(mode);
     setErr(null);
     try {
-      const d = await ghidraApi.start(
-        mode,
-        mode === "gui" ? guiUrl : undefined,
-      );
+      const d = await ghidraApi.start(mode);
       if (d.success === false)
         throw new Error(d.error ?? `Start (${mode}) failed`);
       onStarted();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Start failed");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
@@ -53,58 +49,45 @@ function StartPanel({ onStarted }: { onStarted: () => void }) {
         <CardTitle className="text-white">Start a Ghidra session</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-slate-800 p-4 space-y-2">
-            <h4 className="text-sm font-semibold text-white">Headless</h4>
-            <p className="text-sm text-slate-300">
-              Boots <code className="font-mono text-xs">mcp-reva</code> with its
-              own Ghidra JVM. No window; ~1-2 min cold start, ~1-2 GB RAM. Best
-              for batch work and when you do not need to watch.
-            </p>
-            <Button
-              onClick={() => start("headless")}
-              disabled={busy}
-              className="bg-red-700 text-white hover:bg-red-600 disabled:opacity-40"
-              data-testid="ghidra-start-headless"
-            >
-              {busy ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Power className="h-4 w-4 mr-2" />
-              )}
-              Start headless
-            </Button>
-          </div>
-          <div className="rounded-lg border border-slate-800 p-4 space-y-2">
-            <h4 className="text-sm font-semibold text-white">Attach to GUI</h4>
-            <p className="text-sm text-slate-300">
-              Connect to a running Ghidra with the ReVa plugin server enabled
-              (Edit &gt; Tool Options &gt; ReVa). You watch every rename and
-              comment land in the window.
-            </p>
-            <input
-              value={guiUrl}
-              onChange={(e) => setGuiUrl(e.target.value)}
-              placeholder="http://127.0.0.1:8080/mcp/message (default)"
-              className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder:text-slate-500 outline-none focus:border-red-500"
-              data-testid="ghidra-gui-url"
-            />
-            <Button
-              onClick={() => start("gui")}
-              disabled={busy}
-              variant="outline"
-              className="border-slate-700 disabled:opacity-40"
-              data-testid="ghidra-start-gui"
-            >
-              {busy ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4 mr-2" />
-              )}
-              Attach to GUI
-            </Button>
-          </div>
+        <p className="text-sm text-slate-300">
+          Boots Ghidra through{" "}
+          <code className="font-mono text-xs">mcp-reva</code> and loads its
+          tools. First start takes ~1-2 min (JVM, ~1-2 GB RAM). No ports or
+          programs to pick - just start.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            onClick={() => start("headless")}
+            disabled={busy !== null}
+            className="bg-red-700 text-white hover:bg-red-600 disabled:opacity-40"
+            data-testid="ghidra-start-headless"
+          >
+            {busy === "headless" ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Power className="h-4 w-4 mr-2" />
+            )}
+            Start session
+          </Button>
+          <Button
+            onClick={() => start("watch")}
+            disabled={busy !== null}
+            variant="outline"
+            className="border-slate-700 disabled:opacity-40"
+            data-testid="ghidra-start-watch"
+          >
+            {busy === "watch" ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            Start + open a window to watch
+          </Button>
         </div>
+        <p className="text-xs text-slate-500">
+          The window is a second Ghidra instance for looking - the agent drives
+          its own in-process one. Useful to eyeball a project; not required.
+        </p>
         {err && (
           <p
             className="text-sm text-red-400 flex items-start gap-2"
@@ -301,7 +284,7 @@ export function Ghidra() {
     <div className="space-y-5" data-testid="ghidra-page">
       <GhidraHeader
         title="Ghidra Workbench"
-        blurb="Decompile, trace cross-references, rename and retype through ReVa, behind one session. Start headless for batch work or attach to a live Ghidra to watch it happen."
+        blurb="Decompile, trace cross-references, rename and retype through ReVa, behind one session. Start it and go - no ports or programs to hunt for. Optionally open a Ghidra window alongside to watch."
       />
 
       {reachable === false && (
@@ -365,6 +348,7 @@ export function Ghidra() {
               {session.startup_s != null
                 ? ` · booted in ${session.startup_s}s`
                 : ""}
+              {session.gui_window ? " · window open" : ""}
               {session.log_file ? (
                 <span className="text-slate-500 font-mono">
                   {" "}

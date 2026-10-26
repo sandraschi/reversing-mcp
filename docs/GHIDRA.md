@@ -11,35 +11,44 @@ you do not add a second MCP server to your client and do not boot a JVM until
 you ask for one. ReVa exposes ~86 Ghidra tools; mounting them directly floods
 the client tool list, so they stay behind one entry here.
 
+The agent ALWAYS drives through a stdio `mcp-reva` child: no port, no API key,
+no hunting. mcp-reva runs its own in-process Ghidra and manages ReVa's internal
+random HTTP port and key itself; reversing-mcp never touches those. You just
+start a session.
+
 ### Operations
 
 | Operation | What it does |
 |-----------|--------------|
-| `status` | Session state: `stopped` / `starting` / `ready` / `error`, mode, tool count |
-| `start` | `mode="headless"` (needs `confirm=True`) spawns `mcp-reva`; `mode="gui"` attaches to a running Ghidra with the ReVa plugin server enabled |
-| `stop` | Ends the session (headless JVM is terminated; GUI keeps running) |
+| `status` | Session state: `stopped` / `starting` / `ready` / `error`, mode, `gui_window`, tool count |
+| `start` | Boots a session (needs `confirm=True`). `mode="headless"` is just the stdio child; `mode="watch"` also opens a Ghidra window to look at |
+| `stop` | Ends the session (JVM terminated; any watch window is closed too) |
 | `tools` | Search the ReVa catalogue (`query`, `offset`, `limit`); returns `{name, summary}` |
 | `describe` | Full description + input schema of one ReVa tool |
 | `call` | Invoke one ReVa tool with `arguments` (see `describe`) |
 
-### Two backends
+### Two modes (same stdio driver)
 
-- **Headless** (`mode="headless"`, `confirm=True`): spawns `mcp-reva` over
-  stdio with its own Ghidra JVM. ~1-2 min cold boot, ~1-2 GB RAM. No window.
-  Needs `mcp-reva` (fleet venv at `D:/Dev/tools/reva`, see [REVA.md](REVA.md))
-  and `GHIDRA_INSTALL_DIR`. The stdio stream is driven over pipes by the
-  bridge, never spawned bare — a child on our own stdout would corrupt the
-  MCP JSON-RPC stream.
-- **GUI** (`mode="gui"`): attaches over streamable HTTP to the ReVa plugin in
-  a running Ghidra GUI (default `http://127.0.0.1:8080/mcp/message`, override
-  with `url=...` or `REVA_GUI_URL`). You watch renames, comments and bookmarks
-  land live in the window. Enable the plugin at Edit > Tool Options > ReVa.
+- **headless** (default, `confirm=True`): spawns `mcp-reva` over stdio with its
+  own Ghidra JVM. ~1-2 min cold boot (seconds when warm), ~1-2 GB RAM, no
+  window. Needs `mcp-reva` (fleet venv at `D:/Dev/tools/reva`, see
+  [REVA.md](REVA.md)) and `GHIDRA_INSTALL_DIR`. The stdio stream is driven over
+  pipes by the bridge, never spawned bare: a child on our own stdout would
+  corrupt the MCP JSON-RPC stream.
+- **watch** (`confirm=True`): the same stdio child, PLUS the Ghidra desktop GUI
+  launched alongside so you can see a project. IMPORTANT: that window is a
+  SEPARATE Ghidra instance from the one the agent drives (mcp-reva runs its own
+  in-process Ghidra). The window is for looking, not the one being edited.
+  ReVa has no supported way to attach a second client to a running GUI's plugin
+  without its internal port and key, which we deliberately do not handle, so
+  "attach to a GUI and drive it live" is not offered. `mode="gui"` is accepted
+  as an alias for `watch`.
 
 ### Workflow
 
 ```
-ghidra(operation="start", mode="headless", confirm=True)
-ghidra(operation="status")                 # poll until state="ready" (~1-2 min)
+ghidra(operation="start", confirm=True)    # or mode="watch" to also open a window
+ghidra(operation="status")                 # poll until state="ready"
 ghidra(operation="tools", query="decompil")
 ghidra(operation="describe", tool="get-decompilation")
 ghidra(operation="call", tool="get-functions", arguments={"programPath": "/prog.exe"})
@@ -50,11 +59,12 @@ ghidra(operation="stop")
 
 - **One session per process.** The webapp backend and a chat client (e.g.
   Claude Desktop over stdio) are separate processes, so each has its own
-  session. `gui` mode lets both attach to the same running Ghidra.
+  session and its own mcp-reva child.
 - Long output is truncated at `REVA_MAX_TEXT_CHARS` (default 60000) with a
   `truncated_from` marker; narrow the query rather than paging blindly.
-- The older `reva` tool still manages ReVa's raw lifecycle (headless now routes
-  through the same bridge; `gui` launches the Ghidra desktop app).
+- The older `reva` tool still manages ReVa's raw lifecycle. Its `headless`
+  start routes through this bridge; its `gui` start launches the Ghidra desktop
+  app (what `watch` uses under the hood).
 
 ### Webapp
 

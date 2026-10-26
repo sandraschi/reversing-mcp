@@ -566,12 +566,9 @@ async def reva(
 async def ghidra(
     operation: Annotated[str, Field(description="Ghidra op: status, start, stop, tools, describe, call.")] = "status",
     mode: Annotated[
-        str, Field(description="start only: headless (spawn mcp-reva) or gui (attach to running Ghidra).")
+        str, Field(description="start only: headless (no window) or watch (also open a Ghidra window to look at).")
     ] = "headless",
-    confirm: Annotated[bool, Field(description="start headless only: must be true (boots a JVM).")] = False,
-    url: Annotated[
-        str | None, Field(description="start gui only: ReVa plugin MCP URL. Default REVA_GUI_URL or :8080.")
-    ] = None,
+    confirm: Annotated[bool, Field(description="start only: must be true (boots a Ghidra JVM).")] = False,
     tool: Annotated[str | None, Field(description="describe/call: ReVa tool name.")] = None,
     arguments: Annotated[
         dict[str, Any] | None, Field(description="call: arguments for the ReVa tool (see describe).")
@@ -588,23 +585,26 @@ async def ghidra(
     directly floods the client tool list and boots a JVM at client start. This
     tool keeps them behind one entry and starts ReVa only on demand.
 
-    Workflow: `start` (headless needs confirm=True; gui attaches to a running
-    Ghidra with the ReVa plugin enabled) -> poll `status` until state='ready'
-    (headless boot ~1-2 min) -> `tools` with a query to find the right tool ->
-    `describe` for its input schema -> `call` with arguments. Typical first
-    calls: import the binary, list functions, get a decompilation. In gui mode
-    the agent's renames, comments and bookmarks appear live in the Ghidra window.
+    The agent always drives through a stdio mcp-reva child: no port, no API key,
+    no hunting. `mode="headless"` is just that child; `mode="watch"` also opens a
+    Ghidra window to look at (a separate instance, since mcp-reva runs its own
+    in-process Ghidra). Both boot a JVM, so start needs confirm=True.
+
+    Workflow: `start` (confirm=True) -> poll `status` until state='ready'
+    (~1-2 min) -> `tools` with a query to find the right tool -> `describe` for
+    its input schema -> `call` with arguments. Typical first calls: import the
+    binary, list functions, get a decompilation.
 
     ## Return Format
-    status/start/stop: `{success, state, mode, target, tool_count, ...}`.
+    status/start/stop: `{success, state, mode, gui_window, tool_count, ...}`.
     tools: `{success, total, next_offset, tools: [{name, summary}]}`.
     describe: `{success, name, description, input_schema}`.
     call: `{success, tool, elapsed_s, content: [{type, text}], structured?, note?}`.
     Not ready: `{success: False, error, state, hint}`.
 
     ## Examples
-    `ghidra(operation="start", mode="headless", confirm=True)`
-    `ghidra(operation="start", mode="gui")`
+    `ghidra(operation="start", confirm=True)`
+    `ghidra(operation="start", mode="watch", confirm=True)`
     `ghidra(operation="tools", query="decompil")`
     `ghidra(operation="describe", tool="get-decompilation")`
     `ghidra(operation="call", tool="get-functions", arguments={"programPath": "/prog.exe"})`
@@ -614,7 +614,7 @@ async def ghidra(
     if op == "status":
         return b.status()
     if op == "start":
-        return await b.start(mode, url, confirm)
+        return await b.start(mode, None, confirm)
     if op == "stop":
         return await b.stop()
     if op == "tools":
@@ -1876,9 +1876,8 @@ try:
     # the same running Ghidra.
 
     class _GhidraStartBody(BaseModel):
-        mode: str = "headless"
+        mode: str = "headless"  # headless | watch
         confirm: bool = False
-        url: str | None = None
 
     class _GhidraCallBody(BaseModel):
         tool: str
@@ -1892,8 +1891,8 @@ try:
 
     @_http_app.post("/api/v1/ghidra/session/start")
     async def _ghidra_session_start(body: _GhidraStartBody):
-        """Start headless ReVa (confirm required) or attach to a Ghidra GUI."""
-        return await _ghidra.bridge.start(body.mode, body.url, body.confirm)
+        """Start a session: headless, or watch (also opens a Ghidra window)."""
+        return await _ghidra.bridge.start(body.mode, None, body.confirm)
 
     @_http_app.post("/api/v1/ghidra/session/stop")
     async def _ghidra_session_stop():

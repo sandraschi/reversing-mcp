@@ -939,11 +939,11 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: "What is the Ghidra page, and how is it different from the Status page?",
-    a: "The Ghidra page (Workbench + Tool catalogue + Call history) drives Ghidra interactively through ReVa: start a session (headless mcp-reva, or attach to a running Ghidra GUI), browse the ~86 ReVa tools, and call them (decompile, xrefs, rename, retype). The Status page only reports whether Ghidra and the legacy :8089 bridge are installed and reachable. Note the webapp backend runs its own session, separate from one a chat client (Claude Desktop) started over stdio; GUI mode lets both attach to the same Ghidra.",
+    a: "The Ghidra page (Workbench + Tool catalogue + Call history) drives Ghidra interactively through ReVa: start a session and the ~86 ReVa tools load, then search, describe and call them (decompile, xrefs, rename, retype). The agent always drives a stdio mcp-reva child - no ports or programs to pick. 'Start + open a window to watch' also opens a Ghidra desktop window, but that is a separate instance for looking, not the one being driven. The Status page only reports whether Ghidra and the legacy :8089 bridge are installed and reachable.",
   },
   {
-    q: "Headless start says mcp-reva not found.",
-    a: "Headless needs the fleet ReVa venv (mcp-reva) and GHIDRA_INSTALL_DIR set. See D:/Dev/tools/reva/README.md. If you cannot install it, use GUI mode: open Ghidra, enable the ReVa plugin server (Edit > Tool Options > ReVa), then Attach to GUI.",
+    q: "Start says mcp-reva not found.",
+    a: "A session needs the fleet ReVa venv (mcp-reva) and GHIDRA_INSTALL_DIR set. See D:/Dev/tools/reva/README.md. Without it no session can start (there is no 'attach to an external Ghidra' fallback - that would need ReVa's internal port and key, which the bridge deliberately does not handle).",
   },
   {
     q: "Can I use IDA Free?",
