@@ -5,6 +5,8 @@ Start: [ONBOARDING.md](ONBOARDING.md) (first run) · [TOOLS.md](TOOLS.md) (tool 
 | Doc | What |
 |-----|------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Modules, boot sequence, transports, data |
+| [BEHRINGER_PLAYBOOK.md](BEHRINGER_PLAYBOOK.md) | Hardware reverse-to-product doctrine: ROMs, agentic tooling, PRC manufacturing & DJ gear |
+| [MASS_RECOMP_AND_CONSOLE_LIBERATION.md](MASS_RECOMP_AND_CONSOLE_LIBERATION.md) | The death of emulation: static recompilation, agentic decomp & console liberation |
 | [CUA_DISASSEMBLY_COMBO.md](CUA_DISASSEMBLY_COMBO.md) | Tier 3: CUA tour + disassembly = feature-to-code maps |
 | [CAPA.md](CAPA.md) / [DIE.md](DIE.md) / [FRIDA.md](FRIDA.md) | Engine guides: capabilities, packer ID, dynamic hooks |
 | [CONFIGURATION.md](CONFIGURATION.md) | Ports, env vars, data dirs |
