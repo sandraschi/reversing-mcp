@@ -84,7 +84,24 @@ With the rise of agent-native RE tools—such as [REA](https://rea.tools/) (with
 
 ---
 
-## 4. The Legal Fault Line: The Engine vs. Asset Boundary
+## 4. The 100 GB Blob Fallacy: On-The-Fly Tooling Synthesis
+
+A persistent illusion in the AAA games industry was that binary scale itself was an unbreachable security moat:
+> *"A 100 GB to 150 GB package of encrypted chunks, proprietary Oodle compression streams, custom PAK formats, and undocumented shader bytecodes is too vast to reverse. Joe Shmoe and his twenty friends on Discord simply do not have the person-hours to map it."*
+
+For human hobbyist teams, that calculation was historically correct. Sifting through 100 gigabytes with hex editors, disassemblers, and manual debuggers takes years of volunteer labor.
+
+For a SOTA LLM agent, **scale is an illusion because the agent does not ingest the gigabytes into its prompt—it generates the machinery to process them:**
+1. **Header Sniffing & Spec Deduction:** The agent reads the first 4 KB and last 4 KB of the archive, identifies magic offsets, compression flags, and chunk index tables.
+2. **On-the-Fly Tooling Synthesis:** Within 30 seconds, the agent writes a dedicated, highly parallel multi-threaded extraction and decompression tool in pure Rust or C.
+3. **Execution & Feedback:** The agent compiles the tool, runs it against the 100 GB blob, catches memory allocation errors or misaligned offsets, repairs the source code, and re-runs.
+4. **Throughput:** The synthesized tool slices through 100 gigabytes like a heated knife through butter.
+
+The reversing revolution is the direct daughter of the coding revolution. When an AI can write high-performance systems code on demand, **reverse engineering shifts from manual puzzle-solving to automated inverse compilation.** The entire AAA client catalog becomes an exposed target.
+
+---
+
+## 5. The Legal Fault Line: The Engine vs. Asset Boundary
 
 Platform holders (Nintendo, Sony) have historically weaponized DMCA take-downs and Section 1201 circumvention claims against emulator developers and ROM distribution sites. 
 
@@ -115,7 +132,7 @@ Because the repository distributes **only logic** and no copyrighted creative ex
 
 ---
 
-## 5. Hardware Convergence: The "Re-ROMed" Universal Fleet
+## 6. Hardware Convergence: The "Re-ROMed" Universal Fleet
 
 The software liberation of game engines coincides with hardware commoditization:
 
@@ -131,7 +148,7 @@ The software liberation of game engines coincides with hardware commoditization:
 
 ---
 
-## 6. Strategic Takeaways for the Fleet
+## 7. Strategic Takeaways for the Fleet
 
 The lessons from the mass recompilation wave directly govern `reversing-mcp` and the broader fleet architecture:
 
