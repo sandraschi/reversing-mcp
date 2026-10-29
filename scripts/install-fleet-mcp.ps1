@@ -57,6 +57,11 @@ param(
     [string[]]$Arguments = @(),
     [string[]]$EnvPairs = @('MCP_TRANSPORT=stdio', 'PYTHONUNBUFFERED=1', 'FASTMCP_BANNER=0', 'FASTMCP_UPDATE_CHECK=0'),
     [string[]]$SyncExtras = @(),
+    [ValidateSet('mcp', 'webapp', 'desktop', 'all')][string]$Mode = 'mcp',
+    [switch]$NoStart,
+    [switch]$OpenBrowser,
+    [string]$AssetName,
+    [switch]$SkipReleaseCheck,
     [ValidateSet('claude-desktop', 'cursor', 'antigravity', 'windsurf', 'opencode', 'claude-code')]
     [string[]]$Clients,
     [switch]$Check,
@@ -285,6 +290,41 @@ function Resolve-Spec {
 }
 
 
+function Get-ReleaseInstaller([string]$RepoName, [string]$Wanted) {
+    # Latest GitHub release, preferring an NSIS asset. Public repos need no auth.
+    $api = "https://api.github.com/repos/sandraschi/$RepoName/releases/latest"
+    try {
+        $rel = Invoke-RestMethod -Uri $api -Headers @{ 'User-Agent' = 'fleet-install' } -TimeoutSec 20
+    } catch { return $null }
+    $assets = @($rel.assets)
+    if (-not $assets.Count) { return $null }
+    $pick = $null
+    if ($Wanted) { $pick = $assets | Where-Object { $_.name -eq $Wanted } | Select-Object -First 1 }
+    if (-not $pick) { $pick = $assets | Where-Object { $_.name -match '(?i)(setup|installer).*\.exe$' } | Select-Object -First 1 }
+    if (-not $pick) { $pick = $assets | Where-Object { $_.name -match '(?i)\.exe$' } | Select-Object -First 1 }
+    if (-not $pick) { return $null }
+    return [pscustomobject]@{ tag = $rel.tag_name; name = $pick.name; url = $pick.browser_download_url; size = $pick.size }
+}
+
+function Invoke-WebappMode([string]$Root, [switch]$ProvisionOnly, [switch]$AllowBrowser) {
+    $launcher = Join-Path $Root 'start.ps1'
+    if (-not (Test-Path -LiteralPath $launcher)) {
+        Write-Step '  webapp: no start.ps1 in this repo - nothing to launch'
+        return
+    }
+    if ($ProvisionOnly) {
+        Write-Step "  webapp: launcher present. Run: $launcher"
+        return
+    }
+    # Pass -NoBrowser only if the repo's start.ps1 actually declares it.
+    $text = Get-Content -LiteralPath $launcher -Raw
+    $launchArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcher)
+    if (-not $AllowBrowser -and $text -match '\$NoBrowser') { $launchArgs += '-NoBrowser' }
+    $pwshExe = (Get-Process -Id $PID).Path
+    $proc = Start-Process -FilePath $pwshExe -ArgumentList $launchArgs -WorkingDirectory $Root -PassThru
+    Write-Step "  webapp: started start.ps1 (pid $($proc.Id))"
+}
+
 function Get-RepoRegistrations([string]$RepoPathPosix) {
     # Compare with ALL separators stripped from both sides. Matching on '\\' vs '/'
     # fails: ConvertTo-Json escapes a backslash as '\\', so a naive Replace turns
@@ -334,13 +374,18 @@ if (-not $Check -and -not $Uninstall) {
 }
 
 # ---- resolve the stdio launch command (manifest contract first, then fallbacks) ---
+# -Check/-List/-Uninstall always inspect the MCP registration regardless of -Mode.
+$doMcp = ($Mode -eq 'mcp') -or ($Mode -eq 'all') -or $Check -or $List -or $Uninstall
 $probeDisabled = $Check -or $DryRun -or $List -or $Uninstall
-if ($Command) {
-    $spec = [pscustomobject]@{ Command = $Command; Arguments = @($Arguments); EnvPairs = @(); NeedsSync = $false; How = 'explicit -Command' }
-} else {
-    Write-Step ''
-    Write-Step 'resolving launch command ...'
-    $spec = Resolve-Spec -Root $repoPath -Stem $repoStem -BaseEnv $EnvPairs -NoProbe:$probeDisabled
+$spec = $null
+if ($doMcp) {
+    if ($Command) {
+        $spec = [pscustomobject]@{ Command = $Command; Arguments = @($Arguments); EnvPairs = @(); NeedsSync = $false; How = 'explicit -Command' }
+    } else {
+        Write-Step ''
+        Write-Step 'resolving launch command ...'
+        $spec = Resolve-Spec -Root $repoPath -Stem $repoStem -BaseEnv $EnvPairs -NoProbe:$probeDisabled
+    }
 }
 
 # ---- -Check ----------------------------------------------------------------------
@@ -357,6 +402,11 @@ if ($Check) {
         uv         = $uvExe
         needs_sync = $(if ($spec) { $spec.NeedsSync } else { $true })
         probe      = 'skipped (-Check)'
+        webapp     = (Test-Path -LiteralPath (Join-Path $repoPath 'start.ps1'))
+        desktop    = $(if ($SkipReleaseCheck) { 'skipped' } else {
+                $r = Get-ReleaseInstaller -RepoName $repoStem -Wanted $AssetName
+                if ($r) { "$($r.name) [$($r.tag)]" } else { 'none' }
+            })
         writer     = $writer
     }
     if ($Json) { ConvertTo-Json -InputObject $report -Depth 5 }
@@ -369,6 +419,8 @@ if ($Check) {
         Write-Host '  venv       ' -NoNewline; Write-Host $report.venv
         Write-Host '  uv         ' -NoNewline; Write-Host $(if ($report.uv) { $report.uv } else { '<missing>' })
         Write-Host '  needs sync ' -NoNewline; Write-Host $report.needs_sync
+        Write-Host '  webapp     ' -NoNewline; Write-Host $(if ($report.webapp) { 'start.ps1 present' } else { 'no start.ps1' })
+        Write-Host '  desktop    ' -NoNewline; Write-Host $report.desktop
         Write-Host ''
         Write-Host '  Detected clients:' -ForegroundColor Cyan
         & $writer -Name $alias -List
@@ -378,7 +430,7 @@ if ($Check) {
 
 # ---- ensure the launch command actually exists -----------------------------------
 # Nothing answered: build the venv once, then retry the whole tier ladder.
-if (-not $spec -and -not $probeDisabled) {
+if ($doMcp -and -not $spec -and -not $probeDisabled) {
     $venvPython = Get-VenvPython $repoPath
     # NEVER re-sync an EXISTING venv. `uv sync` reconciles to the base dependency set and
     # PRUNES whatever the optional extras installed: reversing-mcp lost pyghidra, frida,
@@ -405,7 +457,7 @@ if (-not $spec -and -not $probeDisabled) {
     }
 }
 
-if (-not $spec -and -not ($List -or $Uninstall)) {
+if ($doMcp -and -not $spec -and -not ($List -or $Uninstall)) {
     $lastErr = ''
     if ($script:LastProbe -and $script:LastProbe.Stderr) {
         $lastErr = (($script:LastProbe.Stderr -split "`r?`n") | Where-Object { $_ -match '\S' } | Select-Object -Last 3) -join ' | '
@@ -414,6 +466,7 @@ if (-not $spec -and -not ($List -or $Uninstall)) {
 }
 
 # ---- delegate to the canonical writer --------------------------------------------
+if ($doMcp) {
 $mergeEnv = @{}
 foreach ($pair in @(if ($spec) { $spec.EnvPairs } else { @() })) { if ($pair -match '^([^=]+)=(.*)$') { $mergeEnv[$Matches[1]] = $Matches[2] } }
 foreach ($pair in $EnvPairs) {
@@ -444,3 +497,38 @@ if (-not $Json) {
 
 & $writer @writerArgs
 if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+# ---- webapp mode ------------------------------------------------------------------
+# Provisions and launches the fleet launcher (start.ps1): winget prereqs, uv sync with
+# the repo's SyncExtras, npm install, port clearing, uvicorn + vite. -Mode all only
+# reports it, because starting servers is not something "install" should do silently.
+if ($Mode -eq 'webapp' -or $Mode -eq 'all') {
+    Invoke-WebappMode -Root $repoPath -ProvisionOnly:($NoStart -or $Mode -eq 'all') -AllowBrowser:$OpenBrowser
+}
+
+# ---- desktop mode -----------------------------------------------------------------
+# Tauri/NSIS installers are release assets, never run as a side effect of registering
+# an MCP server. Requires -Yes; without it the exact asset is named and nothing runs.
+if ($Mode -eq 'desktop' -or $Mode -eq 'all') {
+    if ($SkipReleaseCheck) {
+        Write-Step '  desktop: release check skipped'
+    } else {
+        $rel = Get-ReleaseInstaller -RepoName $repoStem -Wanted $AssetName
+        if (-not $rel) {
+            Write-Step '  desktop: no .exe asset in the latest GitHub release'
+        } elseif ($Mode -eq 'all') {
+            Write-Step ("  desktop: available - {0} ({1:N1} MB, {2}) - re-run with -Mode desktop -Yes" -f $rel.name, ($rel.size / 1MB), $rel.tag)
+        } elseif (-not $Yes) {
+            Write-Step ("  desktop: would install {0} ({1:N1} MB, {2}) - re-run with -Yes to run it" -f $rel.name, ($rel.size / 1MB), $rel.tag)
+        } else {
+            $dest = Join-Path $env:TEMP $rel.name
+            Write-Step "  desktop: downloading $($rel.name)"
+            Invoke-WebRequest -Uri $rel.url -OutFile $dest -UseBasicParsing
+            Write-Step ("  desktop: sha256 " + (Get-FileHash -LiteralPath $dest -Algorithm SHA256).Hash)
+            Write-Step '  desktop: running the NSIS installer silently (/S)'
+            $inst = Start-Process -FilePath $dest -ArgumentList '/S' -PassThru -Wait
+            Write-Step "  desktop: installer exit code $($inst.ExitCode)"
+        }
+    }
+}
