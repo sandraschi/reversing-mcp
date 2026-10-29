@@ -59,7 +59,10 @@ def test_run_rea_missing_target(tmp_path: Path) -> None:
 def test_run_rea_no_runner(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(rea_bridge.shutil, "which", lambda _name: None)
     out = rea_bridge.run_rea("providers")
-    assert not out["success"] and "just setup-rea" in out["error"]
+    assert out["success"] is False
+    assert out["error_type"] == "dependency_missing"
+    assert out["dependency"] == "rea"
+    assert any("setup-rea" in line for line in out["recovery_options"])
     assert rea_bridge.check_rea()["available"] is False
 
 

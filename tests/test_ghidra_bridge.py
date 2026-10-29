@@ -221,7 +221,9 @@ def test_headless_missing_launcher(monkeypatch):
 
     async def run():
         out = await gb.GhidraBridge().start("headless", confirm=True)
-        assert out["success"] is False and "mcp-reva not found" in out["error"]
+        assert out["success"] is False
+        assert out["error_type"] == "dependency_missing"
+        assert out["dependency"] == "reva"
 
     asyncio.run(run())
 
