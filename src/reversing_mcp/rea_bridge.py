@@ -26,6 +26,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from .dependencies import require
 from .logging_config import get_logger
 
 logger = get_logger("reversing_mcp.rea_bridge")
@@ -201,11 +202,10 @@ def run_rea(
     """
     runner = find_rea_runner()
     if runner is None:
-        return {
-            "success": False,
-            "error": "REA not found (no `rea` or `npx` on PATH). Run: just setup-rea, then restart. See docs/REA.md.",
-            "kind": kind,
-        }
+        blocked = require("rea", tool=f"rea_investigate:{kind}", detail="No `rea` shim and no `npx` on PATH.")
+        if blocked:
+            blocked["kind"] = kind
+        return blocked or {"success": False, "error": "REA unavailable.", "kind": kind}
     resolved = resolve_kind(kind, target)
     argv_tail, build_error = build_command(
         resolved,

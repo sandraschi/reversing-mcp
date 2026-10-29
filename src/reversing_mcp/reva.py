@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from . import engines
+from .dependencies import require
 from .logging_config import get_logger
 
 logger = get_logger("reversing_mcp.reva")
@@ -122,11 +123,14 @@ def start(mode: str = "headless", confirm: bool = False, bridge_url: str = "") -
         if mode == "headless":
             exe = find_mcp_reva()
             if not exe:
-                return {
-                    "success": False,
-                    "error": "mcp-reva not found (PATH or D:/Dev/tools/reva) - headless ReVa unavailable.",
-                    "install_hint": "Fleet venv missing: see D:/Dev/tools/reva/README.md",
-                }
+                blocked = require(
+                    "reva",
+                    tool="reva:start",
+                    detail="mcp-reva was not found on PATH or under D:/Dev/tools/reva - headless ReVa is unavailable.",
+                )
+                if blocked and not find_ghidra_run().get("dir"):
+                    blocked["also_missing"] = ["ghidra"]
+                return blocked or {"success": False, "error": "ReVa unavailable."}
             env = dict(os.environ)
             if find_ghidra_run()["dir"]:
                 env["GHIDRA_INSTALL_DIR"] = find_ghidra_run()["dir"] or ""

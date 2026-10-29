@@ -22,6 +22,7 @@ from typing import Any
 
 import psutil
 
+from .dependencies import require
 from .logging_config import get_logger
 
 logger = get_logger("reversing_mcp.engines")
@@ -119,10 +120,9 @@ def run_die(file_path: str, timeout_s: int = 60, cancel: threading.Event | None 
     """
     exe = find_diec()
     if not exe:
-        return {
-            "success": False,
-            "error": "Detect It Easy (diec) not found. Install it and set DIE_DIR - see docs/DIE.md.",
-        }
+        return (
+            require("die", tool="engine:die", detail="Detect It Easy (diec) was not found on PATH or in DIE_DIR.") or {}
+        )
     if not Path(file_path).is_file():
         return {"success": False, "error": f"File not found: {file_path}"}
     try:
@@ -229,7 +229,7 @@ def run_capa(file_path: str, timeout_s: int = 600, cancel: threading.Event | Non
     """
     exe = find_capa()
     if not exe:
-        return {"success": False, "error": "capa not found. Install it - see docs/CAPA.md."}
+        return require("capa", tool="engine:capa", detail="capa was not found on PATH or in CAPA_EXE.") or {}
     if not Path(file_path).is_file():
         return {"success": False, "error": f"File not found: {file_path}"}
     rules, sigs = capa_data_dirs()
@@ -407,7 +407,7 @@ def _run_frida(
     try:
         import frida  # optional extra (dynamic)
     except ImportError:
-        return {"success": False, "error": "frida not installed: uv sync --extra dynamic (docs/FRIDA.md)."}
+        return require("frida", tool="engine:frida", detail="Frida is not importable in this venv.") or {}
     if (target is None) == (pid is None):
         return {"success": False, "error": "Pass exactly one of target (spawn) or pid (attach)."}
     if target is not None and not Path(target).is_file():
@@ -520,7 +520,7 @@ def frida_oracle(
     try:
         import frida
     except ImportError:
-        return {"success": False, "error": "frida not installed - toolbox install frida (uv sync --extra dynamic)."}
+        return require("frida", tool="engine:frida", detail="Install the dynamic extra, then retry.") or {}
     duration_s = max(5, min(duration_s, FRIDA_MAX_DURATION_S))
     max_events = max(1, min(max_events, FRIDA_MAX_EVENTS))
     source = build_oracle_agent()

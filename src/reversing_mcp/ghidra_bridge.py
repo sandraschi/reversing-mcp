@@ -37,6 +37,7 @@ from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
 from . import reva as _reva
+from .dependencies import require as _require
 from .logging_config import get_logger
 
 logger = get_logger("reversing_mcp.ghidra_bridge")
@@ -135,10 +136,13 @@ class GhidraBridge:
                 }
             exe = _reva.find_mcp_reva()
             if not exe:
-                return {
+                return _require(
+                    "reva",
+                    tool="ghidra:start_session",
+                    detail="mcp-reva was not found on PATH or under D:/Dev/tools/reva.",
+                ) or {
                     "success": False,
-                    "error": "mcp-reva not found (PATH or D:/Dev/tools/reva).",
-                    "install_hint": "See D:/Dev/tools/reva/README.md",
+                    "error": "ReVa unavailable.",
                 }
             gdir = _reva.find_ghidra_run()["dir"]
             if not gdir:
