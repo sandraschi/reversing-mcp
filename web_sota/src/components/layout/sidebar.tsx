@@ -36,6 +36,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: "/inbox", label: "Inbox", icon: InboxIcon },
     { href: "/digibib", label: "DigiBib Lab", icon: BookOpen },
     { href: "/ghidra", label: "Ghidra", icon: Microscope },
+    { href: "/hardware", label: "Hardware", icon: Cpu },
     { href: "/hardware-m1", label: "M1 Synth", icon: Cpu },
     { href: "/hardware-grid", label: "GRiD 1520", icon: Cpu },
     { href: "/tools", label: "Tools", icon: Wrench },
