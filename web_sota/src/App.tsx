@@ -12,6 +12,7 @@ import { GhidraHistory } from "@/pages/ghidra-history";
 import { GhidraTools } from "@/pages/ghidra-tools";
 import { Gym } from "@/pages/gym";
 import { HardwareM1 } from "@/pages/hardware-m1";
+import { HardwareGrid } from "@/pages/hardware-grid";
 import { Help } from "@/pages/help";
 import { Inbox } from "@/pages/inbox";
 import { Settings } from "@/pages/settings";
@@ -41,6 +42,7 @@ function App() {
           <Route path="/ghidra/tools" element={<GhidraTools />} />
           <Route path="/ghidra/history" element={<GhidraHistory />} />
           <Route path="/hardware-m1" element={<HardwareM1 />} />
+          <Route path="/hardware-grid" element={<HardwareGrid />} />
           <Route path="/tools" element={<Tools />} />
           <Route path="/skills" element={<Skills />} />
           <Route path="/status" element={<Status />} />
