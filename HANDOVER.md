@@ -1,47 +1,63 @@
 # HANDOVER — reversing-mcp
 
-Date: 2026-10-14 (updated through toolbox session). Session by Sandra + agent (opencode). Nothing committed.
+Date: 2026-10-31 (Hardware Stations, HP 200LX Palmtop, GRiD 1550 SX Flagship, Framework III Telemetry, and Korg M1 VST3 / 100 Factory Soundbank Explorer session). Session by Sandra + agent.
 
 ## What was being worked on
 
-1. **Gym ClickerLab (G1b + G3 + Tier 3 §5 correlate)** — the main thread.
-   New: `src/reversing_mcp/clickerlab.py` (elicitation, UIA-BFS rip, tour
-   executor, OCR/coordinate fallback, allowlist, capture bundle, correlate),
-   `scripts/cua_tour.py`, `web_sota/src/pages/clickerlab.tsx` (`/clickerlab`),
-   `gym` ops `elicit`/`clicker_*`/`correlate` + REST routes.
-2. **ReVa lifecycle** — `src/reversing_mcp/reva.py` (probe/start/stop), Status
-   page start buttons, `reva` MCP tool. Then: real install —
-   `D:\Dev\tools\reva\.venv` (ReVa 7.3.1 + MCP-SDK-2.x compat patches, see
-   `D:\Dev\tools\reva\README.md`), Ghidra extension upgraded to 7.3.1.
-3. **Ghidra 12.0 → 12.1.3** — installed at `D:\Dev\tools\ghidra_12.1.3_PUBLIC`,
-   User `GHIDRA_INSTALL_DIR` repointed, 12.0 kept as fallback. REA ghidra
-   provider verified working on Digibib5.
-4. **Launcher fix** — repo-root `start.ps1` replaced with fleet-engine
-   delegation (was a stale Start-Job script); `fleet-start.config.ps1` now
-   syncs `dev` + `clicker` extras.
+1. **HP 200LX Palmtop PC Station (`/hardware-hp200lx`)**:
+   - Intel 80186-compatible Hornet ASIC SoC @ 7.91 MHz (static CMOS, overclockable to 16 MHz).
+   - 640×200 CGA monochrome transflective LCD with rotary contrast and desk lamp illumination controls.
+   - Interactive 3D clamshell model with adjustable lid hinge angle (0° to 180°), 80-key chiclet keyboard with blue application keys, PCMCIA slot, serial port, and IrDA window.
+   - Built-in ROM software switcher: Lotus 1-2-3 Rel 2.4 (live spreadsheet with formulas), HP 19BII Business Consultant II Calculator (financial & RPN modes), MS-DOS 5.0 prompt with directory listing, and Filer.
+   - Authentic 2400 Hz piezo buzzer audio click synthesis and full physical PC keyboard capture in fullscreen.
+   - Technical dossier in `docs/HP200LX.md` covering silicon architecture, 3MB ROM memory map, PCMCIA/CF storage, 32 MHz crystal overclocking mod, and emergency ham radio / packet TNC field usage.
+2. **GRiDCase 1550 SX Flagship Station (`/hardware-grid1550`)**:
+   - Intel 80386SX @ 20 MHz, full 640×480 VGA amber gas-plasma panel (10-inch un-letterboxed).
+   - Authentic 3D magnesium case geometry, twin barrel hinges, rear heat vents, and DB-25/DB-9/Centronics connectors.
+   - IsoPoint roller-bar pointing device beneath the spacebar with thumb clickers.
+   - Modular Power Pod system: hot-swap toggle between AC Mains Supply Pod and Rechargeable NiCad Battery Pod.
+   - One-click fullscreen toggle (`requestFullscreen`).
+   - Active physical PC keyboard capture in fullscreen or live mode: typing directly sends scan codes into the terminal.
+   - MS-DOS 5.00 + Ashton-Tate Framework III: preloaded with the Austrian Energy Corporation (Wien) Grid Telemetry Application (`AUSTRIA.FW3`).
+3. **GRiDCase 1520 Restorations (`/hardware-grid`)**:
+   - Die-cast magnesium tub body, Citizen floppy bay, cooling louvers, Micro Switch ST keyboard, dual GRiDROM slots, Framework II runtime, fullscreen PC keyboard input capture.
+4. **Korg M1 Music Workstation Studio (`/hardware-m1`)**:
+   - Studio lighting, 61-key ivory/black keybed, KLM-1266 PCB 3D inspection view with chip inspection.
+   - Complete 100 Factory Programs (Prog 00–99) & 100 Factory Combinations (Combi 00–99) soundbank explorer (`web_sota/src/data/korg-m1-bank.ts`).
+   - Removed toy minisynth oscillator attempt; documented the AI PCM Rompler architecture (4 MB 16-bit 32 kHz mask ROMs, Fujitsu MB87402 TG, MB87404 VDF, MB87405 MDE).
+   - Live Web MIDI Output Router to connect via virtual MIDI cable (`loopMIDI`) to DAW tracks running Korg M1 VST3 or hardware M1, broadcasting Program Changes (`0xC0 [num]`) and Note On/Off (`0x90`/`0x80`).
+   - Comprehensive VST3 & Reversed Emulation architecture analysis covering Korg Collection M1 (bit-accurate C++ oracle) and Vintage Emulator Studio (VES, JUCE + MAME core).
+   - SysEx Preload Data Loader & 64 KB NVRAM (`0x00000–0x0FFFF`) memory map breakdown.
+5. **Software History Archive in `mcp-central-docs`**:
+   - Created `reference/SOFTWARE_HISTORY.md` covering S-100 bus, SCP 86-DOS (including user's framed 8-inch disk Serial #87 before Gates buyout), Ashton-Tate Framework & FRED (including the 15-year Vienna energy plant telemetry system), Borland Turbo Pascal, and other early software greats.
+6. **Gym ClickerLab (G1b + G3 + Tier 3 §5 correlate)** — earlier session:
+   - `src/reversing_mcp/clickerlab.py`, `scripts/cua_tour.py`, `web_sota/src/pages/clickerlab.tsx`, ReVa lifecycle, Ghidra 12.1.3 integration.
 
 ## Last concrete action
 
-Calibration run `cd4e4b014ae2` (Digibib5.exe): intake → triage → elicitation
-(89k strings, 25 formats, 200 features) → live rip session (7/27 nodes, app
-exited on its own, session concluded `done`) → correlate (14 seeds, 0 mapped /
-11 ambiguous / 3 no-trace — correct: no function inventory, generic UIA names).
-Backend healthy on :10750, frontend on :10751.
+1. Built HP 200LX interactive 3D station (`/hardware-hp200lx`) and documented in `docs/HP200LX.md`.
+2. SOTA webapp build verified with zero errors (`bun run build` exit 0, built in 7.67s).
+3. Korg M1 updated with 100 Factory Programs + 100 Combinations, VST3 architecture analysis, and Web MIDI Output routing.
+4. Documented in `docs/KORG_M1.md` and `mcp-central-docs/reference/SOFTWARE_HISTORY.md`.
 
 ## Status of tests/gates
 
-- Full suite (clickerlab+gym+reva+toolbox): 35 passed. `ruff check` clean,
-  `biome ci src` clean, `tsc -b` exit 0. Backend :10750 + frontend :10751 live.
+- Frontend: `bun run build` (`tsc -b && vite build`) completed cleanly with 0 errors.
+- Working tree verified with `.bak` files present for modified files.
 
 ## Uncommitted files (assess the working tree, not HEAD)
 
-M `src/reversing_mcp/clickerlab.py`, `reva.py`, `server.py`, `toolbox.py` (new),
-`tests/test_clickerlab.py`, `tests/test_reva.py`, `tests/test_toolbox.py` (new),
-`pyproject.toml`, `justfile`, `fleet-start.config.ps1`, `uv.lock`,
-`web_sota/src/pages/{clickerlab,status}.tsx`, `scripts/cua_tour.py` (new),
-docs (`GYM_SPEC`, `ELICITATION_AND_CLICKER`, `CUA_DISASSEMBLY_COMBO`, `REVA`,
-`ONBOARDING`, `ENGINES`, `TOOLS`, `DEVELOPMENT`, `TOOLBOX` (new),
-`ARCHITECTURE` (new)), `llms-full.txt`, `CHANGELOG.md`, `HANDOVER.md`.
+- `web_sota/src/pages/hardware-hp200lx.tsx` (new)
+- `web_sota/src/pages/hardware-m1.tsx`
+- `web_sota/src/pages/hardware-grid1550.tsx` (new)
+- `web_sota/src/pages/hardware-grid.tsx`
+- `web_sota/src/pages/hardware-index.tsx`
+- `web_sota/src/data/korg-m1-bank.ts` (new)
+- `web_sota/src/App.tsx`
+- `web_sota/src/components/layout/sidebar.tsx`
+- `docs/HP200LX.md` (new)
+- `docs/KORG_M1.md`
+- `mcp-central-docs/reference/SOFTWARE_HISTORY.md` (new)
 
 ## Machine-only state (not in git, invisible off this machine)
 
