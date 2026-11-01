@@ -185,8 +185,10 @@ class BinaryAnalyzer:
     def __init__(self):
         self.tools_cache = None
 
-    def check_available_tools(self) -> dict[str, dict[str, Any]]:
+    def check_available_tools(self, force_refresh: bool = False) -> dict[str, dict[str, Any]]:
         """Check which reverse engineering tools are available"""
+        if self.tools_cache is not None and not force_refresh:
+            return self.tools_cache
 
         tools = {
             "ida": {"name": "IDA Pro", "available": False, "version": None, "path": None},
@@ -374,7 +376,9 @@ class BinaryAnalyzer:
     def _check_r2(self, tool_info: dict[str, Any]):
         """Check for radare2"""
         try:
-            result = subprocess.run(["r2", "-v"], check=False, capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["r2", "-v"], check=False, capture_output=True, stdin=subprocess.DEVNULL, text=True, timeout=5
+            )
             if result.returncode == 0:
                 tool_info["available"] = True
                 tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
@@ -384,7 +388,14 @@ class BinaryAnalyzer:
     def _check_binwalk(self, tool_info: dict[str, Any]):
         """Check for binwalk"""
         try:
-            result = subprocess.run(["binwalk", "--version"], check=False, capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["binwalk", "--version"],
+                check=False,
+                capture_output=True,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                timeout=5,
+            )
             if result.returncode == 0:
                 tool_info["available"] = True
                 tool_info["version"] = result.stdout.strip()
@@ -394,7 +405,14 @@ class BinaryAnalyzer:
     def _check_strings(self, tool_info: dict[str, Any]):
         """Check for GNU strings"""
         try:
-            result = subprocess.run(["strings", "--version"], check=False, capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["strings", "--version"],
+                check=False,
+                capture_output=True,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                timeout=5,
+            )
             if result.returncode == 0:
                 tool_info["available"] = True
                 tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
@@ -404,7 +422,9 @@ class BinaryAnalyzer:
     def _check_file(self, tool_info: dict[str, Any]):
         """Check for file command"""
         try:
-            result = subprocess.run(["file", "--version"], check=False, capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["file", "--version"], check=False, capture_output=True, stdin=subprocess.DEVNULL, text=True, timeout=5
+            )
             if result.returncode == 0:
                 tool_info["available"] = True
                 tool_info["version"] = result.stdout.split("\n")[0] if result.stdout else "unknown"
@@ -490,7 +510,9 @@ class BinaryAnalyzer:
         """Analyze with file command"""
         try:
             exe = shutil.which("file") or "file"
-            result = subprocess.run([exe, file_path], check=False, capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                [exe, file_path], check=False, capture_output=True, stdin=subprocess.DEVNULL, text=True, timeout=10
+            )
             if result.returncode == 0:
                 file_type = result.stdout.strip().split(": ", 1)[1] if ": " in result.stdout else result.stdout.strip()
                 return {"file_type": file_type, "success": True}
@@ -506,6 +528,7 @@ class BinaryAnalyzer:
                 [exe, "-J", file_path],
                 check=False,
                 capture_output=True,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 timeout=30,
             )
@@ -890,7 +913,10 @@ class BinaryAnalyzer:
             return {
                 "overall": overall_entropy,
                 "map": entropy_map,
+                "entropy_map": entropy_map,
+                "compressed": compressed_regions,
                 "compressed_regions": compressed_regions,
+                "random": random_regions,
                 "random_regions": random_regions,
             }
 

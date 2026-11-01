@@ -60,7 +60,7 @@ def run_cancellable(
     On timeout or cancel the whole process tree is killed (not just the launcher), then
     subprocess.TimeoutExpired or Cancelled is raised.
     """
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     deadline = time.monotonic() + timeout_s
     while True:
         try:
@@ -104,7 +104,9 @@ def check_die() -> dict[str, Any]:
         return info
     info["path"] = exe
     try:
-        proc = subprocess.run([exe, "--version"], check=False, capture_output=True, text=True, timeout=10)
+        proc = subprocess.run(
+            [exe, "--version"], check=False, capture_output=True, stdin=subprocess.DEVNULL, text=True, timeout=10
+        )
         if proc.returncode == 0:
             info["available"] = True
             info["version"] = (proc.stdout.strip() or "unknown").splitlines()[0]
@@ -194,7 +196,9 @@ def check_capa() -> dict[str, Any]:
     info["rules"] = rules
     info["sigs"] = sigs
     try:
-        proc = subprocess.run([exe, "--version"], check=False, capture_output=True, text=True, timeout=30)
+        proc = subprocess.run(
+            [exe, "--version"], check=False, capture_output=True, stdin=subprocess.DEVNULL, text=True, timeout=30
+        )
         if proc.returncode == 0:
             info["available"] = True
             info["version"] = (proc.stdout.strip() or proc.stderr.strip() or "unknown").splitlines()[0]

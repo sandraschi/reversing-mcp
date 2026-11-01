@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -70,11 +71,20 @@ def find_rea_runner() -> list[str] | None:
     return None
 
 
-def check_rea() -> dict[str, Any]:
+_REA_CACHE: dict[str, Any] | None = None
+_REA_CACHE_TIME: float = 0.0
+_REA_CACHE_TTL: float = 300.0  # 5 minutes
+
+
+def check_rea(force: bool = False) -> dict[str, Any]:
     """Probe REA availability. Never raises - soft-degrades to available=False."""
+    global _REA_CACHE, _REA_CACHE_TIME
+    if not force and _REA_CACHE is not None and (time.time() - _REA_CACHE_TIME < _REA_CACHE_TTL):
+        return dict(_REA_CACHE)
+
     runner = find_rea_runner()
     if runner is None:
-        return {
+        info = {
             "name": "REA (rea-agents)",
             "available": False,
             "version": None,
@@ -83,6 +93,9 @@ def check_rea() -> dict[str, Any]:
             "Install Node 22.19+/24.11+/26+ then run: just setup-rea (npx rea-agents setup). "
             "See docs/REA.md.",
         }
+        _REA_CACHE = info
+        _REA_CACHE_TIME = time.time()
+        return dict(info)
     node_exe = shutil.which("node")
     node_version: str | None = None
     if node_exe:
@@ -91,8 +104,9 @@ def check_rea() -> dict[str, Any]:
                 [node_exe, "--version"],
                 check=False,
                 capture_output=True,
+                stdin=subprocess.DEVNULL,
                 text=True,
-                timeout=10,
+                timeout=5,
             )
             if proc.returncode == 0:
                 node_version = proc.stdout.strip()
@@ -104,15 +118,16 @@ def check_rea() -> dict[str, Any]:
             [*runner, "--version"],
             check=False,
             capture_output=True,
+            stdin=subprocess.DEVNULL,
             text=True,
-            timeout=30,
+            timeout=10,
         )
         if proc.returncode == 0:
             version = (proc.stdout.strip() or proc.stderr.strip() or "unknown").splitlines()[0][:120]
     except (subprocess.SubprocessError, OSError):
         logger.exception("rea --version probe failed")
     available = version is not None
-    return {
+    info = {
         "name": "REA (rea-agents)",
         "available": available,
         "version": version,
@@ -121,6 +136,9 @@ def check_rea() -> dict[str, Any]:
         "description": "Agent-driven RE sidecar (JS/Electron/.NET/APK/firmware/browser/native). "
         "See docs/REA.md; query via rea_investigate().",
     }
+    _REA_CACHE = info
+    _REA_CACHE_TIME = time.time()
+    return dict(info)
 
 
 def resolve_kind(kind: str, target: str | None) -> str:
@@ -224,7 +242,14 @@ def run_rea(
     timeout_s = max(10, min(timeout_s, 900))
     cmd = [*runner, *argv_tail]
     try:
-        proc = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=timeout_s)
+        proc = subprocess.run(
+            cmd,
+            check=False,
+            capture_output=True,
+            stdin=subprocess.DEVNULL,
+            text=True,
+            timeout=timeout_s,
+        )
     except subprocess.TimeoutExpired:
         logger.warning("REA %s timed out after %ss on %s", resolved, timeout_s, target)
         return {

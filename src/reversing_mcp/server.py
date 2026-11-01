@@ -200,15 +200,23 @@ async def analyze_entropy(
 
     try:
         entropy_data = await asyncio.to_thread(analyzer.analyze_entropy, file_path, block_size)
+        if "error" in entropy_data:
+            return {"error": f"Entropy analysis failed: {entropy_data['error']}"}
+
+        overall = entropy_data.get("overall", 0.0)
+        entropy_map = entropy_data.get("map", entropy_data.get("entropy_map", []))
+        compressed = entropy_data.get("compressed", entropy_data.get("compressed_regions", []))
+        random_regs = entropy_data.get("random", entropy_data.get("random_regions", []))
+
         return {
             "file_path": file_path,
             "block_size": block_size,
-            "overall_entropy": entropy_data["overall"],
-            "entropy_map": entropy_data["map"],
-            "compressed_regions": entropy_data["compressed"],
-            "random_regions": entropy_data["random"],
-            "message": f"Entropy of {file_path}: {entropy_data['overall']:.2f} overall, "
-            f"{len(entropy_data['compressed'])} compressed and {len(entropy_data['random'])} random regions.",
+            "overall_entropy": overall,
+            "entropy_map": entropy_map,
+            "compressed_regions": compressed,
+            "random_regions": random_regs,
+            "message": f"Entropy of {file_path}: {overall:.2f} overall, "
+            f"{len(compressed)} compressed and {len(random_regs)} random regions.",
         }
     except Exception as e:
         logger.exception(f"Error analyzing entropy for {file_path}")
@@ -1384,9 +1392,9 @@ async def shutdown(
 
 def main():
     """Main entry point"""
-    import argparse
+    from .transport import create_argument_parser
 
-    parser = argparse.ArgumentParser(description="Reversing MCP Server - Free RE Tools + Directmedia Decompression")
+    parser = create_argument_parser("ReversingMCP")
     parser.add_argument("--log-level", default="INFO", help="Logging level")
 
     args = parser.parse_args()
@@ -1399,7 +1407,7 @@ def main():
     logger.info("Starting Reversing MCP Server")
 
     # Run MCP server
-    run_server(mcp, server_name="ReversingMCP")
+    run_server(mcp, args=args, server_name="ReversingMCP")
 
 
 # ASGI app for uvicorn (e.g. web_sota: uvicorn reversing_mcp.server:app)
