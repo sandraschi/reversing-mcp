@@ -39,6 +39,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     { href: "/hardware", label: "Hardware", icon: Cpu },
     { href: "/hardware-m1", label: "M1 Synth", icon: Cpu },
     { href: "/hardware-grid", label: "GRiD 1520", icon: Cpu },
+    { href: "/hardware-grid1550", label: "GRiD 1550 SX", icon: Cpu },
+    { href: "/hardware-hp200lx", label: "HP 200LX", icon: Cpu },
     { href: "/tools", label: "Tools", icon: Wrench },
     { href: "/skills", label: "Skills", icon: Cpu },
     { href: "/status", label: "Status", icon: Activity },

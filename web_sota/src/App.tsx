@@ -13,6 +13,8 @@ import { GhidraTools } from "@/pages/ghidra-tools";
 import { Gym } from "@/pages/gym";
 import { HardwareM1 } from "@/pages/hardware-m1";
 import { HardwareGrid } from "@/pages/hardware-grid";
+import { HardwareGrid1550 } from "@/pages/hardware-grid1550";
+import { HardwareHp200lx } from "@/pages/hardware-hp200lx";
 import { HardwareIndex } from "@/pages/hardware-index";
 import { Help } from "@/pages/help";
 import { Inbox } from "@/pages/inbox";
@@ -45,6 +47,8 @@ function App() {
           <Route path="/hardware" element={<HardwareIndex />} />
           <Route path="/hardware-m1" element={<HardwareM1 />} />
           <Route path="/hardware-grid" element={<HardwareGrid />} />
+          <Route path="/hardware-grid1550" element={<HardwareGrid1550 />} />
+          <Route path="/hardware-hp200lx" element={<HardwareHp200lx />} />
           <Route path="/tools" element={<Tools />} />
           <Route path="/skills" element={<Skills />} />
           <Route path="/status" element={<Status />} />

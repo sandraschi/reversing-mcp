@@ -60,7 +60,7 @@ export function HardwareIndex() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <ExemplarCard
           to="/hardware-m1"
           title="Korg M1 — megasynth"
@@ -76,6 +76,22 @@ export function HardwareIndex() {
           profile="mame_gridcase1520_profile"
           tier="Tier 0 (attic → plate photo)"
           body="MS-DOS native, Micro Switch keys, plasma glass. Branch A first: Kermit + Pi over serial, the glass becomes the bot's face. Docs/GRID_REVIVE.md."
+        />
+        <ExemplarCard
+          to="/hardware-grid1550"
+          title="GRiDCase 1550 SX — 386 flagship"
+          sub="1990 workstation · 386SX · VGA 640x480 plasma"
+          profile="gridcase1550sx_vga"
+          tier="Tier 0 (flagship specimen)"
+          body="Edge-to-edge 640x480 VGA 16-shade plasma panel, patented IsoPoint roller bar, modular slide-in Power Pods (AC / Battery), and full MS-DOS 5.0."
+        />
+        <ExemplarCard
+          to="/hardware-hp200lx"
+          title="HP 200LX — Palmtop PC"
+          sub="1994 DOS palmtop · 80186 Hornet · 640x200 CGA"
+          profile="mame_hp200lx_hornet"
+          tier="Tier 0 (working specimen)"
+          body="Intel 80186 'Hornet' SoC, 3MB ROM with MS-DOS 5.0 & Lotus 1-2-3 Rel 2.4, HP 19BII calc, PCMCIA Type II slot, and 40h runtime on two AA cells."
         />
       </div>
 
