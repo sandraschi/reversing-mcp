@@ -37,6 +37,10 @@ from .directmedia_dki import (
     resolve_digitale_library_root,
     result_to_mcp_dict,
 )
+from .hardware import (
+    HerculesMK1Decoder,
+    HerculesMK1VirtualConsole,
+)
 from .logging_config import get_logger
 from .transport import run_server
 
@@ -1364,6 +1368,92 @@ async def help(
 
     help_content["message"] = f"Reversing MCP help ({level} level)."
     return help_content
+
+
+_virtual_hercules = HerculesMK1VirtualConsole()
+
+
+@mcp.tool(annotations=_READ_ONLY)
+async def hercules_hw_info() -> dict[str, Any]:
+    """Get physical, USB, and control architecture specs for the Hercules DJ Console (MK1 - 2003).
+
+    Returns dimensions, USB VID/PID (0x06F8:0xB100), endpoint topologies, control mappings,
+    and missing accessory documentation (clamshell cover and shoulder strap).
+    """
+    return _virtual_hercules.get_hardware_info()
+
+
+@mcp.tool(annotations=_MUTATING)
+async def hercules_virtual_spin(
+    deck: Annotated[str, Field(description="Deck identifier ('A' or 'B')")],
+    ticks: Annotated[int, Field(description="Jog wheel tick impulse (positive for forward/CW, negative for back/CCW)")],
+) -> dict[str, Any]:
+    """Simulate rotary encoder jog wheel movement on Deck A or B.
+
+    Returns the synthesized 16-byte raw USB HID report packet (hex) and the translated
+    standard MIDI CC messages emitted for DAW consumption.
+    """
+    pkt, midi = _virtual_hercules.spin_jog(deck, ticks)
+    return {
+        "deck": deck.upper(),
+        "ticks": ticks,
+        "packet_hex": pkt.hex().upper(),
+        "packet_len": len(pkt),
+        "midi_messages": [{"status": hex(m.status), "cc": m.data1, "val": m.data2} for m in midi],
+        "jog_a_pos": _virtual_hercules.state.jog_a_pos,
+        "jog_b_pos": _virtual_hercules.state.jog_b_pos,
+    }
+
+
+@mcp.tool(annotations=_MUTATING)
+async def hercules_virtual_fader(
+    fader: Annotated[str, Field(description="'crossfader', 'pitch_a', or 'pitch_b'")],
+    value: Annotated[int, Field(description="8-bit ADC value (0-255, 128 is center detent)")],
+) -> dict[str, Any]:
+    """Set virtual position of the crossfader or pitch sliders.
+
+    Returns the synthesized 16-byte raw USB HID report packet (hex) and the translated
+    standard MIDI CC messages.
+    """
+    pkt, midi = _virtual_hercules.set_fader(fader, value)
+    return {
+        "fader": fader,
+        "value": value,
+        "packet_hex": pkt.hex().upper(),
+        "midi_messages": [{"status": hex(m.status), "cc": m.data1, "val": m.data2} for m in midi],
+    }
+
+
+@mcp.tool(annotations=_MUTATING)
+async def hercules_virtual_button(
+    button: Annotated[
+        str, Field(description="Button name ('play_a', 'cue_a', 'play_b', 'cue_b', 'autobeat', 'fx1_a', etc.)")
+    ],
+    pressed: Annotated[bool, Field(description="True for press / down, False for release / up")] = True,
+) -> dict[str, Any]:
+    """Press or release a tactile rubber button on the Hercules DJ Console MK1.
+
+    Returns the synthesized 16-byte raw USB HID report packet (hex) and translated MIDI Note On/Off messages.
+    """
+    pkt, midi = _virtual_hercules.press_button(button, pressed)
+    return {
+        "button": button,
+        "pressed": pressed,
+        "packet_hex": pkt.hex().upper(),
+        "midi_messages": [{"status": hex(m.status), "note": m.data1, "velocity": m.data2} for m in midi],
+    }
+
+
+@mcp.tool(annotations=_READ_ONLY)
+async def hercules_decode_packet(
+    packet_hex: Annotated[
+        str, Field(description="16-byte hex string representing raw USB interrupt report (e.g. 32 hex chars)")
+    ],
+) -> dict[str, Any]:
+    """Decode a raw 16-byte USB interrupt IN report into structured console telemetry."""
+    raw = bytes.fromhex(packet_hex.strip())
+    state = HerculesMK1Decoder.decode(raw)
+    return state.to_dict()
 
 
 @mcp.tool(annotations=_DESTRUCTIVE)
