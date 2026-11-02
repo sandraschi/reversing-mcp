@@ -50,7 +50,7 @@ logger = get_logger("reversing_mcp")
 directmedia_available = True
 
 # Initialize MCP server
-mcp = FastMCP("ReversingMCP", version="0.4.0")
+mcp = FastMCP("ReversingMCP", version="0.5.0")
 
 _READ_ONLY = {"readonly": True}
 _MUTATING = {}

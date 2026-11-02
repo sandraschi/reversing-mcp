@@ -1,10 +1,20 @@
 # HANDOVER — reversing-mcp
 
-Date: 2026-10-31 (Hardware Stations, HP 200LX Palmtop, GRiD 1550 SX Flagship, Framework III Telemetry, and Korg M1 VST3 / 100 Factory Soundbank Explorer session). Session by Sandra + agent.
+Date: 2026-11-02 (v0.5.0 Release — Hercules DJ Console MK1 2003 Hardware Virtualizer, HID Decoder, MIDI Bridge, and Shell CAD). Session by Sandra + agent.
 
 ## What was being worked on
 
-1. **HP 200LX Palmtop PC Station (`/hardware-hp200lx`)**:
+1. **Hercules DJ Console (MK1 - 2003) Hardware Virtualizer (`/hardware/hercules_mk1.py`)**:
+   - 16-byte raw USB interrupt IN report decoder on EP 1 IN (`0x06F8:0xB100`).
+   - Virtual console state machine emulating dual jog wheels (relative velocity ticks), 45mm crossfader, pitch sliders, 3-band EQs, and 28 rubber tactile buttons.
+   - EP 2 OUT 4-byte interrupt LED report encoder.
+   - `HerculesMK1MidiBridge` translating raw HID events into standard MIDI CC and Note On/Off for modern software (Mixxx, Ableton, FL Studio).
+   - 5 FastMCP tools: `hercules_hw_info`, `hercules_virtual_spin`, `hercules_virtual_fader`, `hercules_virtual_button`, `hercules_decode_packet`.
+   - Parametric OpenSCAD design for replacement faceplate guard / deck-saver and carrying strap clamp (`hardware/hercules-mk1/shell_carrier.scad`) replacing the lost original smoked clamshell.
+   - Complete technical documentation in `docs/hardware/HERCULES_DJ_CONSOLE_MK1.md`.
+   - Unit tests: 6/6 tests passing in `tests/test_hercules_mk1.py`.
+
+2. **HP 200LX Palmtop PC Station (`/hardware-hp200lx`)**:
    - Intel 80186-compatible Hornet ASIC SoC @ 7.91 MHz (static CMOS, overclockable to 16 MHz).
    - 640×200 CGA monochrome transflective LCD with rotary contrast and desk lamp illumination controls.
    - Interactive 3D clamshell model with adjustable lid hinge angle (0° to 180°), 80-key chiclet keyboard with blue application keys, PCMCIA slot, serial port, and IrDA window.

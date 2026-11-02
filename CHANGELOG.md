@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
+### Added
+- Hercules DJ Console (MK1 - 2003) Hardware Virtualizer (`src/reversing_mcp/hardware/`):
+  - 16-byte raw USB interrupt IN report decoder & encoder (`HerculesMK1Decoder`).
+  - Virtual console emulator (`HerculesMK1VirtualConsole`) simulating dual jog wheels, 45mm crossfader, pitch sliders, 3-band EQ knobs, and 28 rubber tactile buttons.
+  - Bi-directional MIDI Bridge (`HerculesMK1MidiBridge`) translating raw HID reports into standard MIDI CC and Note events for modern DJ applications (Mixxx, Traktor, Ableton).
+- FastMCP tools for hardware interaction: `hercules_hw_info`, `hercules_virtual_spin`, `hercules_virtual_fader`, `hercules_virtual_button`, `hercules_decode_packet`.
+- Parametric OpenSCAD design for replacement faceplate guard / deck-saver and carrying strap clamp (`hardware/hercules-mk1/shell_carrier.scad`) replacing the lost original smoked clamshell.
+- Comprehensive hardware & protocol documentation in `docs/hardware/HERCULES_DJ_CONSOLE_MK1.md`.
+- Unit test suite `tests/test_hercules_mk1.py` with 6/6 passing tests.
+
 ### Added (2026-10-26)
 - `ghidra` MCP portmanteau (`src/reversing_mcp/ghidra_bridge.py`): one tool forwarding to ReVa's ~86 Ghidra tools instead of mounting them all. Ops: status/start/stop/tools/describe/call. The agent ALWAYS drives a stdio `mcp-reva` child - no port, no API key, no hunting (mcp-reva manages ReVa's internal random port/key itself). `mode="headless"` is just that child; `mode="watch"` (alias `gui`) also launches a Ghidra desktop window to look at, which is a SEPARATE instance from the one being driven. Both confirm-gated. Async-task startup; `call` truncates at `REVA_MAX_TEXT_CHARS`; session + any watch window torn down on stop and on backend shutdown. Replaces the "run ReVa as a second MCP server" workflow for chat clients.
 - Dropped the earlier "attach to a running Ghidra GUI over an HTTP URL" idea: it needs ReVa's internal port+key, which we do not handle, so it was never a smooth path. Verified live: headless start loaded 86 tools in ~12s warm, search/describe/call/stop all round-trip against real mcp-reva.
@@ -82,7 +94,19 @@ All notable changes to this project are documented here. Format follows [Keep a 
 - `.gitignore`: Added `reports/` and `*.bak` patterns
 - `reports/assess-2026-07-25.md` — Full SOTA assessment report
 
-## [Unreleased] — 2026-06-14
+## [Unreleased]
+
+## [0.5.0] - 2026-11-02
+
+### Added
+- Hercules DJ Console (MK1 - 2003) Hardware Virtualizer (`src/reversing_mcp/hardware/`):
+  - 16-byte raw USB interrupt IN report decoder & encoder (`HerculesMK1Decoder`).
+  - Virtual console emulator (`HerculesMK1VirtualConsole`) simulating dual jog wheels, 45mm crossfader, pitch sliders, 3-band EQ knobs, and 28 rubber tactile buttons.
+  - Bi-directional MIDI Bridge (`HerculesMK1MidiBridge`) translating raw HID reports into standard MIDI CC and Note events for modern DJ applications (Mixxx, Traktor, Ableton).
+- FastMCP tools for hardware interaction: `hercules_hw_info`, `hercules_virtual_spin`, `hercules_virtual_fader`, `hercules_virtual_button`, `hercules_decode_packet`.
+- Parametric OpenSCAD design for replacement faceplate guard / deck-saver and carrying strap clamp (`hardware/hercules-mk1/shell_carrier.scad`) replacing the lost original smoked clamshell.
+- Comprehensive hardware & protocol documentation in `docs/hardware/HERCULES_DJ_CONSOLE_MK1.md`.
+- Unit test suite `tests/test_hercules_mk1.py` with 6/6 passing tests. — 2026-06-14
 
 ### Added
 - Tauri native wrapper (native/ directory) with bundle.resources + std::process::Command
