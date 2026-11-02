@@ -1,0 +1,16 @@
+{
+  "name": "Reversing Lab & Hardware Workbench",
+  "short_name": "ReversingLab",
+  "description": "Hardware reverse engineering, Hercules DJ Console MK1 virtualizer, HP 200LX, GRiD 1550, and Ghidra tooling.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#0F172A",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
