@@ -26,7 +26,7 @@ powershell -c "irm https://github.com/sandraschi/reversing-mcp/releases/latest/d
 
 ## What it does
 
-20 tools across eight domains:
+27 tools across ten domains:
 
 | Domain | Tools | Docs |
 |--------|-------|------|
@@ -36,6 +36,8 @@ powershell -c "irm https://github.com/sandraschi/reversing-mcp/releases/latest/d
 | **Gym** (cloning runs + ClickerLab) | `gym` (lifecycle + elicit/clicker_*/correlate) | [Gym spec](docs/GYM_SPEC.md) |
 | **Engines** (DiE / capa / Frida) | `engine` | [Engines](docs/ENGINES.md) |
 | **Ghidra** (ReVa forwarding) | `ghidra` (status/start/stop/tools/describe/call), `reva` (lifecycle) | [Ghidra guide](docs/GHIDRA.md) · [ReVa guide](docs/REVA.md) |
+| **Ghidra extensions** (community download + CRUD) | `ghidra_extensions` (catalog/list/install/remove/enable/disable, SNES/65816-first) | [Extensions guide](docs/GHIDRA_EXTENSIONS.md) |
+| **Hercules MK1** (hardware virtualizer) | `hercules_hw_info`, `hercules_virtual_spin/fader/button`, `hercules_decode_packet` | [MK1 spec](docs/hardware/HERCULES_DJ_CONSOLE_MK1.md) |
 | **Toolbox** (autodiscovery/install) | `toolbox` | [Toolbox](docs/TOOLBOX.md) |
 | **Directmedia / DKI** | `decode_dki_file`, `analyze_directmedia_file`, `decompress_directmedia_library`, `digibib_research_snapshot` | [Reversing guide](docs/DIGIBIB_REVERSING_GUIDE.md) · [Mission](docs/DIRECTMEDIA_MISSION.md) · [Toolkit](docs/DIRECTMEDIA_REVERSING_TOOLKIT.md) · [Decompile plan](docs/DIGIBIB_DECOMPILE_PLAN.md) |
 | **System** | `check_tools`, `shutdown`, `help`, `show_tools_card` | — |
@@ -97,7 +99,8 @@ All engines, cost and status in one table: [docs/ENGINES.md](docs/ENGINES.md).
 SOTA React dashboard on `http://localhost:10751` (backend `:10750`): hero with
 live KPIs (tools, toolbox, runs, models), Analyze uploads, Gym runs with
 ClickerLab, a **Ghidra** section (Workbench + Tool catalogue + Call history
-driving ReVa interactively), ReVa/toolbox Status, local-LLM Chat, Logs, and a
+driving ReVa interactively) plus an **Extensions** page (community loader
+catalog + install/remove/enable), ReVa/toolbox Status, local-LLM Chat, Logs, and a
 Help center whose engine guides open in-app. Port pair claimed in
 `mcp-central-docs/operations/WEBAPP_PORTS.md` (BE 10750 / FE 10751).
 

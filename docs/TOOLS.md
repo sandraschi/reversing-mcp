@@ -1,4 +1,4 @@
-# Tools - reversing-mcp (20)
+# Tools - reversing-mcp (27)
 
 Full signatures live in `llms-full.txt`. Every tool returns a `message` key.
 
@@ -20,6 +20,13 @@ Full signatures live in `llms-full.txt`. Every tool returns a `message` key.
 |------|----------|
 | `rea_investigate(target?, kind?, provider?, query?, symbol?, address?, snapshot_path?, timeout_s?)` | JS/Electron graphs, .NET/APK/firmware/browser, native pseudocode/search/xrefs. `auto` routes dirs→JS, files→native. See `docs/REA.md` |
 
+## Ghidra (ReVa forwarding + community extensions)
+
+| Tool | One line |
+|------|----------|
+| `ghidra(operation, tool?, arguments?, ...)` | Status/start/stop/tools/describe/call via stdio `mcp-reva` child (headless or watch). See `docs/GHIDRA.md`, `docs/REVA.md` |
+| `ghidra_extensions(operation, name?, version?, confirm?)` | Community extension download + CRUD: catalog/list/install/remove/enable/disable in the user Extensions dir. SNES/65816-first. See `docs/GHIDRA_EXTENSIONS.md` |
+
 ## Directmedia / DKI (Digibib5 mission)
 
 | Tool | One line |
@@ -28,6 +35,14 @@ Full signatures live in `llms-full.txt`. Every tool returns a `message` key.
 | `analyze_directmedia_file(path)` | Decode + `*_extracted.txt` |
 | `decompress_directmedia_library(library_path?, volume_filter?)` | Batch `DB*/Data/TEXT.DKI` |
 | `digibib_research_snapshot(exe_path?)` | Static JSON bundle + roadmap |
+
+## Hardware (Hercules DJ Console MK1)
+
+| Tool | One line |
+|------|----------|
+| `hercules_hw_info()` | Physical/USB/control descriptors (VID `0x06F8`, PID `0xB100`) |
+| `hercules_virtual_spin(deck, ticks)` / `hercules_virtual_fader(fader, value)` / `hercules_virtual_button(button, pressed)` | Synthesize 16-byte HID reports + MIDI CC/Note translation |
+| `hercules_decode_packet(packet_hex)` | Decode a raw 16-byte USB interrupt IN report |
 
 ## System
 

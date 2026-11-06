@@ -186,6 +186,7 @@ analyzeHeadless C:\temp MCP_Proj -import binary.exe -postScript my_script.py -an
 
 ## 6. References
 
+- [Community extensions guide](GHIDRA_EXTENSIONS.md) - catalog, download + CRUD, SNES/65816 bring-up
 - [ReVa guide](REVA.md) — interactive Ghidra MCP setup
 - [Ghidra homepage](https://ghidra-sre.org/)
 - [Ghidra GitHub](https://github.com/NationalSecurityAgency/ghidra)

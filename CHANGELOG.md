@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- Ghidra community extensions download + CRUD (`src/reversing_mcp/ghidra_extensions.py`, `ghidra_extensions` MCP tool, 5 REST routes, webapp `/extensions` page, `docs/GHIDRA_EXTENSIONS.md`): curated SNES/65816-first catalog (ghidra-65816 processor, Raikaru snes-loader, findcrypt, Ghidrathon, BinExport) with installed/enabled status; install from catalog name / `owner/repo` / https zip into the user Extensions dir; confirm-gated remove; reversible enable/disable via rename. Manual-kind entries refuse honestly with the repo pointer. Stock Ghidra 12.1.3 has no 65c816 and an empty Extensions dir, so this closes the SNES bring-up gap.
+- Same lifecycle ported to revecraft (`extensions --action list|catalog|install|remove|enable|disable`, `ghidra_extensions` MCP tool, dependency-free).
+
 ## [0.5.0] - 2026-11-02
 
 ### Added

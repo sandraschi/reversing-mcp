@@ -4,6 +4,9 @@
 installs.** The backend discovers the toolchain on boot, exports what it finds
 into its own environment, installs what is missing, and starts policy services.
 Status page Toolbox card (`GET /api/v1/toolbox`) + `toolbox()` MCP tool.
+Community Ghidra extensions (SNES loaders, 65816, findcrypt, ...) live one
+level over in `ghidra_extensions()` / `GET /api/v1/extensions/*` — see
+`docs/GHIDRA_EXTENSIONS.md`.
 
 ## Inventory (11 entries)
 

@@ -17,8 +17,8 @@ just install-idr                         # Install IDR (Delphi reconstructor)
 | Backend (MCP + API) | 10750 |
 | Frontend (Vite dev) | 10751 |
 
-## Tools (17)
-All registered in `server.py`; implementations in `analyzers.py`, `directmedia_dki.py`, `digibib_research.py`, `rea_bridge.py`.
+## Tools (27)
+All registered in `server.py`; portmanteaux in `ghidra_bridge.py` / `ghidra_extensions.py` / `toolbox.py` / `engines.py` / `gym.py` / `reva.py`, analysis in `analyzers.py`, DKI in `directmedia_dki.py` / `digibib_research.py`, REA in `rea_bridge.py`.
 
 | Tool | Description |
 |------|-------------|
@@ -39,6 +39,11 @@ All registered in `server.py`; implementations in `analyzers.py`, `directmedia_d
 | `show_tools_card` | Engine inventory as in-chat Prefab card |
 | `gym` | Cloning-run lifecycle (start/status/advance/stop/list) |
 | `engine` | DiE / capa / Frida: compiler+packer ID, capabilities, runtime hooks |
+| `reva` | ReVa lifecycle: probe/start/stop (headless or GUI) |
+| `ghidra` | ReVa-backed Ghidra ops: status/start/stop/tools/describe/call |
+| `ghidra_extensions` | Community extension download + CRUD (SNES/65816-first catalog). See `docs/GHIDRA_EXTENSIONS.md` |
+| `toolbox` | Toolchain autodiscovery/install/autostart: probe/install/ensure/policy |
+| `hercules_hw_info` / `hercules_virtual_spin` / `hercules_virtual_fader` / `hercules_virtual_button` / `hercules_decode_packet` | Hercules MK1 virtualizer: descriptors, HID/MIDI synthesis, packet decode |
 | `help` | Multi-level help system |
 
 ## Documentation Map

@@ -10,7 +10,7 @@ uv run python -m reversing_mcp.server           # stdio mode (Claude Desktop)
 uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 ```
 
-## Tools (20)
+## Tools (27)
 
 ### Binary analysis
 - `analyze_binary(file_path, tools=None)` — multi-tool analysis. tools: ida, ghidra, r2, binwalk, static, strings, file. Returns file_path, file_size, tools_used, results.
@@ -37,10 +37,13 @@ uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 - `shutdown(confirm=False)` — graceful server termination. Requires confirm=True.
 - `show_tools_card()` — engine inventory as an in-chat Prefab card (app=True).
 - `gym(operation="list", ...)` - cloning-run lifecycle (start/status/advance/stop/list) + elicit/clicker_*/correlate/compare/export (ClickerLab; clicker executes: confirm + accept_local).
+- `ghidra(operation="status", ...)` - ReVa-backed Ghidra ops: status/start(mode=headless|watch, confirm)/stop/tools/describe/call. See docs/GHIDRA.md.
+- `ghidra_extensions(operation="list", name=None, version=None, confirm=False)` - community extension download + CRUD in the user Extensions dir: catalog/list/install/remove/enable/disable. SNES/65816-first catalog. See docs/GHIDRA_EXTENSIONS.md.
 - `reva(operation="probe", mode="headless", confirm=False)` - ReVa lifecycle (probe/start/stop).
 - `toolbox(operation="probe", name=None)` - toolchain autodiscovery/install/autostart (ghidra, reva, capa, die, frida, r2, hopper, ida, java, tesseract, node). See docs/TOOLBOX.md.
 - `engine(operation="die"|"capa"|"frida_trace"|"frida_script", ...)` — Detect It Easy compiler/packer ID, capa capabilities, Frida runtime hooks (frida_* need confirm=True; they execute the target).
 - `help(level="basic", topic=None)` — multi-level help. Levels: basic, intermediate, advanced. Topics: ghidra, binary, analysis.
+- `hercules_*` (`hw_info`/`virtual_spin`/`virtual_fader`/`virtual_button`/`decode_packet`) — Hercules DJ Console MK1 virtualizer: USB descriptors, HID/MIDI synthesis, packet decode. See docs/hardware/HERCULES_DJ_CONSOLE_MK1.md.
 
 ## REST API (single FastAPI app on :10750; `uvicorn reversing_mcp.server:app`)
 
@@ -67,6 +70,8 @@ uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 | GET /api/logs, GET /api/logs/stats, GET /api/logs/export, DELETE /api/logs | In-repo activity log ring buffer. |
 | GET /api/v1/digibib/find\|snapshot\|check-idr\|decode-dki\|directmedia-strings | Digibib5/DKI flows. |
 | POST /api/v1/gym/runs, GET /api/v1/gym/runs, GET /api/v1/gym/runs/{id}, POST .../advance, POST .../stop, GET .../artifacts/{path} | Gym cloning runs (stages 0/1/4). |
+| GET /api/v1/extensions, GET /api/v1/extensions/catalog | Installed extensions + curated catalog (installed flags). |
+| POST /api/v1/extensions/install `{name, version?}`, POST /api/v1/extensions/remove `{name, confirm}`, POST /api/v1/extensions/enabled `{name, enabled}` | Extension download + CRUD (remove needs confirm). |
 | /mcp | FastMCP HTTP transport endpoint. |
 | /docs, /redoc, /openapi.json | Auto API docs. |
 
@@ -103,6 +108,12 @@ uv run uvicorn reversing_mcp.server:app --port 10750  # HTTP mode
 ```
 server.py (FastMCP 3.4)
   ├── analyzers.py          — BinaryAnalyzer (Ghidra headless, radare2, binwalk, PE, entropy, strings)
+  ├── ghidra_extensions.py  — community extension catalog + download/CRUD (see docs/GHIDRA_EXTENSIONS.md)
+  ├── toolbox.py            — toolchain autodiscovery/install/autostart (see docs/TOOLBOX.md)
+  ├── engines.py            — DiE / capa / Frida runners (see docs/ENGINES.md)
+  ├── gym.py                — cloning-run lifecycle (see docs/GYM_SPEC.md)
+  ├── reva.py               — ReVa lifecycle (see docs/REVA.md)
+  ├── ghidra_bridge.py      — ReVa-backed Ghidra forwarding (see docs/GHIDRA.md)
   ├── directmedia_dki.py    — DKI decode/decompress (zlib/gzip heuristics)
   ├── digibib_research.py   — DigiBib research snapshot builder
   ├── transport.py          — Dual transport (stdio/HTTP)
@@ -120,8 +131,9 @@ native/                     — Tauri 2.0 NSIS wrapper
 Two paths:
 1. **Interactive** via ReVa MCP (separate server) — decompile, xrefs, rename
 2. **Headless** via `analyze_binary(..., ['ghidra'])` — batch analysis
+3. **Community extensions** (SNES/65816 loaders, findcrypt, ...) via `ghidra_extensions` — catalog/install/remove/enable
 
-See [docs/GHIDRA.md](docs/GHIDRA.md) for full setup.
+See [docs/GHIDRA.md](docs/GHIDRA.md) for full setup, [docs/GHIDRA_EXTENSIONS.md](docs/GHIDRA_EXTENSIONS.md) for the extension catalog.
 
 ## Directmedia mission
 
