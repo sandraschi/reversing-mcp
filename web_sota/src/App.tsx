@@ -7,6 +7,7 @@ import { Chat } from "@/pages/chat";
 import { ClickerLab } from "@/pages/clickerlab";
 import { Dashboard } from "@/pages/dashboard";
 import { DigiBib } from "@/pages/digibib";
+import { Extensions } from "@/pages/extensions";
 import { Ghidra } from "@/pages/ghidra";
 import { GhidraHistory } from "@/pages/ghidra-history";
 import { GhidraTools } from "@/pages/ghidra-tools";
@@ -42,6 +43,7 @@ function App() {
           <Route path="/inbox" element={<Inbox />} />
           <Route path="/digibib" element={<DigiBib />} />
           <Route path="/ghidra" element={<Ghidra />} />
+          <Route path="/extensions" element={<Extensions />} />
           <Route path="/ghidra/tools" element={<GhidraTools />} />
           <Route path="/ghidra/history" element={<GhidraHistory />} />
           <Route path="/hardware" element={<HardwareIndex />} />
