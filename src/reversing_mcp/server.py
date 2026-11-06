@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from . import clickerlab as _clickerlab
 from . import engines as _engines
 from . import ghidra_bridge as _ghidra
+from . import ghidra_extensions as _gx
 from . import gym as _gym
 from . import rea_bridge
 from . import reva as _reva
@@ -680,6 +681,67 @@ async def toolbox(
     return {
         "success": False,
         "error": f"Unknown toolbox operation '{operation}'. Valid: probe, install, ensure, policy.",
+    }
+
+
+@mcp.tool(annotations=_MUTATING)
+async def ghidra_extensions(
+    operation: Annotated[
+        str,
+        Field(description="Extensions op: list, catalog, install, remove, enable, disable."),
+    ] = "list",
+    name: Annotated[
+        str | None,
+        Field(description="Catalog name, owner/repo, or https .zip URL (install/remove/enable/disable)."),
+    ] = None,
+    version: Annotated[str | None, Field(description="Release tag for install (default latest).")] = None,
+    confirm: Annotated[bool, Field(description="Required true for remove (deletes the dir).")] = False,
+) -> dict[str, Any]:
+    """
+    GHIDRA_EXTENSIONS - Community extension download + CRUD for the user Extensions dir.
+
+    [RATIONALE] Stock Ghidra ships no 65c816/SNES path and an empty Extensions
+    dir; agents kept hand-installing zips. One portmanteau owns the lifecycle:
+    catalog (curated SNES/65816-first entries + installed flags), list (what is
+    on disk, incl. .disabled rows), install (GitHub release asset or https zip),
+    remove (confirm-gated), enable/disable (reversible rename, restart Ghidra).
+
+    ## Return Format
+    `{"success": bool, ...}` - list adds `extensions`, `count`, `searched`;
+    catalog adds `entries`; install adds `name`, `path`, `url`; remove needs
+    `confirm=True`. Manual-kind entries refuse honestly with the repo pointer.
+
+    ## Examples
+    `ghidra_extensions(operation="catalog")`
+    `ghidra_extensions(operation="install", name="ghidra-65816")`
+    `ghidra_extensions(operation="remove", name="ghidra-65816", confirm=True)`
+    """
+    import asyncio
+
+    op = (operation or "").lower()
+    if op == "list":
+        return await asyncio.to_thread(_gx.list_installed)
+    if op == "catalog":
+        return await asyncio.to_thread(_gx.catalog)
+    if op == "install":
+        if not name:
+            return {"success": False, "error": "install requires name (catalog entry, owner/repo, or https .zip URL)."}
+        return await asyncio.to_thread(_gx.install_extension, name, version)
+    if op == "remove":
+        if not name:
+            return {"success": False, "error": "remove requires name."}
+        return await asyncio.to_thread(_gx.remove_extension, name, confirm)
+    if op == "enable":
+        if not name:
+            return {"success": False, "error": "enable requires name."}
+        return await asyncio.to_thread(_gx.set_enabled, name, True)
+    if op == "disable":
+        if not name:
+            return {"success": False, "error": "disable requires name."}
+        return await asyncio.to_thread(_gx.set_enabled, name, False)
+    return {
+        "success": False,
+        "error": f"Unknown ghidra_extensions operation '{operation}'. Valid: list, catalog, install, remove, enable, disable.",
     }
 
 
@@ -2054,6 +2116,53 @@ try:
         import asyncio
 
         return await asyncio.to_thread(_toolbox.ensure, True)
+
+    @_http_app.get("/api/v1/extensions")
+    async def _extensions_list():
+        """Installed Ghidra community extensions (incl. .disabled rows)."""
+        import asyncio
+
+        return await asyncio.to_thread(_gx.list_installed)
+
+    @_http_app.get("/api/v1/extensions/catalog")
+    async def _extensions_catalog():
+        """Curated catalog (SNES/65816-first) enriched with installed flags."""
+        import asyncio
+
+        return await asyncio.to_thread(_gx.catalog)
+
+    class _ExtensionInstallBody(BaseModel):
+        name: str
+        version: str | None = None
+
+    @_http_app.post("/api/v1/extensions/install")
+    async def _extensions_install(body: _ExtensionInstallBody):
+        """Download a release zip + unzip into the user Extensions dir. May take minutes."""
+        import asyncio
+
+        return await asyncio.to_thread(_gx.install_extension, body.name, body.version)
+
+    class _ExtensionRemoveBody(BaseModel):
+        name: str
+        confirm: bool = False
+
+    @_http_app.post("/api/v1/extensions/remove")
+    async def _extensions_remove(body: _ExtensionRemoveBody):
+        """Delete an installed extension dir. Needs confirm=True."""
+        import asyncio
+
+        return await asyncio.to_thread(_gx.remove_extension, body.name, body.confirm)
+
+    class _ExtensionEnabledBody(BaseModel):
+        name: str
+        enabled: bool = True
+
+    @_http_app.post("/api/v1/extensions/enabled")
+    async def _extensions_enabled(body: _ExtensionEnabledBody):
+        """Reversible enable/disable via rename. Restart Ghidra to pick up."""
+        import asyncio
+
+        return await asyncio.to_thread(_gx.set_enabled, body.name, body.enabled)
 
     async def _ollama_tags() -> dict:
         import httpx
